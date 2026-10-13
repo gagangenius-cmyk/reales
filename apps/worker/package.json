@@ -1,0 +1,1 @@
+{ "name": "@reales/worker", "version": "0.1.0", "private": true, "dependencies": { "bullmq": "^5.34.0", "ioredis": "^5.4.1", "@reales/database": "*", "@reales/events": "*", "@reales/observability": "*" } }

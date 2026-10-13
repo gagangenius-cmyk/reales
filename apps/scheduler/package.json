@@ -1,0 +1,1 @@
+{ "name": "@reales/scheduler", "version": "0.1.0", "private": true, "dependencies": { "@reales/database": "*", "@reales/domain": "*", "@reales/observability": "*" } }

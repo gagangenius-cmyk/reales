@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["apps/web/*"],
+      "@reales/database": ["packages/database/src/index.ts"],
+      "@reales/domain": ["packages/domain/src/index.ts"],
+      "@reales/database/*": ["packages/database/src/*"],
+      "@reales/auth": ["packages/auth/src/index.ts"],
+      "@reales/rbac": ["packages/rbac/src/index.ts"],
+      "@reales/events": ["packages/events/src/index.ts"],
+      "@reales/observability": ["packages/observability/src/index.ts"],
+      "@reales/validation": ["packages/validation/src/index.ts"]
+    }
+  }
+}

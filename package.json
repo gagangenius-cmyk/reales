@@ -1,0 +1,28 @@
+{
+  "name": "reales",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run dev -w @reales/web",
+    "build": "npm run build -w @reales/web",
+    "typecheck": "tsc -b --noEmit false && npm run typecheck -w @reales/web",
+    "test": "vitest run",
+    "test:isolation": "vitest run tests/tenant-isolation",
+    "db:migrate": "tsx scripts/migrate.ts up",
+    "db:rollback": "tsx scripts/migrate.ts down",
+    "db:reset": "tsx scripts/migrate.ts reset",
+    "db:seed": "tsx scripts/seed.ts",
+    "worker": "tsx apps/worker/src/index.ts",
+    "scheduler": "tsx apps/scheduler/src/index.ts",
+    "infra:up": "docker compose -f infrastructure/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infrastructure/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.9.0",
+    "vitest": "^3.2.0",
+    "dotenv": "^16.4.5"
+  }
+}

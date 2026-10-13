@@ -1,0 +1,1 @@
+{ "name": "@reales/domain", "version": "0.1.0", "private": true, "main": "src/index.ts", "types": "src/index.ts", "dependencies": { "@reales/database": "*", "@reales/auth": "*", "@reales/rbac": "*", "@reales/events": "*", "@reales/validation": "*", "@reales/observability": "*" } }

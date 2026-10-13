@@ -1,0 +1,34 @@
+{
+  "name": "@reales/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^16.3.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "@reales/database": "*",
+    "@reales/domain": "*",
+    "@reales/auth": "*",
+    "@reales/rbac": "*",
+    "@reales/events": "*",
+    "@reales/observability": "*",
+    "@reales/validation": "*",
+    "ioredis": "^5.4.1",
+    "qrcode": "^1.5.4",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tailwindcss": "^4.1.0",
+    "@tailwindcss/postcss": "^4.1.0",
+    "postcss": "^8.5.0",
+    "@types/qrcode": "^1.5.5"
+  }
+}
