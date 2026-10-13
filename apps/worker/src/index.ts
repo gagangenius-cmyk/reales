@@ -2,7 +2,7 @@ import "dotenv/config";
 import { Queue, Worker } from "bullmq";
 import Redis from "ioredis";
 import { getSequelize } from "@reales/database";
-import { processWebhookEvent } from "@reales/domain";
+import { handleDomainEvent, processWebhookEvent } from "@reales/domain";
 import { dispatchOutboxBatch } from "@reales/events";
 import { logger, runWithCorrelation } from "@reales/observability";
 import { BullMqPublisher, DOMAIN_EVENTS_QUEUE } from "./publisher";
@@ -22,6 +22,8 @@ async function main() {
       logger.info({ type: job.name, eventId: job.id }, "domain event received");
       // Provider callbacks are persisted by the web tier and processed here, off the request path.
       if (job.name === "webhook.received") await processWebhookEvent(sq, job.data.event.payload.webhookEventId);
+      // Every domain event may start workflows or resume waiting ones (idempotent per event id).
+      else await handleDomainEvent(sq, job.data.event);
     }),
     { connection, concurrency: 10 },
   );

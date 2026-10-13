@@ -16,7 +16,7 @@ async function main() {
   while (!stopping) {
     try {
       const results = await runSweeps(sq);
-      const acted = results.filter((r) => r.offersExpired || r.reservationsExpired || r.listingsUnpublished || r.error);
+      const acted = results.filter((r) => r.offersExpired || r.reservationsExpired || r.listingsUnpublished || r.workflowsResumed || r.campaignBatches || r.error);
       if (acted.length) logger.info({ acted }, "sweep completed");
     } catch (e) {
       logger.error({ err: e }, "sweep run failed");

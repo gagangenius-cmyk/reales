@@ -20,7 +20,7 @@ export class MessagingError extends Error {
 
 export interface OutboundMessage { channel: Channel; to: string; subject?: string | null; body: string; idempotencyKey: string; from: string }
 export interface DeliveryStatusEvent { eventId: string; providerMessageId: string; status: "sent" | "delivered" | "read" | "failed"; occurredAt: string; error?: string }
-export interface InboundEvent { eventId: string; channel: Channel; from: string; body: string; providerMessageId: string; occurredAt: string }
+export interface InboundEvent { eventId: string; channel: Channel; from: string; /** The receiving identity (our number or address): how a provider callback is routed to a tenant. */ to?: string; body: string; providerMessageId: string; occurredAt: string }
 
 /** Vendor-neutral messaging contract (WhatsApp Business, SMS and email providers all implement it). */
 export interface MessagingProvider {
@@ -59,7 +59,7 @@ export class MockMessagingProvider implements MessagingProvider {
   verifyWebhook(rawBody: string, headers: Record<string, string | null | undefined>) { return verifyHmac(mockSecret(), rawBody, headers["x-mock-signature"]); }
   parseWebhook(rawBody: string) {
     const j = JSON.parse(rawBody);
-    if (j.kind === "inbound") return { kind: "inbound" as const, event: { eventId: String(j.eventId), channel: j.channel, from: String(j.from), body: String(j.body), providerMessageId: String(j.providerMessageId), occurredAt: j.occurredAt ?? new Date().toISOString() } };
+    if (j.kind === "inbound") return { kind: "inbound" as const, event: { eventId: String(j.eventId), channel: j.channel, from: String(j.from), to: j.to ? String(j.to) : undefined, body: String(j.body), providerMessageId: String(j.providerMessageId), occurredAt: j.occurredAt ?? new Date().toISOString() } };
     if (j.kind === "status") return { kind: "status" as const, event: { eventId: String(j.eventId), providerMessageId: String(j.providerMessageId), status: j.status, occurredAt: j.occurredAt ?? new Date().toISOString(), error: j.error } };
     throw new Error("Malformed messaging webhook");
   }

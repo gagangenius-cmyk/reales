@@ -4,7 +4,7 @@ import type { Sequelize } from "sequelize";
 import { ZodError, ZodTypeAny, z } from "zod";
 import { AuthError, resolveRequestContext } from "@reales/auth";
 import { getSequelize, RequestContext, TenantViolationError } from "@reales/database";
-import { ConflictError, DealBlockedError, DocumentIntegrityError, DuplicateContactError, IdempotencyError, ListingNotPublishableError, NotFoundError, QuotaExceededError, UploadRejectedError, withIdempotency } from "@reales/domain";
+import { ConflictError, DealBlockedError, DocumentIntegrityError, DuplicateContactError, IdempotencyError, ListingNotPublishableError, NotFoundError, MissingVariableError, QuotaExceededError, TemplateInvalidError, UploadRejectedError, WorkflowInvalidError, withIdempotency } from "@reales/domain";
 import { logger, runWithCorrelation } from "@reales/observability";
 import { ForbiddenError } from "@reales/rbac";
 import { rateLimit } from "./rate-limit";
@@ -74,6 +74,9 @@ export function errorResponse(e: unknown, correlationId: string): NextResponse {
   if (e instanceof ListingNotPublishableError) return body(422, "listing_not_publishable", e.message, { evaluation: e.evaluation });
   if (e instanceof QuotaExceededError) return body(402, "quota_exceeded", e.message);
   if (e instanceof DealBlockedError) return body(422, "deal_blocked", e.message, { reasons: e.reasons });
+  if (e instanceof TemplateInvalidError) return body(422, "template_invalid", e.message, { issues: e.issues });
+  if (e instanceof WorkflowInvalidError) return body(422, "workflow_invalid", e.message, { issues: e.issues });
+  if (e instanceof MissingVariableError) return body(422, "missing_variable", e.message, { missing: e.missing });
   if (e instanceof UploadRejectedError) return body(422, "upload_rejected", e.message);
   if (e instanceof IdempotencyError) return body(e.status, "idempotency", e.message);
   if (e instanceof DocumentIntegrityError) {

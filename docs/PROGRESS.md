@@ -88,7 +88,25 @@ Legend: **Real** = implemented and tested. **Mock** = interface plus a stand-in 
 - Commission clawbacks, team overrides, payouts.
 - Owner statements and ledger export to accounting (phase 5/8).
 
-## Phase 4 - Communication and automation: NOT STARTED
+## Phase 4 - Communication and automation: DONE (mock messaging provider)
+
+| Area | Status | Notes |
+|---|---|---|
+| Templates | Real | Per-channel editors and validation (email: subject/body, no scripts or header injection; WhatsApp: structured body/header/footer/buttons with Meta-style limits; SMS: GSM-7/UCS-2 segment counting, Arabic aware). Immutable versions (DB blocks deletes); WhatsApp versions need approval by a different person and an edit withdraws approval. Unlayer embedded designer for email (design JSON = source, exported HTML = snapshot) - needs Unlayer account/licence configuration before production |
+| Variable resolver | Real | Allow-listed catalogue only, own-property lookups (a test caught `contact.constructor` resolving through the prototype chain - fixed), missing values throw instead of sending blanks, HTML values escaped |
+| Inbox and messaging | Real flow, **mock provider** | `MessagingProvider` interface; one outbound path (`sendMessage`) enforcing idempotency, consent/suppression, the WhatsApp 24h session rule and approved templates; provider call happens outside any DB transaction; retryable failures resume under the same key without duplicating; inbound routed to the tenant by receiving number; STOP / Arabic opt-out keywords revoke consent and suppress instantly; delivery status only moves forward; scoped inbox. **No real WhatsApp Business, SMS or email provider is integrated** |
+| Segments | Real | Declarative filters only (unknown keys rejected), no raw SQL |
+| Broadcasts | Real | Audience snapshotted at prepare time with a recorded reason for everyone skipped; consent re-checked at send time; per-minute throttle; multi-worker safe (FOR UPDATE SKIP LOCKED claims, stale-claim recovery, idempotent per recipient); pause/resume/cancel with reason; retry transient failures, give up on permanent ones; attribution funnel campaign -> replies -> leads -> viewings -> deals |
+| Workflow engine | Real | React Flow editor (UI only). Server-side static analysis before publish: schema per node (strict), single trigger, reachability, required branches, cycles, mandatory timeout on event waits, template/consent-purpose/entitlement/permission checks. Versions immutable. Waits are database rows (time and event with timeout branch) resumed by the scheduler/worker. Runs are once per (version, event). Workflows act with a least-privilege identity through the same domain services (consent gate, state machines, audit). Chain depth capped, step cap, disabling cancels in-flight runs |
+| Plumbing | Real | Worker feeds every outbox event to workflows; messaging webhook (signed) -> dedupe -> persist -> worker; scheduler ticks campaigns and due waits per tenant |
+| API + UI | Real | 27 more route files; pages for inbox/conversation, templates, campaigns/detail, automation list and the React Flow editor |
+
+### Deferred from Phase 4 (tracked)
+- Real WhatsApp Business / SMS / email providers (webhook signature schemes, template sync with Meta), email deliverability (SPF/DKIM, bounce handling, unsubscribe headers).
+- Segment builder UI, campaign creation UI, template version diff/preview UI, workflow node palette for AI/HTTP/ERP nodes, subworkflows.
+- Bot builder and runtime (phase 7), unified inbox assignment/transfer, canned replies, internal notes.
+- Temporal runtime behind `WorkflowRuntime` (the MySQL-persisted runtime is the first implementation).
+
 ## Phase 5 - Property management: NOT STARTED
 ## Phase 6 - Compliance: NOT STARTED
 ## Phase 7 - Intelligence and analytics: NOT STARTED

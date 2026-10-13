@@ -30,6 +30,7 @@ export class QuotaExceededError extends Error {
 }
 
 export interface Uow {
+  tenantId: string;
   tx: Transaction;
   models: Models;
   sq: Sequelize;
@@ -58,7 +59,7 @@ export async function withUow<T>(sq: Sequelize, ctx: Ctx, fn: (u: Uow) => Promis
       // which a REPEATABLE READ snapshot taken earlier in the transaction would hide.
       return await sq.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED }, async (tx) => {
         const u: Uow = {
-          tx, models, sq,
+          tenantId: ctx.tenantId, tx, models, sq,
           repo: (m) => repo(models[m], ctx),
           audit: (a) => recordAudit(sq, tx, { ...a, tenantId: ctx.tenantId, actorId: ctx.userId, correlationId: ctx.correlationId, ip: ctx.ip ?? null }),
           emit: (e) => emitEvent(sq, tx, ctx, e),
