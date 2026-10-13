@@ -179,30 +179,34 @@ export interface RecordPaymentInput {
 }
 
 /** A payment already received outside the platform (bank transfer, cheque, cash). Created as succeeded, with receipt and allocation. */
+/** In-transaction payment creation (receipt + invoice allocation + milestone completion). Callers authorise. Returns the payment id. */
+export async function createSucceededPaymentInUow(u: Uow, ctx: RequestContext, i: RecordPaymentInput): Promise<string> {
+  if (!(i.amount > 0)) throw new ConflictError("Payment amount must be positive");
+  if (!(await u.repo("Contact").findById(i.contactId, { transaction: u.tx }))) throw new NotFoundError("Contact");
+  if (i.dealId && !(await u.repo("Deal").findById(i.dealId, { transaction: u.tx }))) throw new NotFoundError("Deal");
+  if (i.milestoneId && !(await u.repo("DealMilestone").findById(i.milestoneId, { transaction: u.tx }))) throw new NotFoundError("Milestone");
+  // Lock order is always invoice -> payment -> counters. Inserting the payment first would take a shared FK lock on the
+  // invoice row that a later FOR UPDATE could not upgrade without deadlocking concurrent payments.
+  if (i.invoiceId) await lockInvoice(u, ctx, i.invoiceId);
+  const id = randomUUID();
+  try {
+    await u.repo("Payment").create({
+      id, contactId: i.contactId, dealId: i.dealId ?? null, milestoneId: i.milestoneId ?? null, invoiceId: i.invoiceId ?? null, amount: i.amount, currency: i.currency ?? "AED",
+      method: i.method, provider: "manual", providerRef: i.providerRef ?? null, status: "pending", createdBy: ctx.userId,
+    }, { transaction: u.tx });
+  } catch (e: any) {
+    if (e?.original?.code === "ER_DUP_ENTRY" || e?.parent?.code === "ER_DUP_ENTRY") throw new ConflictError("A payment with this reference was already recorded");
+    throw e;
+  }
+  const p = await u.repo("Payment").findById(id, { transaction: u.tx });
+  await finalizeSuccess(u, ctx, p, i.receivedAt ? new Date(i.receivedAt) : new Date());
+  return id;
+}
+
 export async function recordPayment(sq: Sequelize, ctx: RequestContext, i: RecordPaymentInput) {
   authorize(ctx, "payment.record");
   if (!(i.amount > 0)) throw new ConflictError("Payment amount must be positive");
-  return withUow(sq, ctx, async (u) => {
-    if (!(await u.repo("Contact").findById(i.contactId, { transaction: u.tx }))) throw new NotFoundError("Contact");
-    if (i.dealId && !(await u.repo("Deal").findById(i.dealId, { transaction: u.tx }))) throw new NotFoundError("Deal");
-    if (i.milestoneId && !(await u.repo("DealMilestone").findById(i.milestoneId, { transaction: u.tx }))) throw new NotFoundError("Milestone");
-    // Lock order is always invoice -> payment -> counters. Inserting the payment first would take a shared FK lock on the
-    // invoice row that a later FOR UPDATE could not upgrade without deadlocking concurrent payments.
-    if (i.invoiceId) await lockInvoice(u, ctx, i.invoiceId);
-    const id = randomUUID();
-    try {
-      await u.repo("Payment").create({
-        id, contactId: i.contactId, dealId: i.dealId ?? null, milestoneId: i.milestoneId ?? null, invoiceId: i.invoiceId ?? null, amount: i.amount, currency: i.currency ?? "AED",
-        method: i.method, provider: "manual", providerRef: i.providerRef ?? null, status: "pending", createdBy: ctx.userId,
-      }, { transaction: u.tx });
-    } catch (e: any) {
-      if (e?.original?.code === "ER_DUP_ENTRY" || e?.parent?.code === "ER_DUP_ENTRY") throw new ConflictError("A payment with this reference was already recorded");
-      throw e;
-    }
-    const p = await u.repo("Payment").findById(id, { transaction: u.tx });
-    await finalizeSuccess(u, ctx, p, i.receivedAt ? new Date(i.receivedAt) : new Date());
-    return getPaymentInUow(u, id);
-  });
+  return withUow(sq, ctx, async (u) => getPaymentInUow(u, await createSucceededPaymentInUow(u, ctx, i)));
 }
 
 /** Provider-hosted checkout: a pending payment that only becomes real when the provider's signed callback arrives. */

@@ -36,6 +36,13 @@ export const PERMISSIONS = {
   "inbox.read": "View conversations", "inbox.send": "Send messages", "channel.manage": "Manage channel accounts",
   "campaign.read": "View campaigns", "campaign.manage": "Create, schedule and control broadcasts", "segment.manage": "Manage audience segments",
   "workflow.read": "View workflows", "workflow.manage": "Edit and publish workflows",
+  // Property management (phase 5)
+  "portfolio.read": "View owner portfolios", "portfolio.manage": "Manage portfolios, ownership and agreements",
+  "lease.read": "View leases and rent schedules", "lease.manage": "Create, activate, renew leases", "lease.terminate": "Terminate leases and override renewal limits",
+  "rent.record": "Record rent payments", "deposit.manage": "Collect, deduct and refund security deposits",
+  "maintenance.read": "View maintenance tickets", "maintenance.manage": "Triage tickets, request quotes, issue work orders", "maintenance.approve": "Approve costly maintenance quotations",
+  "vendor.manage": "Manage vendors", "inspection.read": "View inspections", "inspection.perform": "Perform inspections", "inspection.manage": "Create inspections and templates",
+  "statement.read": "View owner statements", "statement.generate": "Generate and issue owner statements",
   // Reserved for later phases (declared now so role templates are stable)
   "compliance.override": "Override compliance decisions",
 } as const;
@@ -105,6 +112,23 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       ["commission.read", "tenant"], ["commission.approve", "tenant"], ["commission.plan.manage", "tenant"], ["project.read", "tenant"],
       ["finance.read", "tenant"], ["finance.manage", "tenant"], ["payment.record", "tenant"], ["deal.read", "tenant"], ["document.read", "tenant"],
     ],
+  },
+  {
+    key: "property_manager", name: "Property Manager", requiresMfa: true,
+    grants: [
+      ["portfolio.read", "tenant"], ["portfolio.manage", "tenant"], ["lease.read", "tenant"], ["lease.manage", "tenant"], ["lease.terminate", "tenant"], ["rent.record", "tenant"], ["deposit.manage", "tenant"],
+      ["maintenance.read", "tenant"], ["maintenance.manage", "tenant"], ["maintenance.approve", "tenant"], ["vendor.manage", "tenant"], ["inspection.read", "tenant"], ["inspection.manage", "tenant"],
+      ["statement.read", "tenant"], ["statement.generate", "tenant"], ["contact.read", "tenant"], ["contact.create", "tenant"], ["contact.update", "tenant"], ["inventory.read", "tenant"],
+      ["document.read", "tenant"], ["document.manage", "tenant"], ["project.read", "tenant"], ["org.read", "tenant"], ["finance.read", "tenant"],
+    ],
+  },
+  {
+    key: "maintenance_coordinator", name: "Maintenance Coordinator", requiresMfa: false,
+    grants: [["maintenance.read", "tenant"], ["maintenance.manage", "tenant"], ["vendor.manage", "tenant"], ["inspection.read", "tenant"], ["inventory.read", "tenant"], ["lease.read", "tenant"], ["contact.read", "tenant"]],
+  },
+  {
+    key: "inspector", name: "Inspector", requiresMfa: false,
+    grants: [["inspection.read", "own_records"], ["inspection.perform", "own_records"], ["inventory.read", "tenant"], ["maintenance.read", "branch"]],
   },
   { key: "viewer", name: "Read-only", requiresMfa: false, grants: [["project.read", "tenant"], ["org.read", "tenant"]] },
 ];

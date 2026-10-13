@@ -107,7 +107,31 @@ Legend: **Real** = implemented and tested. **Mock** = interface plus a stand-in 
 - Bot builder and runtime (phase 7), unified inbox assignment/transfer, canned replies, internal notes.
 - Temporal runtime behind `WorkflowRuntime` (the MySQL-persisted runtime is the first implementation).
 
-## Phase 5 - Property management: NOT STARTED
+## Phase 5 - Property management: DONE (domain, API and read-only UI; write UI via API)
+
+| Area | Status | Notes |
+|---|---|---|
+| Portfolios, ownership, management agreements | Real | Co-ownership shares capped at 100% under a unit row lock; one active agreement per portfolio |
+| Leases (parties, term, rent schedule, addenda) | Real | Whole-month terms; unit row lock plus inclusive date-range overlap check, so no contradictory occupancy even under concurrency. Leases do not change `units.status` |
+| Rent schedule | Real | Generated with exact fils allocation: instalments always sum to the contract total (annual x months / 12) |
+| Activation gate | Real | Driven by the versioned `lease.activation` regulatory rule (registration ref, SIGNED contract via a completed envelope, optional deposit). Rule values are ILLUSTRATIVE and need review by a UAE tenancy specialist |
+| Rent payments | Real | Reuses finance `createSucceededPaymentInUow`; allocated oldest-first under row locks; overpayment refused |
+| Security deposits | Real | Append-only movements; deduction needs reason + step-up and cannot exceed the balance; refund only after the lease ends |
+| Renewal / termination | Real | Renewal creates a linked draft with the same parties; optional tenant-setting cap (`lease.max_renewal_increase_pct`) with manager override + reason. The platform makes no legal claim about permitted increases. Termination cancels future instalments |
+| Sweeps | Real | Daily idempotent: end finished leases, flag overdue rent once, 90/60/30-day expiry notices once each (`lease_milestones`); wired into `runSweeps` |
+| Maintenance | Real | Tickets, vendors, quotations, approval (threshold setting `maintenance.approval_threshold`), work orders, append-only events, SLA hours by priority (4/24/72/168), SLA breach sweep, SLA report |
+| Inspections | Real | Templates, scheduled/in-progress/completed/signed, per-item version, offline sync with client mutation ids (replays no-op) and conflict reporting instead of overwrite |
+| Owner statements | Real | Rent collected - management fee - maintenance cost per portfolio and month; draft recomputed, frozen when issued |
+| API | Real | 40+ routes under `/api/v1` (portfolios, ownerships, leases, maintenance-tickets, vendors, inspections, statements) |
+| UI | Partial | Read-only pages for portfolios/statements, leases (+detail), maintenance. Write actions are API-only for now |
+| Tests | Real | `tests/leases.test.ts` (14): schedule maths, overlap + concurrency, activation gate, rent allocation under concurrency, deposits, renewal cap, sweeps, tenant isolation, maintenance flow, SLA, offline sync conflicts |
+
+### Deferred from Phase 5 (tracked)
+- Write forms for leases/tickets/inspections in the web UI; the mobile inspector app itself (Phase 8) - only the sync API exists.
+- Automatic Ejari/Tawtheeq submission (manual reference entry only).
+- Surplus-rent credit handling, late fees, utilities billing, vendor payments/invoice matching.
+- Owner statement PDF/e-mail delivery and payout execution.
+
 ## Phase 6 - Compliance: NOT STARTED
 ## Phase 7 - Intelligence and analytics: NOT STARTED
 ## Phase 8 - Enterprise hardening: NOT STARTED

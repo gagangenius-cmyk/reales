@@ -32,6 +32,10 @@ export const TENANT_OWNED_TABLES = [
   "channel_accounts", "conversations", "messages", "message_events", "templates", "template_versions",
   "segments", "campaigns", "campaign_recipients", "campaign_events",
   "workflows", "workflow_versions", "workflow_runs", "workflow_steps", "workflow_waits",
+  // phase 5
+  "portfolios", "ownerships", "management_agreements", "leases", "lease_parties", "lease_addenda", "rent_schedules", "rent_allocations",
+  "security_deposits", "deposit_movements", "lease_milestones", "vendors", "maintenance_tickets", "quotations", "work_orders", "work_order_events",
+  "inspection_templates", "inspections", "inspection_items", "inspection_media", "inspection_mutations", "owner_statements",
 ] as const;
 
 /** Tables intentionally NOT tenant-owned (global catalogues / tenant root). */
@@ -59,6 +63,9 @@ export interface Models {
   ChannelAccount: M; Conversation: M; Message: M; MessageEvent: M; Template: M; TemplateVersion: M;
   Segment: M; Campaign: M; CampaignRecipient: M; CampaignEvent: M;
   Workflow: M; WorkflowVersion: M; WorkflowRun: M; WorkflowStep: M; WorkflowWait: M;
+  Portfolio: M; Ownership: M; ManagementAgreement: M; Lease: M; LeaseParty: M; LeaseAddendum: M; RentSchedule: M; RentAllocation: M;
+  SecurityDeposit: M; DepositMovement: M; LeaseMilestone: M; Vendor: M; Ticket: M; Quotation: M; WorkOrder: M; WorkOrderEvent: M;
+  InspectionTemplate: M; Inspection: M; InspectionItem: M; InspectionMedia: M; InspectionMutation: M; OwnerStatement: M;
 }
 
 const cache = new WeakMap<Sequelize, Models>();
@@ -345,6 +352,50 @@ export function initModels(sq: Sequelize): Models {
       id: pk(), tenantId: tid(), runId: tid(), nodeId: s(80, false), kind: T.ENUM("until", "event"), resumeAt: T.DATE(3), eventType: s(80), matchEntityId: uuid(), timeoutAt: T.DATE(3),
       status: T.ENUM("waiting", "resumed", "timed_out", "cancelled"), resolvedBy: s(40), createdAt: dt3(),
     }, noTs2),
+  });
+  const D = () => ({ type: T.DATEONLY, allowNull: false });
+  const DN = () => ({ type: T.DATEONLY, allowNull: true });
+  Object.assign(m, {
+    Portfolio: d("Portfolio", "portfolios", { id: pk(), tenantId: tid(), name: s(180, false), ownerContactId: tid(), branchId: uuid(), status: T.ENUM("active", "closed") }),
+    Ownership: d("Ownership", "ownerships", { id: pk(), tenantId: tid(), unitId: tid(), portfolioId: tid(), sharePct: T.DECIMAL(5, 2), fromDate: D(), toDate: DN() }),
+    ManagementAgreement: d("ManagementAgreement", "management_agreements", { id: pk(), tenantId: tid(), portfolioId: tid(), feePct: T.DECIMAL(5, 2), startsOn: D(), endsOn: DN(), status: T.ENUM("active", "ended"), documentId: uuid() }),
+    Lease: d("Lease", "leases", {
+      id: pk(), tenantId: tid(), unitId: tid(), portfolioId: uuid(), branchId: uuid(), agentUserId: uuid(), previousLeaseId: uuid(), status: T.ENUM("draft", "active", "ended", "terminated"),
+      startsOn: D(), endsOn: D(), annualRent: money(false), currency: s(3, false), installments: T.INTEGER, registrationRef: s(80), contractDocumentId: uuid(), jurisdictionCode: s(40, false),
+      noticeGivenOn: DN(), terminatedOn: DN(), terminationReason: s(500), activatedAt: T.DATE(3), createdBy: s(64),
+    }),
+    LeaseParty: d("LeaseParty", "lease_parties", { id: pk(), tenantId: tid(), leaseId: tid(), contactId: tid(), role: T.ENUM("tenant", "landlord", "guarantor", "occupant") }),
+    LeaseAddendum: d("LeaseAddendum", "lease_addenda", { id: pk(), tenantId: tid(), leaseId: tid(), title: s(255, false), effectiveOn: D(), changes: T.JSON, documentId: uuid(), createdBy: s(64), createdAt: dt3() }, noTs2),
+    RentSchedule: d("RentSchedule", "rent_schedules", {
+      id: pk(), tenantId: tid(), leaseId: tid(), seq: T.INTEGER, dueDate: D(), amount: money(false), paidAmount: money(false),
+      status: T.ENUM("pending", "partial", "paid", "overdue", "waived", "cancelled"), overdueNotifiedAt: T.DATE(3),
+    }),
+    RentAllocation: d("RentAllocation", "rent_allocations", { id: pk(), tenantId: tid(), paymentId: tid(), rentScheduleId: tid(), amount: money(false), createdAt: dt3() }, noTs2),
+    SecurityDeposit: d("SecurityDeposit", "security_deposits", { id: pk(), tenantId: tid(), leaseId: tid(), amount: money(false), status: T.ENUM("pending", "held", "released") }),
+    DepositMovement: d("DepositMovement", "deposit_movements", { id: pk(), tenantId: tid(), depositId: tid(), kind: T.ENUM("collect", "deduct", "refund"), amount: money(false), reason: s(255), paymentId: uuid(), actorId: s(64), createdAt: dt3() }, noTs2),
+    LeaseMilestone: d("LeaseMilestone", "lease_milestones", { id: pk(), tenantId: tid(), leaseId: tid(), kind: s(30, false), createdAt: dt3() }, noTs2),
+    Vendor: d("Vendor", "vendors", { id: pk(), tenantId: tid(), name: s(180, false), categories: T.JSON, contactName: s(120), phoneE164: s(32), email: s(254), tradeLicenceNo: s(80), licenceExpiresOn: DN(), status: T.ENUM("active", "suspended") }),
+    Ticket: d("Ticket", "maintenance_tickets", {
+      id: pk(), tenantId: tid(), unitId: tid(), leaseId: uuid(), portfolioId: uuid(), branchId: uuid(), reporterContactId: uuid(), assignedUserId: uuid(),
+      category: T.ENUM("plumbing", "electrical", "hvac", "appliance", "structural", "cleaning", "pest", "other"), priority: T.ENUM("urgent", "high", "normal", "low"),
+      status: T.ENUM("new", "triaged", "quoted", "approved", "in_progress", "completed", "closed", "cancelled"), title: s(255, false), description: T.TEXT,
+      slaDueAt: dt3(), slaBreachedAt: T.DATE(3), resolvedAt: T.DATE(3), createdBy: s(64),
+    }),
+    Quotation: d("Quotation", "quotations", { id: pk(), tenantId: tid(), ticketId: tid(), vendorId: tid(), amount: money(false), currency: s(3, false), status: T.ENUM("submitted", "approved", "rejected"), notes: s(500), decidedBy: s(64), decidedAt: T.DATE(3) }),
+    WorkOrder: d("WorkOrder", "work_orders", { id: pk(), tenantId: tid(), ticketId: tid(), vendorId: tid(), quotationId: uuid(), scheduledAt: T.DATE(3), completedAt: T.DATE(3), status: T.ENUM("issued", "in_progress", "completed", "cancelled"), quotedAmount: money(), finalCost: money(), currency: s(3, false) }),
+    WorkOrderEvent: d("WorkOrderEvent", "work_order_events", { id: pk(), tenantId: tid(), workOrderId: uuid(), ticketId: tid(), type: s(40, false), detail: T.JSON, actorId: s(64), createdAt: dt3() }, noTs2),
+    InspectionTemplate: d("InspectionTemplate", "inspection_templates", { id: pk(), tenantId: tid(), name: s(160, false), kind: T.ENUM("move_in", "move_out", "periodic"), items: { type: T.JSON, allowNull: false } }),
+    Inspection: d("Inspection", "inspections", {
+      id: pk(), tenantId: tid(), unitId: tid(), leaseId: uuid(), templateId: uuid(), inspectorUserId: tid(), branchId: uuid(), portfolioId: uuid(), kind: T.ENUM("move_in", "move_out", "periodic"),
+      status: T.ENUM("scheduled", "in_progress", "completed", "signed"), version: T.INTEGER, scheduledFor: T.DATE(3), completedAt: T.DATE(3), signedByContactId: uuid(), signedAt: T.DATE(3), summary: T.TEXT,
+    }),
+    InspectionItem: d("InspectionItem", "inspection_items", { id: pk(), tenantId: tid(), inspectionId: tid(), label: s(200, false), area: s(80), condition: T.ENUM("good", "fair", "poor", "damaged", "na"), notes: s(1000), meterReading: T.DECIMAL(12, 2), version: T.INTEGER }),
+    InspectionMedia: d("InspectionMedia", "inspection_media", { id: pk(), tenantId: tid(), inspectionId: tid(), itemId: uuid(), documentId: tid(), createdAt: dt3() }, noTs2),
+    InspectionMutation: d("InspectionMutation", "inspection_mutations", { id: pk(), tenantId: tid(), inspectionId: tid(), clientMutationId: s(80, false), appliedVersion: T.INTEGER, createdAt: dt3() }, noTs2),
+    OwnerStatement: d("OwnerStatement", "owner_statements", {
+      id: pk(), tenantId: tid(), portfolioId: tid(), period: s(7, false), rentCollected: money(false), managementFee: money(false), maintenanceCost: money(false), netPayable: money(false),
+      currency: s(3, false), detail: T.JSON, status: T.ENUM("draft", "issued"), issuedAt: T.DATE(3),
+    }),
   });
   cache.set(sq, m);
   return m;

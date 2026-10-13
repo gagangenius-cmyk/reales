@@ -29,3 +29,11 @@ export function allocateByPct(totalMinor: number, pcts: number[]): number[] {
 
 /** VAT on a net amount, half-up to the fils. */
 export const vatOf = (netMinor: number, ratePct: number): number => Math.round((netMinor * ratePct) / 100);
+
+/** Split a total into `n` near-equal parts that sum exactly to the total (the first parts take the remainder fils). */
+export function allocateEqual(totalMinor: number, n: number): number[] {
+  if (!Number.isInteger(n) || n < 1) throw new Error("n must be a positive integer");
+  const base = Math.floor(totalMinor / n);
+  const extra = totalMinor - base * n;
+  return Array.from({ length: n }, (_, i) => base + (i < extra ? 1 : 0));
+}

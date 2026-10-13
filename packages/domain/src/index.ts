@@ -32,3 +32,7 @@ export * from "./templates";
 export * from "./messaging";
 export * from "./campaigns";
 export * from "./workflows";
+export * from "./leases";
+export * from "./maintenance";
+export * from "./inspections";
+export * from "./statements";

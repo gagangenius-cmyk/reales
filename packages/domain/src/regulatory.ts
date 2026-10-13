@@ -39,6 +39,33 @@ export const JURISDICTIONS = [
     rule: { ...base, permit: { required: false, authorities: [] }, brokerLicence: { required: true, authorities: ["ADGM_RA"] }, agentLicence: { required: false, authorities: [] }, offPlan: { requireRegistrationNo: true, requireEscrowRef: false } } },
 ] as const;
 
+export interface LeaseActivationRule { requireRegistrationRef: boolean; requireContractDocument: boolean; requireDeposit: boolean; maxInstallments: number; registrationLabel: string }
+export const LEASE_RULE_CODE = "lease.activation";
+
+/** ILLUSTRATIVE defaults (same caveat as listings): confirm with a UAE tenancy specialist before customer use. */
+const LEASE_RULES: Record<string, LeaseActivationRule> = {
+  DUBAI_MAINLAND: { requireRegistrationRef: true, requireContractDocument: true, requireDeposit: false, maxInstallments: 12, registrationLabel: "Ejari" },
+  ABU_DHABI_MAINLAND: { requireRegistrationRef: true, requireContractDocument: true, requireDeposit: false, maxInstallments: 12, registrationLabel: "Tawtheeq" },
+  ADGM: { requireRegistrationRef: false, requireContractDocument: true, requireDeposit: false, maxInstallments: 12, registrationLabel: "ADGM registration" },
+};
+
+async function seedRule(sq: Sequelize, jurisdictionId: string, code: string, description: string, definition: unknown) {
+  await sq.query(
+    "INSERT INTO regulatory_rules (id, jurisdiction_id, code, description, created_at, updated_at) VALUES (UUID(), :j, :code, :d, NOW(3), NOW(3)) ON DUPLICATE KEY UPDATE description=description",
+    { replacements: { j: jurisdictionId, code, d: description } },
+  );
+  const [rule] = await sq.query<{ id: string }>("SELECT id FROM regulatory_rules WHERE jurisdiction_id=:j AND code=:c", { replacements: { j: jurisdictionId, c: code }, type: QueryTypes.SELECT });
+  const [latest] = await sq.query<{ version: number; definition: any }>("SELECT version, definition FROM regulatory_rule_versions WHERE rule_id=:r ORDER BY version DESC LIMIT 1", { replacements: { r: rule!.id }, type: QueryTypes.SELECT });
+  const current = latest ? (typeof latest.definition === "string" ? JSON.parse(latest.definition) : latest.definition) : null;
+  if (!current || JSON.stringify(sortKeys(current)) !== JSON.stringify(sortKeys(definition))) {
+    await sq.query(
+      "INSERT INTO regulatory_rule_versions (id, rule_id, version, effective_from, definition, created_at, updated_at) VALUES (:id, :r, :v, CURDATE(), :def, NOW(3), NOW(3))",
+      { replacements: { id: randomUUID(), r: rule!.id, v: (latest?.version ?? 0) + 1, def: JSON.stringify(definition) } },
+    );
+    if (latest) await sq.query("UPDATE regulatory_rule_versions SET effective_to = CURDATE() WHERE rule_id=:r AND version=:v AND effective_to IS NULL", { replacements: { r: rule!.id, v: latest.version } });
+  }
+}
+
 /** Global, platform-maintained. Idempotent; a changed definition becomes a NEW version instead of editing history. */
 export async function seedRegulatory(sq: Sequelize) {
   for (const j of JURISDICTIONS) {
@@ -47,20 +74,8 @@ export async function seedRegulatory(sq: Sequelize) {
       { replacements: { code: j.code, name: j.name, emirate: j.emirate, ra: j.registrationAuthority, ta: j.tenancyAuthority } },
     );
     const [jur] = await sq.query<{ id: string }>("SELECT id FROM jurisdictions WHERE code=:c", { replacements: { c: j.code }, type: QueryTypes.SELECT });
-    await sq.query(
-      "INSERT INTO regulatory_rules (id, jurisdiction_id, code, description, created_at, updated_at) VALUES (UUID(), :j, :code, 'Illustrative listing publication requirements - requires compliance review', NOW(3), NOW(3)) ON DUPLICATE KEY UPDATE description=description",
-      { replacements: { j: jur!.id, code: LISTING_RULE_CODE } },
-    );
-    const [rule] = await sq.query<{ id: string }>("SELECT id FROM regulatory_rules WHERE jurisdiction_id=:j AND code=:c", { replacements: { j: jur!.id, c: LISTING_RULE_CODE }, type: QueryTypes.SELECT });
-    const [latest] = await sq.query<{ version: number; definition: any }>("SELECT version, definition FROM regulatory_rule_versions WHERE rule_id=:r ORDER BY version DESC LIMIT 1", { replacements: { r: rule!.id }, type: QueryTypes.SELECT });
-    const current = latest ? (typeof latest.definition === "string" ? JSON.parse(latest.definition) : latest.definition) : null;
-    if (!current || JSON.stringify(sortKeys(current)) !== JSON.stringify(sortKeys(j.rule))) {
-      await sq.query(
-        "INSERT INTO regulatory_rule_versions (id, rule_id, version, effective_from, definition, created_at, updated_at) VALUES (:id, :r, :v, CURDATE(), :def, NOW(3), NOW(3))",
-        { replacements: { id: randomUUID(), r: rule!.id, v: (latest?.version ?? 0) + 1, def: JSON.stringify(j.rule) } },
-      );
-      if (latest) await sq.query("UPDATE regulatory_rule_versions SET effective_to = CURDATE() WHERE rule_id=:r AND version=:v AND effective_to IS NULL", { replacements: { r: rule!.id, v: latest.version } });
-    }
+    await seedRule(sq, jur!.id, LISTING_RULE_CODE, "Illustrative listing publication requirements - requires compliance review", j.rule);
+    await seedRule(sq, jur!.id, LEASE_RULE_CODE, "Illustrative lease activation requirements - requires compliance review", LEASE_RULES[j.code]);
   }
 }
 
@@ -70,18 +85,21 @@ function sortKeys(v: any): any {
   return v;
 }
 
-export interface ResolvedRule { jurisdictionCode: string; ruleVersion: number; definition: ListingPublicationRule }
+export interface ResolvedRule<T = ListingPublicationRule> { jurisdictionCode: string; ruleVersion: number; definition: T }
 
-/** The rule version in force on `date` for a jurisdiction. Returns null for an unknown jurisdiction (callers must block, not guess). */
-export async function resolveListingRule(sq: Sequelize, jurisdictionCode: string, date = new Date()): Promise<ResolvedRule | null> {
+/** The rule version in force on `date` for a jurisdiction and rule code. Null for an unknown jurisdiction (callers must block, not guess). */
+export async function resolveRule<T>(sq: Sequelize, jurisdictionCode: string, ruleCode: string, date = new Date()): Promise<ResolvedRule<T> | null> {
   const day = date.toISOString().slice(0, 10);
   const [row] = await sq.query<{ version: number; definition: any }>(
     `SELECT v.version, v.definition FROM regulatory_rule_versions v
        JOIN regulatory_rules r ON r.id = v.rule_id JOIN jurisdictions j ON j.id = r.jurisdiction_id
       WHERE j.code=:code AND r.code=:rc AND v.effective_from <= :day AND (v.effective_to IS NULL OR v.effective_to >= :day)
       ORDER BY v.version DESC LIMIT 1`,
-    { replacements: { code: jurisdictionCode, rc: LISTING_RULE_CODE, day }, type: QueryTypes.SELECT },
+    { replacements: { code: jurisdictionCode, rc: ruleCode, day }, type: QueryTypes.SELECT },
   );
   if (!row) return null;
   return { jurisdictionCode, ruleVersion: row.version, definition: typeof row.definition === "string" ? JSON.parse(row.definition) : row.definition };
 }
+
+export const resolveListingRule = (sq: Sequelize, code: string, date = new Date()) => resolveRule<ListingPublicationRule>(sq, code, LISTING_RULE_CODE, date);
+export const resolveLeaseRule = (sq: Sequelize, code: string, date = new Date()) => resolveRule<LeaseActivationRule>(sq, code, LEASE_RULE_CODE, date);
