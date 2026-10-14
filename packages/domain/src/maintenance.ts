@@ -45,31 +45,36 @@ async function event(u: Uow, ctx: RequestContext, ticketId: string, type: string
   await u.repo("WorkOrderEvent").create({ id: randomUUID(), ticketId, workOrderId: workOrderId ?? null, type, detail: detail ?? {}, actorId: ctx.userId, createdAt: mysqlDate(new Date()) }, { transaction: u.tx });
 }
 
-export async function createTicket(sq: Sequelize, ctx: RequestContext, i: { unitId: string; category: string; priority?: Priority; title: string; description?: string; reporterContactId?: string; assignedUserId?: string }) {
+export interface TicketInput { unitId: string; category: string; priority?: Priority; title: string; description?: string; reporterContactId?: string; assignedUserId?: string }
+
+/** Shared by staff and the tenant portal. The CALLER decides who may create (permission or lease ownership); this only does the work. */
+export async function createTicketInUow(u: Uow, ctx: RequestContext, i: TicketInput): Promise<string> {
+  const unit: any = await u.repo("Unit").findById(i.unitId, { transaction: u.tx });
+  if (!unit) throw new NotFoundError("Unit");
+  if (i.reporterContactId && !(await u.repo("Contact").findById(i.reporterContactId, { transaction: u.tx }))) throw new NotFoundError("Contact");
+  if (i.assignedUserId && !(await u.repo("User").findOne({ where: { id: i.assignedUserId, status: "active" }, transaction: u.tx }))) throw new NotFoundError("Assignee");
+  const owners = (await u.repo("Ownership").findAll({ where: { unitId: i.unitId, toDate: null }, transaction: u.tx })) as any[];
+  const portfolioId = owners.length === 1 ? owners[0].get("portfolioId") : null;
+  const portfolio: any = portfolioId ? await u.repo("Portfolio").findById(portfolioId, { transaction: u.tx }) : null;
+  const today = new Date().toISOString().slice(0, 10);
+  const lease: any = await u.repo("Lease").findOne({ where: { unitId: i.unitId, status: "active", startsOn: { [Op.lte]: today }, endsOn: { [Op.gte]: today } }, transaction: u.tx });
+  const priority = i.priority ?? "normal";
+  const now = new Date();
+  const id = randomUUID();
+  await u.repo("Ticket").create({
+    id, unitId: i.unitId, leaseId: lease?.get("id") ?? null, portfolioId, branchId: portfolio?.get("branchId") ?? ctx.membership.branchIds[0] ?? null, reporterContactId: i.reporterContactId ?? null,
+    assignedUserId: i.assignedUserId ?? null, category: i.category, priority, status: "new", title: i.title, description: i.description ?? null,
+    slaDueAt: new Date(now.getTime() + SLA_HOURS[priority] * 3_600_000), createdBy: ctx.userId,
+  }, { transaction: u.tx });
+  await event(u, ctx, id, "created", { priority, slaHours: SLA_HOURS[priority] });
+  await u.audit({ action: "ticket.created", entityType: "ticket", entityId: id, after: { unitId: i.unitId, priority } });
+  await u.emit({ type: "ticket.created", aggregateType: "ticket", aggregateId: id, payload: { unitId: i.unitId, priority } });
+  return id;
+}
+
+export async function createTicket(sq: Sequelize, ctx: RequestContext, i: TicketInput) {
   authorize(ctx, "maintenance.manage");
-  return withUow(sq, ctx, async (u) => {
-    const unit: any = await u.repo("Unit").findById(i.unitId, { transaction: u.tx });
-    if (!unit) throw new NotFoundError("Unit");
-    if (i.reporterContactId && !(await u.repo("Contact").findById(i.reporterContactId, { transaction: u.tx }))) throw new NotFoundError("Contact");
-    if (i.assignedUserId && !(await u.repo("User").findOne({ where: { id: i.assignedUserId, status: "active" }, transaction: u.tx }))) throw new NotFoundError("Assignee");
-    const owners = (await u.repo("Ownership").findAll({ where: { unitId: i.unitId, toDate: null }, transaction: u.tx })) as any[];
-    const portfolioId = owners.length === 1 ? owners[0].get("portfolioId") : null;
-    const portfolio: any = portfolioId ? await u.repo("Portfolio").findById(portfolioId, { transaction: u.tx }) : null;
-    const today = new Date().toISOString().slice(0, 10);
-    const lease: any = await u.repo("Lease").findOne({ where: { unitId: i.unitId, status: "active", startsOn: { [Op.lte]: today }, endsOn: { [Op.gte]: today } }, transaction: u.tx });
-    const priority = i.priority ?? "normal";
-    const now = new Date();
-    const id = randomUUID();
-    await u.repo("Ticket").create({
-      id, unitId: i.unitId, leaseId: lease?.get("id") ?? null, portfolioId, branchId: portfolio?.get("branchId") ?? ctx.membership.branchIds[0] ?? null, reporterContactId: i.reporterContactId ?? null,
-      assignedUserId: i.assignedUserId ?? null, category: i.category, priority, status: "new", title: i.title, description: i.description ?? null,
-      slaDueAt: new Date(now.getTime() + SLA_HOURS[priority] * 3_600_000), createdBy: ctx.userId,
-    }, { transaction: u.tx });
-    await event(u, ctx, id, "created", { priority, slaHours: SLA_HOURS[priority] });
-    await u.audit({ action: "ticket.created", entityType: "ticket", entityId: id, after: { unitId: i.unitId, priority } });
-    await u.emit({ type: "ticket.created", aggregateType: "ticket", aggregateId: id, payload: { unitId: i.unitId, priority } });
-    return getTicketInUow(u, ctx, id);
-  });
+  return withUow(sq, ctx, async (u) => getTicketInUow(u, ctx, await createTicketInUow(u, ctx, i)));
 }
 
 async function getTicketInUow(u: Uow, ctx: RequestContext, id: string) {

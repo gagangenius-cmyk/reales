@@ -61,3 +61,5 @@ export * from "./compliance";
 export * from "./intel";
 export * from "./hardening";
 export * from "./extras";
+export * from "./onboarding";
+export * from "./workspace";

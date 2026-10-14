@@ -43,7 +43,7 @@ describe("web security configuration", () => {
     const open: string[] = [];
     for (const f of routes(API_ROOT)) if (/auth:\s*"none"/.test(readFileSync(f, "utf8"))) open.push(path.relative(API_ROOT, f).replace(/\\/g, "/"));
     // Webhook receivers do not use the session at all: they authenticate by verifying the provider's signature (covered in messaging-webhooks and documents tests).
-    expect(open.sort()).toEqual(["v1/auth/login/route.ts", "v1/auth/logout/route.ts", "v1/auth/sso/begin/route.ts", "v1/auth/sso/callback/route.ts"]);
+    expect(open.sort()).toEqual(["v1/auth/invite/accept/route.ts", "v1/auth/login/route.ts", "v1/auth/logout/route.ts", "v1/auth/password/forgot/route.ts", "v1/auth/password/reset/route.ts", "v1/auth/sso/begin/route.ts", "v1/auth/sso/callback/route.ts"]);
     for (const p of open.filter((x) => !x.includes("logout"))) expect(readFileSync(path.join(API_ROOT, p), "utf8")).toMatch(/limit:/);
   });
 });

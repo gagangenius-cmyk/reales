@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { QueryTypes } from "sequelize";
 import { getSequelize } from "@reales/database";
 import { countMyUnread } from "@reales/domain";
@@ -8,11 +9,15 @@ import { LogoutButton } from "./logout-button";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireContext();
+  // Owner/tenant portal accounts have no CRM access: send them to their own page.
+  if (ctx.grants.length > 0 && ctx.grants.every((g) => g.permission === "portal.access")) redirect("/portal");
   const [t] = await getSequelize().query<{ name: string; jurisdiction: string }>("SELECT name, jurisdiction FROM tenants WHERE id=:t", { replacements: { t: ctx.tenantId }, type: QueryTypes.SELECT });
   const unread = await countMyUnread(getSequelize(), ctx).catch(() => 0);
   const nav = [
     { href: "/notifications", label: unread ? `Notifications (${unread})` : "Notifications", show: true },
     { href: "/dashboard", label: "Dashboard", show: true },
+    { href: "/calendar", label: "Calendar", show: true },
+    { href: "/tasks", label: "Tasks", show: true },
     { href: "/leads", label: "Leads", show: hasPermission(ctx, "lead.read") },
     { href: "/contacts", label: "Contacts", show: hasPermission(ctx, "contact.read") },
     { href: "/inventory", label: "Inventory", show: hasPermission(ctx, "inventory.read") || hasPermission(ctx, "inventory.manage") },
@@ -33,6 +38,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/compliance", label: "Compliance", show: hasPermission(ctx, "kyc.read") || hasPermission(ctx, "case.read") || hasPermission(ctx, "dsr.manage") },
     { href: "/projects", label: "Projects", show: hasPermission(ctx, "project.read") },
     { href: "/organization", label: "Organization", show: hasPermission(ctx, "org.read") },
+    { href: "/portal-access", label: "Portal access", show: hasPermission(ctx, "portaluser.manage") },
+    { href: "/imports", label: "Import / export", show: hasPermission(ctx, "import.manage") || hasPermission(ctx, "export.data") },
     { href: "/users", label: "Users", show: hasPermission(ctx, "user.read") },
     { href: "/audit", label: "Audit log", show: hasPermission(ctx, "audit.read") },
   ].filter((n) => n.show);

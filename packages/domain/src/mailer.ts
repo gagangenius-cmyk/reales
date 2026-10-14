@@ -8,7 +8,12 @@ export interface Mailer { code: string; send(m: Mail): Promise<void> }
 export const mockMailer: Mailer & { sent: Mail[]; reset(): void; last(to?: string): Mail | undefined } = {
   code: "mock",
   sent: [],
-  async send(m) { this.sent.push(m); },
+  async send(m) {
+    this.sent.push(m);
+    // Local development only: there is no inbox, so show the mail (and its links) in the server log.
+    if (process.env.NODE_ENV === "development") logger.info({ to: m.to, subject: m.subject }, `MOCK MAIL
+${m.text}`);
+  },
   reset() { this.sent.length = 0; },
   last(to) { return [...this.sent].reverse().find((m) => !to || m.to.toLowerCase() === to.toLowerCase()); },
 };

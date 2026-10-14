@@ -59,6 +59,8 @@ export const PERMISSIONS = {
   "referral.read": "View referrals", "referral.manage": "Manage referral partners and referrals", "referral.settle": "Settle and pay referral fees",
   // Onboarding and data exchange
   "import.manage": "Import contacts, leads and units from CSV", "export.data": "Export lists to CSV",
+  // Portals
+  "portal.access": "Use the owner/tenant portal (bound to one contact)", "portaluser.manage": "Invite and revoke owner/tenant portal users",
   // Reserved for later phases (declared now so role templates are stable)
   "compliance.override": "Override compliance decisions",
 } as const;
@@ -142,7 +144,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
     grants: [
       ["portfolio.read", "tenant"], ["portfolio.manage", "tenant"], ["lease.read", "tenant"], ["lease.manage", "tenant"], ["lease.terminate", "tenant"], ["rent.record", "tenant"], ["deposit.manage", "tenant"],
       ["maintenance.read", "tenant"], ["maintenance.manage", "tenant"], ["maintenance.approve", "tenant"], ["vendor.manage", "tenant"], ["inspection.read", "tenant"], ["inspection.manage", "tenant"],
-      ["analytics.read", "tenant"], ["statement.read", "tenant"], ["statement.generate", "tenant"], ["contact.read", "tenant"], ["contact.create", "tenant"], ["contact.update", "tenant"], ["inventory.read", "tenant"],
+      ["portaluser.manage", "tenant"], ["analytics.read", "tenant"], ["statement.read", "tenant"], ["statement.generate", "tenant"], ["contact.read", "tenant"], ["contact.create", "tenant"], ["contact.update", "tenant"], ["inventory.read", "tenant"],
       ["document.read", "tenant"], ["document.manage", "tenant"], ["project.read", "tenant"], ["org.read", "tenant"], ["finance.read", "tenant"],
     ],
   },
@@ -153,6 +155,10 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
   {
     key: "inspector", name: "Inspector", requiresMfa: false,
     grants: [["inspection.read", "own_records"], ["inspection.perform", "own_records"], ["mobile.sync", "tenant"], ["inventory.read", "tenant"], ["maintenance.read", "branch"]],
+  },
+  {
+    key: "portal_user", name: "Owner / Tenant Portal User", requiresMfa: false,
+    grants: [["portal.access", "tenant"]],
   },
   { key: "viewer", name: "Read-only", requiresMfa: false, grants: [["project.read", "tenant"], ["org.read", "tenant"]] },
 ];

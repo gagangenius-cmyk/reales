@@ -215,3 +215,19 @@ Legend: **Real** = implemented and tested. **Mock** = interface plus a stand-in 
 - Matching uses published listings only; no off-plan inventory matching, no WhatsApp/e-mail delivery of alerts (in-app only), no ML ranking.
 - Valuation has no external market data, no adjustment for floor/view/condition, no certified-valuer workflow.
 - Referral fee payout through finance (currently a status change).
+
+## Onboarding and data exchange: DONE (API + pages in the app)
+
+| Feature | Status | Notes |
+|---|---|---|
+| Outbound system e-mail | Real adapter | `Mailer` with SMTP (nodemailer, `SMTP_URL` + `MAIL_FROM`) and an in-memory mock. Production without SMTP refuses to start sending rather than pretending. In development the mock prints mails (with links) to the server log. Not tested against a real SMTP server |
+| Password reset | Real | Forgot-password page; identical response for every address; one mail a minute per account plus IP and account rate limits; 1-hour single-use token (only its hash is stored); newest link voids older ones; success revokes all sessions and clears lockout; no mail for disabled or SSO-enforced accounts. Verified live against the dev server |
+| Invitations | Real | Invite from the Users page (non-admin roles), 7-day single-use link, accept page sets the password and activates the account, resend voids the old link |
+| CSV import | Real | Contacts, leads, units. Check first (nothing is written), row-level errors, in-file and existing-record duplicates, then a single confirmed commit; rows go through the normal domain functions so permissions, quotas, routing and audit apply; max 5,000 rows / 2 MB; downloadable templates |
+| CSV export | Real | Contacts, leads, listings, units; exactly the caller's visible records; needs `export.data`; audited; spreadsheet-formula injection neutralised |
+| Fix found on the way | Real | Timestamps written through model creates with `mysqlDate()` text were shifted by the server's UTC offset (4 h on a Gulf server); the repository now converts them to real dates |
+| Tests | Real | `tests/onboarding.test.ts` (11) |
+
+### Deferred
+- E-mail delivery has only been exercised with the mock; bounce handling, templates per tenant and branding are not built.
+- Import: no field mapping UI (columns must match the template), no listings or deals import, no background processing for very large files.

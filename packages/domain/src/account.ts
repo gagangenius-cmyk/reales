@@ -85,7 +85,7 @@ export async function resetPassword(sq: Sequelize, i: { token: string; password:
 }
 
 // ---------------------------------------------------------------- invitations
-async function sendInvite(sq: Sequelize, ctx: RequestContext, userId: string, baseUrl: string) {
+export async function sendInvite(sq: Sequelize, ctx: RequestContext, userId: string, baseUrl: string) {
   const mail = await withUow(sq, ctx, async (u) => {
     const user: any = await u.repo("User").findById(userId, { transaction: u.tx });
     if (!user) throw new NotFoundError("User");

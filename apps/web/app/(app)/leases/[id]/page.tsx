@@ -5,6 +5,7 @@ import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../../no-access";
 import { LeaseActions } from "./lease-actions";
+import { PdfActions } from "../../pdf-actions";
 
 export const metadata = { title: "Lease | Reales CRM" };
 
@@ -43,6 +44,7 @@ export default async function LeasePage({ params }: { params: Promise<{ id: stri
           <ul className="mt-2 text-sm">{l.deposit.movements.map((m: any) => <li key={m.id}>{m.kind} {money(m.amount, l.currency)}{m.reason ? ` (${m.reason})` : ""}</li>)}</ul>
         </div>
       )}
+      <PdfActions href={`/api/v1/leases/${l.id}/contract-draft`} kind="lease_contract" id={l.id} label="Draft contract (PDF)" />
       <LeaseActions leaseId={l.id} status={l.status} canManage={hasPermission(ctx, "lease.manage")} canRecordRent={hasPermission(ctx, "rent.record")} canTerminate={hasPermission(ctx, "lease.terminate")} hasDeposit={!!l.deposit} depositStatus={l.deposit?.status} />
     </section>
   );

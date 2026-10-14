@@ -45,7 +45,7 @@ export const TENANT_OWNED_TABLES = [
   // crm extras
   "saved_searches", "property_matches", "notifications", "referral_partners", "referrals", "valuations",
   // onboarding and data import
-  "auth_tokens", "import_jobs",
+  "auth_tokens", "import_jobs", "portal_links",
 ] as const;
 
 /** Tables intentionally NOT tenant-owned (global catalogues / tenant root). */
@@ -80,7 +80,7 @@ export interface Models {
   ScoringModel: M; LeadScore: M; Bot: M; BotVersion: M; BotSession: M; BotSessionEvent: M;
   SsoConnection: M; SsoState: M; DataProcessingPolicy: M; Subprocessor: M; MobileDevice: M; MobileMutation: M;
   SavedSearch: M; PropertyMatch: M; Notification: M; ReferralPartner: M; Referral: M; Valuation: M;
-  AuthToken: M; ImportJob: M;
+  AuthToken: M; ImportJob: M; PortalLink: M;
 }
 
 const cache = new WeakMap<Sequelize, Models>();
@@ -477,6 +477,7 @@ export function initModels(sq: Sequelize): Models {
       id: pk(), tenantId: tid(), kind: T.ENUM("contacts", "leads", "units"), filename: s(255, false), createdBy: tid(), status: T.ENUM("validated", "committed", "failed", "cancelled"),
       totalRows: T.INTEGER, validRows: T.INTEGER, errorRows: T.INTEGER, committedRows: T.INTEGER, skippedRows: T.INTEGER, payload: T.JSON, errors: T.JSON, options: T.JSON,
     }),
+    PortalLink: d("PortalLink", "portal_links", { id: pk(), tenantId: tid(), userId: tid(), contactId: tid(), kind: T.ENUM("owner", "tenant"), status: T.ENUM("active", "revoked") }),
   });
   cache.set(sq, m);
   return m;

@@ -3,6 +3,7 @@ import { listOwnerStatements, listPortfolios } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
+import { PdfActions } from "../pdf-actions";
 
 export const metadata = { title: "Portfolios | Reales CRM" };
 
@@ -30,12 +31,12 @@ export default async function Portfolios() {
       <div className="card overflow-x-auto p-2">
         <h2 className="p-2 font-semibold">Owner statements</h2>
         <table className="t">
-          <thead><tr><th>Period</th><th>Portfolio</th><th>Rent collected</th><th>Management fee</th><th>Maintenance</th><th>Net payable</th><th>Status</th></tr></thead>
+          <thead><tr><th>Period</th><th>Portfolio</th><th>Rent collected</th><th>Management fee</th><th>Maintenance</th><th>Net payable</th><th>Status</th><th /></tr></thead>
           <tbody>
             {statements.map((s) => (
-              <tr key={s.id}><td>{s.period}</td><td>{names.get(s.portfolioId) ?? "-"}</td><td>{money(s.rentCollected, s.currency)}</td><td>{money(s.managementFee, s.currency)}</td><td>{money(s.maintenanceCost, s.currency)}</td><td>{money(s.netPayable, s.currency)}</td><td>{s.status}</td></tr>
+              <tr key={s.id}><td>{s.period}</td><td>{names.get(s.portfolioId) ?? "-"}</td><td>{money(s.rentCollected, s.currency)}</td><td>{money(s.managementFee, s.currency)}</td><td>{money(s.maintenanceCost, s.currency)}</td><td>{money(s.netPayable, s.currency)}</td><td>{s.status}</td><td><PdfActions href={`/api/v1/statements/${s.id}/pdf`} kind="owner_statement" id={s.id} label="PDF" /></td></tr>
             ))}
-            {statements.length === 0 && <tr><td colSpan={7} className="muted">No statements.</td></tr>}
+            {statements.length === 0 && <tr><td colSpan={8} className="muted">No statements.</td></tr>}
           </tbody>
         </table>
       </div>

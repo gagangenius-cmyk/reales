@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { errMsg, postJson } from "@/lib/client";
@@ -64,6 +65,7 @@ function LoginForm() {
         <button className="btn" disabled={busy}>{busy ? "Please wait..." : step === "password" ? "Continue" : "Verify"}</button>
         {step === "password" && <button type="button" className="btn-ghost" disabled={busy || !tenant || !email} onClick={sso}>Sign in with single sign-on</button>}
       </form>
+      <Link className="muted text-sm underline" href="/forgot-password">Forgot your password?</Link>
     </main>
   );
 }

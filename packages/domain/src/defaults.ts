@@ -21,6 +21,7 @@ export const DEFAULT_SOURCES = [
   { code: "whatsapp", name: "WhatsApp", kind: "other" },
   { code: "call", name: "Inbound call", kind: "call" },
   { code: "api", name: "API", kind: "api" },
+  { code: "import", name: "Data import", kind: "other" },
 ] as const;
 
 /** Per-tenant defaults: consent purposes, lead sources and the default sales pipeline. Idempotent. */

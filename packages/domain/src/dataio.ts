@@ -69,7 +69,7 @@ const num = (v: string, what: string, o: { int?: boolean; min?: number } = {}): 
   return n;
 };
 
-function validateRow(kind: ImportKind, r: Record<string, string>, buildings: Map<string, string[]>): RowResult<Record<string, unknown>> | RowError {
+function validateRow(kind: ImportKind, r: Record<string, string>, buildings: Map<string, string[]>, sources: Set<string>): RowResult<Record<string, unknown>> | RowError {
   const t = (k: string) => (r[k] ?? "").trim();
   const bad = (error: string): RowError => ({ ok: false, error });
   if (kind === "contacts" || kind === "leads") {
@@ -81,11 +81,12 @@ function validateRow(kind: ImportKind, r: Record<string, string>, buildings: Map
     if (kind === "contacts" && !t("first_name") && !t("last_name") && !t("company_name")) return bad("A name or company name is required");
     const base = { firstName: t("first_name") || undefined, lastName: t("last_name") || undefined, companyName: t("company_name") || undefined, email: email ?? undefined, phone: phone ?? undefined, language: t("language") || undefined, nationality: t("nationality") || undefined };
     if (kind === "contacts") return { ok: true, value: base };
+    if (t("source_code") && !sources.has(t("source_code"))) return bad(`Unknown source_code "${t("source_code")}"`);
     if (!["buy", "rent", "invest", "off_plan"].includes(t("purpose"))) return bad("purpose must be buy, rent, invest or off_plan");
     const bmin = num(t("budget_min"), "budget_min"), bmax = num(t("budget_max"), "budget_max"), beds = num(t("bedrooms"), "bedrooms", { int: true });
     for (const x of [bmin, bmax, beds]) if (typeof x === "string") return bad(x);
     if (typeof bmin === "number" && typeof bmax === "number" && bmin > bmax) return bad("budget_min is above budget_max");
-    return { ok: true, value: { contact: base, purpose: t("purpose"), budgetMin: bmin, budgetMax: bmax, bedrooms: beds, sourceCode: t("source_code") || "import", preferredAreas: t("preferred_areas") ? t("preferred_areas").split(";").map((x) => x.trim()).filter(Boolean) : undefined, language: t("language") || undefined } };
+    return { ok: true, value: { contact: base, purpose: t("purpose"), budgetMin: bmin, budgetMax: bmax, bedrooms: beds, sourceCode: t("source_code") ? t("source_code") : sources.has("import") ? "import" : undefined, preferredAreas: t("preferred_areas") ? t("preferred_areas").split(";").map((x) => x.trim()).filter(Boolean) : undefined, language: t("language") || undefined } };
   }
   // units
   const ids = buildings.get(t("building").toLowerCase());
@@ -126,6 +127,7 @@ export async function validateImport(sq: Sequelize, ctx: RequestContext, i: { ki
   return withUow(sq, ctx, async (u) => {
     const buildings = new Map<string, string[]>();
     if (i.kind === "units") for (const b of (await u.repo("Building").findAll({ transaction: u.tx })) as any[]) buildings.set(String(b.get("name")).toLowerCase(), [...(buildings.get(String(b.get("name")).toLowerCase()) ?? []), b.get("id")]);
+    const sources = new Set<string>(i.kind === "leads" ? ((await u.repo("LeadSource").findAll({ transaction: u.tx })) as any[]).map((x) => x.get("code")) : []);
     const payload: Array<{ row: number; data: Record<string, unknown> }> = [];
     const errors: ImportError[] = [];
     const seen = new Set<string>();
@@ -134,13 +136,13 @@ export async function validateImport(sq: Sequelize, ctx: RequestContext, i: { ki
       const cells = all[n]!;
       if (cells.length > header.length) { errors.push({ row: n + 1, message: "More cells than header columns" }); continue; }
       const rec = Object.fromEntries(header.map((h, k) => [h, cells[k] ?? ""]));
-      const v = validateRow(i.kind, rec, buildings);
+      const v = validateRow(i.kind, rec, buildings, sources);
       if (!v.ok) { errors.push({ row: n + 1, message: v.error }); continue; }
-      const key = i.kind === "units" ? `${v.value.buildingId}|${String(v.value.unitNumber).toLowerCase()}` : `${(v.value as any).email ?? (v.value as any).contact?.email ?? ""}|${(v.value as any).phone ?? (v.value as any).contact?.phone ?? ""}`;
-      if (seen.has(key)) { errors.push({ row: n + 1, message: i.kind === "units" ? "Duplicate unit in the file" : "Duplicate of an earlier row in the file" }); continue; }
-      seen.add(key);
+      const c: any = i.kind === "leads" ? (v.value as any).contact : v.value;
+      const keys = i.kind === "units" ? [`${v.value.buildingId}|${String(v.value.unitNumber).toLowerCase()}`] : [c.email && `e:${c.email}`, c.phone && `p:${c.phone}`].filter(Boolean) as string[];
+      if (keys.some((k) => seen.has(k))) { errors.push({ row: n + 1, message: i.kind === "units" ? "Duplicate unit in the file" : "Duplicate of an earlier row in the file" }); continue; }
+      keys.forEach((k) => seen.add(k));
       if (i.kind === "contacts" && dupMode === "error") {
-        const c: any = v.value;
         if ((await findDuplicateContacts(u, ctx, c.email ?? null, c.phone ?? null)).length) { errors.push({ row: n + 1, message: "A contact with this email or phone already exists" }); continue; }
       }
       payload.push({ row: n + 1, data: v.value });

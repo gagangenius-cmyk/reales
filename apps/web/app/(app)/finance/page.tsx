@@ -3,6 +3,7 @@ import { listInvoices, listPayments, listCommissions } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
+import { PdfActions } from "../pdf-actions";
 
 export const metadata = { title: "Finance | Reales CRM" };
 
@@ -38,8 +39,8 @@ export default async function Finance() {
         <div className="card overflow-x-auto p-2">
           <h2 className="p-2 font-semibold">Payments</h2>
           <table className="t">
-            <thead><tr><th>Received</th><th>Method</th><th>Status</th><th>Amount</th></tr></thead>
-            <tbody>{payments.map((p) => <tr key={p.id}><td>{p.receivedAt ? new Date(p.receivedAt).toISOString().slice(0, 10) : "-"}</td><td>{p.method}</td><td>{p.status}</td><td>{money(p.amount, p.currency)}</td></tr>)}</tbody>
+            <thead><tr><th>Received</th><th>Method</th><th>Status</th><th>Amount</th><th /></tr></thead>
+            <tbody>{payments.map((p) => <tr key={p.id}><td>{p.receivedAt ? new Date(p.receivedAt).toISOString().slice(0, 10) : "-"}</td><td>{p.method}</td><td>{p.status}</td><td>{money(p.amount, p.currency)}</td><td>{p.status === "succeeded" && <PdfActions href={`/api/v1/payments/${p.id}/receipt`} kind="receipt" id={p.id} label="Receipt (PDF)" />}</td></tr>)}</tbody>
           </table>
         </div>
       )}

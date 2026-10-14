@@ -4,7 +4,7 @@ import type { Sequelize } from "sequelize";
 import { ZodError, ZodTypeAny, z } from "zod";
 import { AuthError, resolveRequestContext } from "@reales/auth";
 import { getSequelize, RequestContext, TenantViolationError } from "@reales/database";
-import { BotInvalidError, ConflictError, ProviderNotAllowedError, SsoError, DealBlockedError, DocumentIntegrityError, DuplicateContactError, IdempotencyError, LeaseNotActivatableError, ListingNotPublishableError, NotFoundError, MissingVariableError, QuotaExceededError, TemplateInvalidError, UploadRejectedError, WorkflowInvalidError, withIdempotency } from "@reales/domain";
+import { BotInvalidError, ConflictError, TokenError, ProviderNotAllowedError, SsoError, DealBlockedError, DocumentIntegrityError, DuplicateContactError, IdempotencyError, LeaseNotActivatableError, ListingNotPublishableError, NotFoundError, MissingVariableError, QuotaExceededError, TemplateInvalidError, UploadRejectedError, WorkflowInvalidError, withIdempotency } from "@reales/domain";
 import { logger, runWithCorrelation } from "@reales/observability";
 import { ForbiddenError } from "@reales/rbac";
 import { rateLimit } from "./rate-limit";
@@ -81,6 +81,7 @@ export function errorResponse(e: unknown, correlationId: string): NextResponse {
   if (e instanceof BotInvalidError) return body(422, "bot_invalid", e.message, { issues: e.issues });
   if (e instanceof SsoError) return body(401, "sso_failed", e.code === "sso_unavailable" ? e.message : "Single sign-on failed");
   if (e instanceof ProviderNotAllowedError) return body(422, "provider_not_allowed", e.message);
+  if (e instanceof TokenError) return body(400, "token_invalid", e.message);
   if (e instanceof UploadRejectedError) return body(422, "upload_rejected", e.message);
   if (e instanceof IdempotencyError) return body(e.status, "idempotency", e.message);
   if (e instanceof DocumentIntegrityError) {

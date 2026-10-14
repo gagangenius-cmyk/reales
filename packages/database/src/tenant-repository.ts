@@ -18,6 +18,20 @@ type AnyModel = ModelStatic<Model<any, any>>;
  * tenantId comes from the authenticated context, is AND-ed into every read/update/delete predicate,
  * and is stamped on every insert. Caller-supplied tenantId values are rejected, never trusted.
  */
+
+/**
+ * `mysqlDate()` strings are UTC wall-clock text meant for RAW SQL. When one reaches a Sequelize MODEL write, Sequelize parses the text as
+ * machine-local time, shifting the stored value by the server's UTC offset (4 hours on a Gulf server). Convert them to real Dates first.
+ */
+const UTC_TEXT = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,3})?$/;
+export function fixTimestamps<T extends Record<string, unknown>>(values: T): T {
+  let out: Record<string, unknown> | null = null;
+  for (const [k, v] of Object.entries(values)) {
+    if (typeof v === "string" && /At$/.test(k) && UTC_TEXT.test(v)) (out ??= { ...values })[k] = new Date(`${v.replace(" ", "T")}${v.includes(".") ? "" : ".000"}Z`);
+  }
+  return (out ?? values) as T;
+}
+
 export class TenantRepository<M extends AnyModel = AnyModel> {
   constructor(readonly model: M, private readonly ctx: TenantCtx) {
     if (!ctx?.tenantId) throw new TenantViolationError("Repository requires a tenant context");
@@ -51,25 +65,25 @@ export class TenantRepository<M extends AnyModel = AnyModel> {
 
   async create(values: Record<string, unknown>, opts: CreateOptions = {}) {
     this.assertNoForeignTenant(values);
-    return this.model.create({ ...values, tenantId: this.ctx.tenantId } as never, opts);
+    return this.model.create({ ...fixTimestamps(values), tenantId: this.ctx.tenantId } as never, opts);
   }
 
   async bulkCreate(rows: Record<string, unknown>[], opts: CreateOptions = {}) {
     rows.forEach((r) => this.assertNoForeignTenant(r));
-    return this.model.bulkCreate(rows.map((r) => ({ ...r, tenantId: this.ctx.tenantId })) as never, opts as never);
+    return this.model.bulkCreate(rows.map((r) => ({ ...fixTimestamps(r), tenantId: this.ctx.tenantId })) as never, opts as never);
   }
 
   /** Returns number of rows updated (0 when the id belongs to another tenant). */
   async updateById(id: string, values: Record<string, unknown>, opts: Omit<UpdateOptions, "where"> = {}) {
     this.assertNoForeignTenant(values);
-    const { tenantId: _ignored, ...rest } = values;
+    const { tenantId: _ignored, ...rest } = fixTimestamps(values);
     const [n] = await this.model.update(rest as never, { ...opts, where: this.scope({ id }) });
     return n;
   }
 
   async updateWhere(where: WhereOptions, values: Record<string, unknown>, opts: Omit<UpdateOptions, "where"> = {}) {
     this.assertNoForeignTenant(values);
-    const { tenantId: _ignored, ...rest } = values;
+    const { tenantId: _ignored, ...rest } = fixTimestamps(values);
     const [n] = await this.model.update(rest as never, { ...opts, where: this.scope(where) });
     return n;
   }

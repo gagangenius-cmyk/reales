@@ -77,3 +77,16 @@ export async function listOwnerStatements(sq: Sequelize, ctx: RequestContext, f:
     return (await u.repo("OwnerStatement").findAll({ where, order: [["period", "DESC"]], limit: f.limit, offset: f.offset, transaction: u.tx })).map(plain);
   });
 }
+
+/** One statement, only if its portfolio is visible to the caller (same scope as the list). */
+export async function getOwnerStatement(sq: Sequelize, ctx: RequestContext, id: string) {
+  authorize(ctx, "statement.read");
+  return withUow(sq, ctx, async (u) => {
+    const s: any = await u.repo("OwnerStatement").findById(id, { transaction: u.tx });
+    if (!s) throw new NotFoundError("Statement");
+    const scope = await scopeWhere(u, ctx, "statement.read", PORTFOLIO_SCOPE);
+    const p: any = await u.repo("Portfolio").findOne({ where: { [Op.and]: [{ id: s.get("portfolioId") }, scope] }, transaction: u.tx });
+    if (!p) throw new NotFoundError("Statement");
+    return { ...plain(s), portfolioName: p.get("name") };
+  });
+}
