@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
 import path from "node:path";
-import dotenv from "dotenv";
 
 // The monorepo keeps a single .env at the repo root (Next only reads apps/web/.env by default).
-dotenv.config({ path: path.join(__dirname, "../../.env") });
+// On a hosting platform the variables come from the project settings and there is no .env file (or no dotenv package): this must never break the build.
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("dotenv").config({ path: path.join(__dirname, "../../.env") });
+} catch { /* variables are provided by the environment */ }
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },

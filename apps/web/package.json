@@ -9,28 +9,29 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "^16.3.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "@reales/auth": "*",
     "@reales/database": "*",
     "@reales/domain": "*",
-    "@reales/auth": "*",
-    "@reales/rbac": "*",
     "@reales/events": "*",
     "@reales/observability": "*",
+    "@reales/rbac": "*",
     "@reales/validation": "*",
-    "ioredis": "^5.4.1",
-    "qrcode": "^1.5.4",
-    "zod": "^3.24.0",
-    "@xyflow/react": "^12.3.0",
-    "react-email-editor": "^1.7.11"
-  },
-  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^22.10.0",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "tailwindcss": "^4.1.0",
-    "@tailwindcss/postcss": "^4.1.0",
+    "@xyflow/react": "^12.3.0",
+    "dotenv": "^16.4.5",
+    "ioredis": "^5.4.1",
+    "next": "^16.3.0",
     "postcss": "^8.5.0",
-    "@types/qrcode": "^1.5.5"
+    "qrcode": "^1.5.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-email-editor": "^1.7.11",
+    "tailwindcss": "^4.1.0",
+    "typescript": "~5.9.0",
+    "zod": "^3.24.0"
   }
 }
