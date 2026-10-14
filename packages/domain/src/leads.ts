@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { Op, Sequelize, WhereOptions } from "sequelize";
+import { Op, Sequelize, WhereOptions, literal } from "sequelize";
 import { mysqlDate, RequestContext, systemContext } from "@reales/database";
-import { authorize, can, ForbiddenError, hasPermission } from "@reales/rbac";
+import { authorize, can, ForbiddenError, hasPermission, widestScope } from "@reales/rbac";
 import { ContactInput, createContactInUow, findDuplicateContacts, CONTACT_SCOPE } from "./contacts";
 import { normalizeEmail, normalizePhone } from "./normalize";
 import { routeLead } from "./routing";
@@ -18,6 +18,7 @@ export interface LeadInput {
   purpose: "buy" | "rent" | "invest" | "off_plan";
   budgetMin?: number; budgetMax?: number; currency?: string;
   preferredAreas?: string[]; bedrooms?: number; language?: string; branchId?: string;
+  stageId?: string; assignedUserId?: string; isHot?: boolean; campaign?: string;
 }
 
 export interface LeadResult { lead: any; duplicate: boolean; contactReused: boolean; assignedUserId: string | null }
@@ -74,8 +75,12 @@ export async function createLeadCore(u: Uow, ctx: RequestContext, input: LeadInp
     if (!source) throw new NotFoundError("Lead source");
   }
   const { pipeline, stages } = await defaultPipeline(u, input.projectId);
-  const first = stages.find((s) => s.get("kind") === "open");
-  if (!first) throw new ConflictError("Pipeline has no open stage");
+  const first = input.stageId ? stages.find((s) => s.get("id") === input.stageId) : stages.find((s) => s.get("kind") === "open");
+  if (!first) throw new ConflictError(input.stageId ? "Unknown stage for this pipeline" : "Pipeline has no open stage");
+  if (first.get("kind") !== "open") throw new ConflictError("A new lead must start in an open stage");
+
+  // An explicit owner must be someone the creator is allowed to assign to (admin: anyone, manager: own branch/unit, agent: self).
+  if (input.assignedUserId && ctx.userId !== "system" && !(await assignableUsersIn(u, ctx)).some((x) => x.id === input.assignedUserId)) throw new ForbiddenError("You cannot assign a lead to that user");
 
   const id = randomUUID();
   const language = input.language ?? contact.get("language") ?? null;
@@ -85,11 +90,14 @@ export async function createLeadCore(u: Uow, ctx: RequestContext, input: LeadInp
     pipelineId: pipeline.get("id"), stageId: first.get("id"), status: "open", purpose: input.purpose,
     budgetMin: input.budgetMin ?? null, budgetMax: input.budgetMax ?? null, currency: input.currency ?? "AED",
     preferredAreas: input.preferredAreas ?? null, bedrooms: input.bedrooms ?? null, language, branchId,
+    isHot: input.isHot ?? false, campaign: input.campaign?.trim() || null,
   }, { transaction: u.tx });
   await u.repo("LeadStageEvent").create({ id: randomUUID(), leadId: id, fromStageId: null, toStageId: first.get("id"), actorId: actorOf(ctx), reason: "created", createdAt: mysqlDate(new Date()) }, { transaction: u.tx });
 
   // 3. Route to an agent.
-  const decision = await routeLead(u, ctx, {
+  const decision = input.assignedUserId
+    ? { userId: input.assignedUserId, ruleId: null as string | null, method: "manual" as const, reason: "Chosen when the lead was created" }
+    : await routeLead(u, ctx, {
     purpose: input.purpose, projectId: input.projectId ?? null, language, budgetMin: input.budgetMin ?? null, budgetMax: input.budgetMax ?? null,
     sourceKind: source?.get("kind") ?? null, sourceCode: source?.get("code") ?? null,
   });
@@ -115,6 +123,22 @@ const actorOf = (ctx: Pick<RequestContext, "userId">) => (ctx.userId === "system
 async function addActivityRow(u: Uow, leadId: string, kind: string, summary: string, ctx: Pick<RequestContext, "userId">) {
   const now = mysqlDate(new Date());
   await u.repo("Activity").create({ id: randomUUID(), entityType: "lead", entityId: leadId, kind, summary, actorId: actorOf(ctx), occurredAt: now, createdAt: now }, { transaction: u.tx });
+}
+
+/** Users the caller may assign a lead to: tenant scope = everyone active, business unit/branch scope = that unit or branch (their team), otherwise only themselves. */
+async function assignableUsersIn(u: Uow, ctx: RequestContext) {
+  const scope = widestScope(ctx, "lead.assign");
+  const t = ctx.tenantId.replace(/[^a-f0-9-]/gi, "");
+  const and: WhereOptions[] = [{ status: "active" }, literal(`id NOT IN (SELECT user_id FROM portal_links WHERE tenant_id = '${t}')`)];
+  if (scope === "business_unit") and.push({ [Op.or]: [{ businessUnitId: { [Op.in]: ctx.membership.businessUnitIds.length ? ctx.membership.businessUnitIds : ["-"] } }, { id: ctx.userId }] });
+  else if (scope === "branch") and.push({ [Op.or]: [{ branchId: { [Op.in]: ctx.membership.branchIds.length ? ctx.membership.branchIds : ["-"] } }, { id: ctx.userId }] });
+  else if (scope !== "tenant") and.push({ id: ctx.userId });
+  const rows = await u.repo("User").findAll({ where: { [Op.and]: and }, order: [["email", "ASC"]], transaction: u.tx });
+  return rows.map((r: any) => ({ id: r.get("id") as string, email: r.get("email") as string, branchId: r.get("branchId") as string | null }));
+}
+
+export async function listAssignableUsers(sq: Sequelize, ctx: RequestContext) {
+  return withUow(sq, ctx, (u) => assignableUsersIn(u, ctx));
 }
 
 export async function createLead(sq: Sequelize, ctx: RequestContext, input: LeadInput) {

@@ -207,7 +207,7 @@ export function initModels(sq: Sequelize): Models {
       id: pk(), tenantId: tid(), contactId: tid(), projectId: uuid(), sourceId: uuid(), pipelineId: tid(), stageId: tid(),
       status: T.ENUM("open", "won", "lost"), purpose: T.ENUM("buy", "rent", "invest", "off_plan"), budgetMin: money(), budgetMax: money(),
       currency: s(3, false), preferredAreas: T.JSON, bedrooms: T.INTEGER, language: s(10), assignedUserId: uuid(), branchId: uuid(),
-      score: T.DECIMAL(6, 3), lostReason: s(255), firstResponseAt: T.DATE(3),
+      score: T.DECIMAL(6, 3), lostReason: s(255), firstResponseAt: T.DATE(3), isHot: T.BOOLEAN, campaign: s(160),
     }),
     LeadStageEvent: d("LeadStageEvent", "lead_stage_events", { id: pk(), tenantId: tid(), leadId: tid(), fromStageId: uuid(), toStageId: tid(), actorId: s(64), reason: s(255), createdAt: dt3() }, noTs2),
     LeadAssignment: d("LeadAssignment", "lead_assignments", {

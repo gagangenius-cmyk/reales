@@ -59,6 +59,10 @@ export const leadSchema = z.object({
   bedrooms: z.number().int().min(0).max(20).optional(),
   language: z.string().min(2).max(10).optional(),
   branchId: uuid.optional(),
+  stageId: uuid.optional(),
+  assignedUserId: uuid.optional(),
+  isHot: z.boolean().optional(),
+  campaign: z.string().trim().max(160).optional(),
 }).strict().refine((v) => !!v.contactId !== !!v.contact, { message: "provide exactly one of contactId or contact" })
   .refine((v) => v.budgetMin === undefined || v.budgetMax === undefined || v.budgetMin <= v.budgetMax, { message: "budgetMin must not exceed budgetMax" });
 
