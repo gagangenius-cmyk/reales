@@ -2,7 +2,7 @@ import { Sequelize } from "sequelize";
 import { logger } from "@reales/observability";
 
 export interface DbConfig {
-  host: string; port: number; user: string; password: string; database: string; poolMax?: number;
+  host: string; port: number; user: string; password: string; database: string; poolMax?: number; ssl?: false | { rejectUnauthorized: boolean };
 }
 
 export function dbConfigFromEnv(test = false): DbConfig {
@@ -13,6 +13,11 @@ export function dbConfigFromEnv(test = false): DbConfig {
     user: e.DB_USER ?? "reales",
     password: e.DB_PASSWORD ?? "reales_dev_password",
     database: test ? (e.DB_TEST_NAME ?? "reales_test") : (e.DB_NAME ?? "reales"),
+    // Managed/remote databases must be reached over TLS: DB_SSL=1 turns it on and verifies the certificate. DB_SSL_INSECURE=1 encrypts but skips
+    // certificate verification (only for hosts with self-signed certificates; prefer fixing the certificate).
+    ssl: e.DB_SSL === "1" ? { rejectUnauthorized: e.DB_SSL_INSECURE !== "1" } : false,
+    // Serverless platforms start many small instances: keep each one's pool tiny (DB_POOL_MAX=2) so the database is not exhausted.
+    poolMax: e.DB_POOL_MAX ? Number(e.DB_POOL_MAX) : undefined,
   };
 }
 
@@ -26,6 +31,7 @@ export function createSequelize(cfg: DbConfig = dbConfigFromEnv(process.env.NODE
     timezone: "+00:00",
     logging: process.env.DB_LOG === "1" ? (sql) => logger.debug({ sql }) : false,
     pool: { max: cfg.poolMax ?? 10, min: 0, idle: 10000 },
+    ...(cfg.ssl ? { dialectOptions: { ssl: cfg.ssl } } : {}),
     define: { underscored: true, timestamps: true },
   });
 }
