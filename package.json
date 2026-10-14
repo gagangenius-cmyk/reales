@@ -13,6 +13,7 @@
     "db:rollback": "tsx scripts/migrate.ts down",
     "db:reset": "tsx scripts/migrate.ts reset",
     "db:seed": "tsx scripts/seed.ts",
+    "db:seed:admin": "tsx scripts/seed-admin.ts",
     "worker": "tsx apps/worker/src/index.ts",
     "scheduler": "tsx apps/scheduler/src/index.ts",
     "infra:up": "docker compose -f infrastructure/docker-compose.yml up -d",
