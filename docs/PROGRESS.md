@@ -231,3 +231,26 @@ Legend: **Real** = implemented and tested. **Mock** = interface plus a stand-in 
 ### Deferred
 - E-mail delivery has only been exercised with the mock; bounce handling, templates per tenant and branding are not built.
 - Import: no field mapping UI (columns must match the template), no listings or deals import, no background processing for very large files.
+
+## Workspace, portals and remaining UIs: DONE (API + pages in the app)
+
+| Feature | Status | Notes |
+|---|---|---|
+| Calendar | Real | One agenda per month merging tasks, viewings, rent due dates, lease endings, inspections, maintenance SLAs, privacy-request deadlines and KYC expiries; each source uses the same scope as its own list. `.ics` download (RFC 5545: escaping, 75-octet folding). Subscription URLs / two-way sync with Google or Outlook are NOT built |
+| Task centre | Real | `/tasks` (mine / whole team for managers), create, reschedule, complete, overdue marking; reminder sweep notifies once when a task is due within the hour and once when it becomes overdue |
+| PDF documents | Real, Latin text only | Payment receipt, tenancy agreement DRAFT summary (watermarked, not a legal contract), owner statement, offer letter. Open in the browser or save as an immutable document version. Arabic text cannot be rendered by the built-in font: non-Latin characters print as "?" |
+| Owner and tenant portals | Real | Separate login role with no CRM permissions, bound to one contact. Owners: their portfolios, leases (with tenant name), ISSUED statements (+PDF), maintenance. Tenants: their lease and rent schedule, raise maintenance requests for an active lease. Staff invite/revoke from "Portal access". Tenant rent payment online is NOT built |
+| Arabic / right-to-left | Partial | Language switch (cookie), RTL layout, translated navigation, sign-in and portal headings. Page content is still English; the Arabic strings are a first draft needing native review |
+| Maintenance workflow UI | Real | Ticket page: triage, quotes, approve (threshold rules enforced), work order, start, complete, close, cancel, history |
+| Inspections UI | Real | Checklist templates, scheduling, item editor (saves through the same conflict-aware sync as the mobile app), complete, sign-off |
+| Compliance UI | Real | KYC page per contact (identity details, documents, ownership links, screening, hit disposition, cases, submit/approve/reject), data-request log with access package download and erasure |
+| Bots UI | Real | Bot list, flow editor (JSON) with validation messages, publish/enable, test console |
+| Settings UI | Real | Usage and quotas, SSO connections, data-processing policy, sub-processor register |
+| Security fix | Real | Starting or answering a bot session now needs `bot.manage` (it previously needed only a login) |
+| Tests | Real | `tests/workspace.test.ts` (7) |
+
+### Still not possible or not done (needs people, accounts or infrastructure I do not have)
+- Real providers: WhatsApp/SMS/e-mail delivery, e-signature, payment gateway, sanctions/PEP screening, LLM, portal feeds. Adapters and mocks exist; none has been connected to a live service.
+- A UAE legal/compliance review of the illustrative regulatory rules, risk weights and contract wording.
+- Penetration test, accessibility audit, load baseline; validating Helm/Terraform; running the Docker image in a cluster.
+- Native iOS/Android app; SAML/SCIM; certified valuation; online rent payment; full Arabic content.

@@ -4,13 +4,15 @@ import { ownerPortal, portalMe, tenantPortal } from "@reales/domain";
 import { requireContext } from "@/lib/page-context";
 import { LogoutButton } from "../(app)/logout-button";
 import { RequestForm } from "./request-form";
+import { LanguageSwitch } from "@/components/language-switch";
+import { getLang, translate } from "@/lib/i18n";
 
 export const metadata = { title: "My account | Reales" };
 
 const money = (v: unknown, c = "AED") => `${c} ${Number(v).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-const TicketTable = ({ tickets }: { tickets: any[] }) => (
+const TicketTable = ({ tickets, title }: { tickets: any[]; title: string }) => (
   <div className="card overflow-x-auto p-2">
-    <h2 className="p-2 font-semibold">Maintenance requests</h2>
+    <h2 className="p-2 font-semibold">{title}</h2>
     <table className="t">
       <thead><tr><th>Request</th><th>Category</th><th>Status</th><th>Opened</th></tr></thead>
       <tbody>
@@ -23,6 +25,8 @@ const TicketTable = ({ tickets }: { tickets: any[] }) => (
 
 export default async function Portal() {
   const ctx = await requireContext();
+  const lang = await getLang();
+  const t = (x: string) => translate(lang, x);
   const sq = getSequelize();
   let me;
   try { me = await portalMe(sq, ctx); } catch { redirect("/dashboard"); }
@@ -31,14 +35,14 @@ export default async function Portal() {
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-4 py-6">
       <header className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-semibold">Welcome, {me.name}</h1><p className="muted text-sm">{me.kind === "owner" ? "Property owner portal" : "Tenant portal"}</p></div>
-        <LogoutButton />
+        <div><h1 className="text-2xl font-semibold">{t("Welcome")}, {me.name}</h1><p className="muted text-sm">{me.kind === "owner" ? t("Property owner portal") : t("Tenant portal")}</p></div>
+        <div className="flex gap-2"><LanguageSwitch lang={lang} /><LogoutButton /></div>
       </header>
 
       {owner && (
         <>
           <div className="card overflow-x-auto p-2">
-            <h2 className="p-2 font-semibold">Your leases</h2>
+            <h2 className="p-2 font-semibold">{t("Your leases")}</h2>
             <table className="t">
               <thead><tr><th>Unit</th><th>Tenant</th><th>Term</th><th>Annual rent</th><th>Outstanding</th><th>Status</th></tr></thead>
               <tbody>
@@ -48,7 +52,7 @@ export default async function Portal() {
             </table>
           </div>
           <div className="card overflow-x-auto p-2">
-            <h2 className="p-2 font-semibold">Statements</h2>
+            <h2 className="p-2 font-semibold">{t("Statements")}</h2>
             <table className="t">
               <thead><tr><th>Period</th><th>Rent collected</th><th>Fee</th><th>Maintenance</th><th>Net payable</th><th /></tr></thead>
               <tbody>
@@ -57,7 +61,7 @@ export default async function Portal() {
               </tbody>
             </table>
           </div>
-          <TicketTable tickets={owner.tickets} />
+          <TicketTable tickets={owner.tickets} title={t("Maintenance requests")} />
         </>
       )}
 
@@ -75,7 +79,7 @@ export default async function Portal() {
           ))}
           {tenant.leases.length === 0 && <p className="muted">No tenancy found on your account.</p>}
           <RequestForm leases={tenant.leases.filter((l: any) => l.status === "active").map((l: any) => ({ id: l.id, label: l.unit }))} />
-          <TicketTable tickets={tenant.tickets} />
+          <TicketTable tickets={tenant.tickets} title={t("Maintenance requests")} />
         </>
       )}
     </main>

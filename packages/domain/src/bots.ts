@@ -289,6 +289,7 @@ async function loadGraph(u: Uow, botId: string, version: number): Promise<BotGra
 }
 
 export async function startBotSession(sq: Sequelize, ctx: RequestContext, i: { botId: string; contactId: string; conversationId?: string; leadId?: string }): Promise<BotTurn> {
+  if (ctx.userId !== "system") authorize(ctx, "bot.manage"); // staff test console; the inbound-message pipeline runs as system
   return withUow(sq, ctx, async (u) => {
     const bot: any = await u.repo("Bot").findById(i.botId, { transaction: u.tx });
     if (!bot) throw new NotFoundError("Bot");
@@ -307,6 +308,7 @@ export async function startBotSession(sq: Sequelize, ctx: RequestContext, i: { b
 
 /** One customer message in. Customers can always ask for a person: those words hand off immediately, regardless of the flow. */
 export async function botReceive(sq: Sequelize, ctx: RequestContext, sessionId: string, text: string): Promise<BotTurn> {
+  if (ctx.userId !== "system") authorize(ctx, "bot.manage");
   return withUow(sq, ctx, async (u) => {
     await u.sq.query("SELECT id FROM bot_sessions WHERE id=:id AND tenant_id=:t FOR UPDATE", { replacements: { id: sessionId, t: ctx.tenantId }, transaction: u.tx });
     const s: any = await u.repo("BotSession").findById(sessionId, { transaction: u.tx });

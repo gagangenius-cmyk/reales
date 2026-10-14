@@ -2,6 +2,7 @@ import { getSequelize } from "@reales/database";
 import { listTickets, listUnits, listVendors, slaReport } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
+import Link from "next/link";
 import { NoAccess } from "../no-access";
 import { NewTicketForm } from "./new-ticket-form";
 
@@ -35,7 +36,7 @@ export default async function Maintenance() {
         <table className="t">
           <thead><tr><th>Title</th><th>Category</th><th>Priority</th><th>Status</th><th>SLA due</th><th>Breached</th></tr></thead>
           <tbody>
-            {tickets.map((t) => <tr key={t.id}><td>{t.title}</td><td>{t.category}</td><td>{t.priority}</td><td>{t.status}</td><td>{stamp(t.slaDueAt)}</td><td>{t.slaBreachedAt ? "yes" : "no"}</td></tr>)}
+            {tickets.map((t) => <tr key={t.id}><td><Link className="underline" href={`/maintenance/${t.id}`}>{t.title}</Link></td><td>{t.category}</td><td>{t.priority}</td><td>{t.status}</td><td>{stamp(t.slaDueAt)}</td><td>{t.slaBreachedAt ? "yes" : "no"}</td></tr>)}
             {tickets.length === 0 && <tr><td colSpan={6} className="muted">No tickets visible to you.</td></tr>}
           </tbody>
         </table>
