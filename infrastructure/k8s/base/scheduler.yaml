@@ -1,0 +1,34 @@
+# Deadline sweeps (offers, reservations, leases, SLAs, KYC expiry, DSR clock, campaigns, waits). All sweeps are idempotent, so a second
+# replica during a rollout is harmless; keep it at 1 in steady state to avoid duplicate work.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reales-scheduler
+  labels: { app: reales-scheduler }
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: reales-scheduler }
+  template:
+    metadata:
+      labels: { app: reales-scheduler }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: scheduler
+          image: reales
+          command: ["npm", "run", "scheduler"]
+          envFrom:
+            - configMapRef: { name: reales-config }
+            - secretRef: { name: reales-secrets }
+          resources:
+            requests: { cpu: 50m, memory: 192Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }

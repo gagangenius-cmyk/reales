@@ -2,7 +2,7 @@ import "dotenv/config";
 import { randomBytes } from "node:crypto";
 import { QueryTypes } from "sequelize";
 import { closeSequelize, getSequelize } from "../packages/database/src";
-import { bootstrapTenant, createBranch, createBuilding, createBusinessUnit, createDeveloper, createListing, createPortalAccount, createProject, createReProject, createRoutingRule, createUnit, createUser } from "../packages/domain/src";
+import { bootstrapTenant, assignOwnership, createBranch, createBuilding, createContact, createLease, createPortfolio, createTicket, createVendor, createManagementAgreement, createBusinessUnit, createDeveloper, createListing, createPortalAccount, createProject, createReProject, createRoutingRule, createUnit, createUser } from "../packages/domain/src";
 import { loadAccess } from "../packages/rbac/src";
 
 /** Dev seed: a demo tenant with an org tree, a few users and projects. Passwords are printed once. */
@@ -38,7 +38,7 @@ async function main() {
   const bldg = await createBuilding(sq, ctx, { reProjectId: rp.id, name: "Tower A", community: "Dubai Marina", city: "Dubai", floorsCount: 40 });
   const unit = await createUnit(sq, ctx, { buildingId: bldg.id, unitNumber: "1204", floor: 12, type: "apartment", bedrooms: 2, bathrooms: 2, areaSqft: 1250, view: "Marina", listPrice: 2100000 });
   await createUnit(sq, ctx, { buildingId: bldg.id, unitNumber: "2301", floor: 23, type: "apartment", bedrooms: 3, bathrooms: 3, areaSqft: 1800, view: "Sea", listPrice: 3400000 });
-  await createUnit(sq, ctx, { buildingId: bldg.id, unitNumber: "0507", floor: 5, type: "apartment", bedrooms: 1, bathrooms: 1, areaSqft: 780, listPrice: 1250000 });
+  const rentable = await createUnit(sq, ctx, { buildingId: bldg.id, unitNumber: "0507", floor: 5, type: "apartment", bedrooms: 1, bathrooms: 1, areaSqft: 780, listPrice: 1250000 });
   await createListing(sq, ctx, { unitId: unit.id, purpose: "sale", title: "Marina view 2BR, Tower A", description: "Bright two-bedroom with marina views.", price: 2100000, agentUserId: agent.id, branchId: marina.id });
 
   console.log(`\nSeeded tenant "${slug}" (sign in with workspace = ${slug})`);

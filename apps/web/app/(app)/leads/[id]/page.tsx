@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { getLead, listPipelines } from "@reales/domain";
+import { getLead, listPipelines, matchesForLead } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../../no-access";
 import { LeadActions } from "./lead-actions";
+import { MatchPanel } from "./match-panel";
 
 export const metadata = { title: "Lead | Reales CRM" };
 
@@ -22,6 +23,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const [pipeline] = (await listPipelines(sq, ctx)) as any[];
   const stages: any[] = (pipeline?.stages ?? []).filter((s: any) => s.pipelineId === lead.pipelineId);
   const name = new Map(stages.map((s) => [s.id, s.name]));
+  const matches: any[] = hasPermission(ctx, "match.read") ? await matchesForLead(sq, ctx, lead.id).catch(() => []) : [];
   return (
     <section className="flex flex-col gap-4">
       <div>
@@ -30,6 +32,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <p className="muted text-sm">Status {lead.status} - stage {name.get(lead.stageId) ?? "-"}{lead.lostReason ? ` - lost: ${lead.lostReason}` : ""}</p>
       </div>
       <LeadActions leadId={lead.id} stages={stages.map((s) => ({ key: s.key, name: s.name }))} currentStageId={lead.stageId} stageKeyById={Object.fromEntries(stages.map((s) => [s.id, s.key]))} />
+      {hasPermission(ctx, "match.read") && <MatchPanel leadId={lead.id} matches={matches} canManage={hasPermission(ctx, "match.manage")} />}
       <div className="grid gap-4 md:grid-cols-2">
         <div className="card p-4">
           <h2 className="font-semibold">Stage history</h2>

@@ -35,6 +35,15 @@ function LoginForm() {
     }
   }
 
+  async function sso() {
+    setBusy(true);
+    setError(null);
+    const r = await postJson("/api/v1/auth/sso/begin", { tenant, email });
+    setBusy(false);
+    if (!r.ok) return setError("Single sign-on is not available for this workspace and email");
+    window.location.href = r.data.authorizationUrl;
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4">
       <div>
@@ -53,6 +62,7 @@ function LoginForm() {
         )}
         {error && <p role="alert" className="err text-sm">{error}</p>}
         <button className="btn" disabled={busy}>{busy ? "Please wait..." : step === "password" ? "Continue" : "Verify"}</button>
+        {step === "password" && <button type="button" className="btn-ghost" disabled={busy || !tenant || !email} onClick={sso}>Sign in with single sign-on</button>}
       </form>
     </main>
   );

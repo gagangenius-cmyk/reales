@@ -43,6 +43,16 @@ export async function login(
     await logLogin(sq, { ip: input.ip, userAgent: input.userAgent, email, outcome: "unknown_user" });
     throw new AuthError("invalid_credentials");
   }
+  const domain = email.split("@")[1] ?? "";
+  const [enforced] = await sq.query<{ n: number }>(
+    "SELECT COUNT(*) n FROM sso_connections WHERE tenant_id=:t AND enforce=1 AND status='active' AND JSON_CONTAINS(email_domains, JSON_QUOTE(:d))",
+    { replacements: { t: tenant.id, d: domain }, type: QueryTypes.SELECT },
+  );
+  if (Number(enforced?.n ?? 0) > 0) {
+    await dummyVerify(input.password);
+    await logLogin(sq, { ip: input.ip, userAgent: input.userAgent, tenantId: tenant.id, email, outcome: "sso_required" });
+    throw new AuthError("sso_required", "Your organisation requires single sign-on");
+  }
   const [user] = await sq.query<{ id: string; password_hash: string | null; status: string; failed_login_count: number; locked_until: Date | null }>(
     "SELECT id, password_hash, status, failed_login_count, locked_until FROM users WHERE tenant_id=:t AND normalized_email=:e",
     { replacements: { t: tenant.id, e: email }, type: QueryTypes.SELECT },
@@ -90,6 +100,27 @@ export async function login(
     },
   );
   await logLogin(sq, { ip: input.ip, userAgent: input.userAgent, tenantId: tenant.id, userId: user.id, email, outcome: status === "ok" ? "success" : "mfa_required" });
+  return { token: `${sessionId}.${secret}`, sessionId, status };
+}
+
+/**
+ * Create a session for a user who has ALREADY been authenticated by another mechanism (single sign-on). `mfaVerified` should be true only when the
+ * identity provider's MFA is explicitly trusted for the connection; otherwise the normal local MFA rules apply.
+ */
+export async function issueSession(sq: Sequelize, p: { tenantId: string; userId: string; email: string; mfaVerified: boolean } & ClientInfo): Promise<LoginResult> {
+  const enrolled = await isMfaEnrolled(sq, p.tenantId, p.userId);
+  const access = await loadAccess(sq, p.tenantId, p.userId);
+  const needsMfa = enrolled || access.requiresMfa;
+  const status: LoginResult["status"] = !needsMfa || p.mfaVerified ? "ok" : enrolled ? "mfa_required" : "mfa_enrollment_required";
+  const sessionId = randomUUID();
+  const secret = randomToken();
+  await sq.query(
+    `INSERT INTO sessions (id, tenant_id, user_id, secret_hash, user_agent, ip, expires_at, last_seen_at, mfa_verified_at, created_at, updated_at)
+     VALUES (:id, :t, :u, :h, :ua, :ip, :exp, NOW(3), :mfa, NOW(3), NOW(3))`,
+    { replacements: { id: sessionId, t: p.tenantId, u: p.userId, h: sha256(secret), ua: p.userAgent?.slice(0, 255) ?? null, ip: p.ip ?? null, exp: new Date(Date.now() + SESSION_IDLE_MS), mfa: status === "ok" ? new Date() : null } },
+  );
+  await sq.query("UPDATE users SET failed_login_count=0, locked_until=NULL, last_login_at=NOW(3) WHERE id=:id AND tenant_id=:t", { replacements: { id: p.userId, t: p.tenantId } });
+  await logLogin(sq, { ip: p.ip, userAgent: p.userAgent, tenantId: p.tenantId, userId: p.userId, email: p.email, outcome: status === "ok" ? "sso_success" : "mfa_required" });
   return { token: `${sessionId}.${secret}`, sessionId, status };
 }
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { QueryTypes } from "sequelize";
 import { getSequelize } from "@reales/database";
+import { countMyUnread } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { LogoutButton } from "./logout-button";
@@ -8,12 +9,17 @@ import { LogoutButton } from "./logout-button";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireContext();
   const [t] = await getSequelize().query<{ name: string; jurisdiction: string }>("SELECT name, jurisdiction FROM tenants WHERE id=:t", { replacements: { t: ctx.tenantId }, type: QueryTypes.SELECT });
+  const unread = await countMyUnread(getSequelize(), ctx).catch(() => 0);
   const nav = [
+    { href: "/notifications", label: unread ? `Notifications (${unread})` : "Notifications", show: true },
     { href: "/dashboard", label: "Dashboard", show: true },
     { href: "/leads", label: "Leads", show: hasPermission(ctx, "lead.read") },
     { href: "/contacts", label: "Contacts", show: hasPermission(ctx, "contact.read") },
     { href: "/inventory", label: "Inventory", show: hasPermission(ctx, "inventory.read") || hasPermission(ctx, "inventory.manage") },
     { href: "/listings", label: "Listings", show: hasPermission(ctx, "listing.read") },
+    { href: "/searches", label: "Saved searches", show: hasPermission(ctx, "match.read") },
+    { href: "/valuation", label: "Valuation", show: hasPermission(ctx, "valuation.run") },
+    { href: "/referrals", label: "Referrals", show: hasPermission(ctx, "referral.read") },
     { href: "/viewings", label: "Viewings", show: hasPermission(ctx, "viewing.read") },
     { href: "/inbox", label: "Inbox", show: hasPermission(ctx, "inbox.read") },
     { href: "/templates", label: "Templates", show: hasPermission(ctx, "template.read") },
@@ -24,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/portfolios", label: "Portfolios", show: hasPermission(ctx, "portfolio.read") },
     { href: "/leases", label: "Leases", show: hasPermission(ctx, "lease.read") },
     { href: "/maintenance", label: "Maintenance", show: hasPermission(ctx, "maintenance.read") },
+    { href: "/compliance", label: "Compliance", show: hasPermission(ctx, "kyc.read") || hasPermission(ctx, "case.read") || hasPermission(ctx, "dsr.manage") },
     { href: "/projects", label: "Projects", show: hasPermission(ctx, "project.read") },
     { href: "/organization", label: "Organization", show: hasPermission(ctx, "org.read") },
     { href: "/users", label: "Users", show: hasPermission(ctx, "user.read") },

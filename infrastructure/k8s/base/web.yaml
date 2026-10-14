@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reales-web
+  labels: { app: reales-web }
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels: { app: reales-web }
+  template:
+    metadata:
+      labels: { app: reales-web }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile: { type: RuntimeDefault }
+      terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: reales-web }
+      containers:
+        - name: web
+          image: reales
+          command: ["npm", "run", "start", "-w", "@reales/web"]
+          ports: [{ containerPort: 3000, name: http }]
+          envFrom:
+            - configMapRef: { name: reales-config }
+            - secretRef: { name: reales-secrets }
+          readinessProbe:
+            httpGet: { path: /api/v1/health, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /api/v1/health, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 5
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { memory: 1Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reales-web
+spec:
+  selector: { app: reales-web }
+  ports: [{ name: http, port: 80, targetPort: http }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: reales-web
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: reales-web }
+  minReplicas: 3
+  maxReplicas: 12
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: reales-web
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels: { app: reales-web }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: reales-web
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 12m   # uploads are capped at 10 MB by the app
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [crm.example.com]
+      secretName: reales-tls
+  rules:
+    - host: crm.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: reales-web, port: { number: 80 } } }

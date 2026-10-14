@@ -1,8 +1,9 @@
 import { getSequelize } from "@reales/database";
-import { listTickets, listVendors, slaReport } from "@reales/domain";
+import { listTickets, listUnits, listVendors, slaReport } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
+import { NewTicketForm } from "./new-ticket-form";
 
 export const metadata = { title: "Maintenance | Reales CRM" };
 
@@ -12,10 +13,13 @@ export default async function Maintenance() {
   const ctx = await requireContext();
   if (!hasPermission(ctx, "maintenance.read")) return <NoAccess />;
   const sq = getSequelize();
+  const canLog = hasPermission(ctx, "maintenance.manage");
+  const units: any[] = canLog ? ((await listUnits(sq, ctx, { limit: 200, offset: 0 }).catch(() => [])) as any[]) : [];
   const [tickets, vendors, sla] = await Promise.all([listTickets(sq, ctx, { limit: 100, offset: 0 }) as Promise<any[]>, listVendors(sq, ctx) as Promise<any[]>, slaReport(sq, ctx)]);
   return (
     <section className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Maintenance</h1>
+      {canLog && units.length > 0 && <NewTicketForm units={units.map((u) => ({ id: u.id, label: `Unit ${u.unitNumber}` }))} />}
       <div className="card overflow-x-auto p-2">
         <h2 className="p-2 font-semibold">SLA by priority</h2>
         <table className="t">

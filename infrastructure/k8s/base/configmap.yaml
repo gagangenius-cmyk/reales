@@ -1,0 +1,15 @@
+# Non-secret settings. Secrets live in the Secret "reales-secrets" (created by your secret manager / External Secrets Operator), with these keys:
+#   DB_PASSWORD, FIELD_ENCRYPTION_KEY (64 hex), AUTH_PEPPER, REDIS_URL, MOCK_WEBHOOK_SECRET (only when mock providers are allowed).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: reales-config
+data:
+  NODE_ENV: production
+  APP_URL: https://crm.example.com
+  TRUST_PROXY: "1"
+  DB_HOST: mysql.internal.example.com
+  DB_PORT: "3306"
+  DB_NAME: reales
+  DB_USER: reales
+  OTEL_SERVICE_NAME: reales

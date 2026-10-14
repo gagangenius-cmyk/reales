@@ -1,0 +1,26 @@
+# Run before rolling out a new version (e.g. as a Helm pre-upgrade hook or an Argo CD PreSync hook). Migrations are forward-only and additive;
+# destructive changes need an expand/contract release pair.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: reales-migrate
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: migrate
+          image: reales
+          command: ["npm", "run", "db:migrate"]
+          envFrom:
+            - configMapRef: { name: reales-config }
+            - secretRef: { name: reales-secrets }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }

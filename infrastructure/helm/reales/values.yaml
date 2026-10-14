@@ -1,0 +1,45 @@
+# NOT linted/rendered in the authoring environment (no helm binary). Run `helm lint` and `helm template` in CI before first use.
+image:
+  repository: registry.example.com/reales   # replace
+  tag: latest                                # pin to an immutable tag or digest
+  pullPolicy: IfNotPresent
+
+# Secret created outside the chart (External Secrets / sealed secrets). Keys: DB_PASSWORD, FIELD_ENCRYPTION_KEY, AUTH_PEPPER, REDIS_URL.
+existingSecret: reales-secrets
+
+config:
+  NODE_ENV: production
+  APP_URL: https://crm.example.com
+  TRUST_PROXY: "1"
+  DB_HOST: mysql.internal.example.com
+  DB_PORT: "3306"
+  DB_NAME: reales
+  DB_USER: reales
+
+web:
+  replicas: 3
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { memory: 1Gi }
+  autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 12, targetCPUUtilizationPercentage: 65 }
+
+worker:
+  replicas: 2
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 768Mi }
+
+scheduler:
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits: { memory: 512Mi }
+
+ingress:
+  enabled: true
+  className: nginx
+  host: crm.example.com
+  tlsSecret: reales-tls
+
+migrations:
+  enabled: true   # pre-install/pre-upgrade hook Job

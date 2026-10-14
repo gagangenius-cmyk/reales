@@ -39,7 +39,8 @@ describe("tenant isolation: schema guard", () => {
     const tenantOwned = new Set<string>(TENANT_OWNED_TABLES);
     // webhook_events dedupes raw provider event ids globally BEFORE the tenant is known (tenant_id is resolved during processing);
     // events only enter after signature verification, so a tenant cannot squat another tenant's event ids.
-    const GLOBAL_BY_DESIGN = new Set(["webhook_events"]);
+    // sso_states is looked up by the hash of a 192-bit random OIDC state in the IdP callback, before the tenant is known; the state is single-use and short-lived. auth_tokens is looked up by the hash of the emailed one-time token (256-bit random) before the tenant is known.
+    const GLOBAL_BY_DESIGN = new Set(["webhook_events", "sso_states", "auth_tokens"]);
     const offenders = rows.filter((r) => tenantOwned.has(r.t) && !GLOBAL_BY_DESIGN.has(r.t) && r.idx !== "PRIMARY" && !r.cols.split(",").includes("tenant_id") && !["role_id"].includes(r.cols.split(",")[0]!));
     expect(offenders).toEqual([]);
   });

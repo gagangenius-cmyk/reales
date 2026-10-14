@@ -123,7 +123,7 @@ Legend: **Real** = implemented and tested. **Mock** = interface plus a stand-in 
 | Inspections | Real | Templates, scheduled/in-progress/completed/signed, per-item version, offline sync with client mutation ids (replays no-op) and conflict reporting instead of overwrite |
 | Owner statements | Real | Rent collected - management fee - maintenance cost per portfolio and month; draft recomputed, frozen when issued |
 | API | Real | 40+ routes under `/api/v1` (portfolios, ownerships, leases, maintenance-tickets, vendors, inspections, statements) |
-| UI | Partial | Read-only pages for portfolios/statements, leases (+detail), maintenance. Write actions are API-only for now |
+| UI | Partial | Portfolios/statements read-only; lease detail has activate/attach/deposit/rent/renew/terminate actions; maintenance has a log-ticket form. Quotes, work orders and inspections are API-only. Demo data is in `npm run db:seed` |
 | Tests | Real | `tests/leases.test.ts` (14): schedule maths, overlap + concurrency, activation gate, rent allocation under concurrency, deposits, renewal cap, sweeps, tenant isolation, maintenance flow, SLA, offline sync conflicts |
 
 ### Deferred from Phase 5 (tracked)
@@ -132,6 +132,86 @@ Legend: **Real** = implemented and tested. **Mock** = interface plus a stand-in 
 - Surplus-rent credit handling, late fees, utilities billing, vendor payments/invoice matching.
 - Owner statement PDF/e-mail delivery and payout execution.
 
-## Phase 6 - Compliance: NOT STARTED
-## Phase 7 - Intelligence and analytics: NOT STARTED
-## Phase 8 - Enterprise hardening: NOT STARTED
+## Phase 6 - Compliance: DONE (mock screening; illustrative rules)
+
+| Area | Status | Notes |
+|---|---|---|
+| KYC/KYB profiles | Real | One per contact. Identity number and date of birth are AES-256-GCM encrypted; views expose last 4 only; reveal needs step-up + reason and is audited. A material edit resets an approved profile to draft |
+| Maker-checker | Real | Submitter cannot approve; approval blocked by open hits/cases, expired documents; high risk or confirmed match needs `compliance.override` |
+| UBO graph | Real | Contact-to-contact ownership links, cycle refusal, 100% shareholding cap, effective-percentage resolution through chains, 25% beneficial-owner threshold (illustrative constant) |
+| Screening | Mock | `ScreeningProvider` adapter + mock provider with a fictional watchlist. Hits are opened automatically, but ONLY a human with `screening.dispose` + step-up + written reason can close one. Known false positives are not re-raised on re-run |
+| Cases | Real | Auto-opened for hits, assign/note/escalate/close with append-only events; closing needs a resolution; clearing with a confirmed match needs override |
+| Risk scoring | Real | Deterministic, every point tied to a named factor; weights illustrative; high-risk country list is a tenant setting |
+| Deal gate | Real (opt-in) | `registerDealGate`: with tenant setting `compliance.kyc_required_for_deals=true`, a deal cannot leave `reserved` until the buyer has approved, unexpired KYC and no open hits/cases |
+| goAML-style export | Real (format only) | XML hand-off for cases closed as reported, identity masked. NOT validated against the FIU schema and not a filing channel |
+| DSR | Real | Due date stored in DB (`compliance.dsr_days`, default 30 - confirm with counsel); access package; erasure anonymises contact + message bodies and states what was retained and why; overdue sweep notifies once |
+| Retention / legal holds | Real | Holds block erasure and retention; `contact_archived` policy applied only on request (dry-run default, step-up to apply); AML retention window is a setting (default 1825 days, illustrative) |
+| Sweeps | Real | KYC expiry and DSR overdue wired into `runSweeps` |
+| API / UI | Real / Partial | ~30 routes; read-only `/compliance` overview page |
+| Tests | Real | `tests/compliance.test.ts` (14) |
+
+### Deferred from Phase 6 (tracked)
+- Real screening/PEP provider integration, ongoing monitoring/re-screening schedule, adverse-media.
+- Retention policies for `kyc_profile` and `message` entities (schema accepts them; only `contact_archived` is applied).
+- Write forms for KYC/cases in the web UI; goAML schema validation and filing channel.
+
+## Phase 7 - Intelligence and analytics: DONE (mock AI provider; heuristic baseline model)
+
+| Area | Status | Notes |
+|---|---|---|
+| Lead scoring | Real | Versioned, immutable models. v1 is a rules baseline (ILLUSTRATIVE weights); a logistic model can be trained from the tenant's own won/lost leads (pure TypeScript, deterministic 80/20 hold-out, AUC + accuracy stored). Every score stores model version, features and ranked reason codes. Nationality, language and name are deliberately not features |
+| Model governance | Real | Training only ever creates a DRAFT; a human with `scoring.manage` activates it; held-out AUC below 0.60 needs an explicit acknowledgement; needs at least 30 closed leads |
+| Rescoring | Real | Bounded sweep (`rescoreOpenLeads`) in `runSweeps`: re-scores open leads when stale (24h) or from an older model version |
+| Bot builder + runtime | Real | Graph with static analysis (structure, config, reachability, wiring, loops must pass through a question); immutable published versions; sessions pinned to a version; answer validation (text/number/phone/email/choice); step cap; "human/agent" always hands off, creating a task for the owner and an outbox event |
+| AI node | Mock provider | `AiProvider` adapter (mock only). Controlled: allow-listed tools run by the runtime (`search_listings`: read-only, published listings, max 3), no DB access for the model, strict JSON output schema, per-answer and per-session token caps (`BOT_AI_TOKEN_CAP`), any failure routes to a handoff path |
+| Bot delivery | Adapter | `deliverBotReplies` sends through the normal consent-checked outbound path; wiring inbound messages to `botReceive` is not automatic yet |
+| Dashboards | Real | `sales`, `manager` (scoped like the lists), `property` and `compliance` (need tenant-wide access); dashboard page is role-aware |
+| Warehouse export | Real | Incremental (timestamp + id cursor), step-up, audited; no names/emails/phones; person ids replaced with a keyed pseudonym derived from `FIELD_ENCRYPTION_KEY` |
+| API | Real | scoring, bots, sessions, dashboards, exports routes |
+| Tests | Real | `tests/intelligence.test.ts` (13) |
+
+### Deferred from Phase 7 (tracked)
+- A real LLM provider adapter, conversation-memory/RAG, bot analytics, A/B tests.
+- Auto-routing inbound WhatsApp messages into `botReceive` and sending replies in the same turn.
+- Scheduled warehouse delivery (S3/BigQuery sink); the endpoint is pull-based.
+- Bot editor UI (graph is editable via API; the React Flow editor from workflows is not yet reused).
+
+## Phase 8 - Enterprise hardening: DONE for the application layer; infrastructure is UNVALIDATED templates
+
+| Area | Status | Notes |
+|---|---|---|
+| SSO (OIDC) | Real | Authorization-code + PKCE (S256), state (hashed, single-use, 10 min) and nonce; ID token verified in-process (RS256 only, issuer, audience, expiry, nonce, verified email, allowed domain, login-hint match); encrypted client secret; https-only endpoints; one domain per connection; optional JIT provisioning with a non-admin role; `enforce` disables password login for the domain (`sso_required`); IdP MFA trusted only when the connection says so. Tested against an in-test fake IdP, NOT against a real provider |
+| SSO login button | Real | "Sign in with single sign-on" on the login page (workspace + email) |
+| SAML | Deferred | Not implemented (XML-signature handling should come from a vetted library) |
+| Data-processing policy + sub-processor register | Real | Per-tenant allowed regions, cross-border switch, approved/pending/blocked sub-processors with DPA date. Enforced before messaging and e-signature provider calls; no policy means no restriction (existing behaviour). Payment and AI providers are not yet gated |
+| Usage metering + quotas | Real | Monthly meters (`messages_sent`, `ai_tokens`) with `<meter>.monthly` caps; sends are reported as blocked (not thrown) at the cap so broadcasts continue; usage summary API. Per-minute API rate limits stay global (per-tenant plan limits not yet configurable) |
+| Mobile | Server side only | Device registry (register/revoke), generic mutation journal (client ids make retries no-ops), batch sync endpoint for inspections with conflict reporting. The iOS/Android app itself is NOT built |
+| DR / backup | Real scripts, drafted runbook | `scripts/backup.sh` (consistent dump incl. triggers, optional AES-256, verification) and `scripts/restore-drill.sh` (throwaway DB; checks tables, append-only triggers) were run against the local MySQL. `docs/runbooks/disaster-recovery.md` has placeholders for measured RPO/RTO |
+| Container / Kubernetes | Partly validated | `infrastructure/docker/Dockerfile` (not built here), `infrastructure/k8s/base` (renders with `kubectl kustomize`; not applied to a cluster) |
+| Helm | Unvalidated | `infrastructure/helm/reales` (no helm binary available: run `helm lint` / `helm template`) |
+| Terraform | Unvalidated | `infrastructure/terraform` AWS me-central-1 skeleton (no terraform binary; assumes an existing VPC) |
+| Security checks | Real (static) | `tests/security/config.test.ts`: headers/CSP, every API route uses the shared wrapper, only login/logout/SSO routes are unauthenticated and rate limited |
+| Load test | Script only | `tests/load/k6-smoke.js` (k6 not installed here; never run) |
+| Fixes found by the new tests | Real | Concurrent first messages to one contact raced on conversation creation (now handled) |
+| Tests | Real | `tests/hardening.test.ts` (13), `tests/security/config.test.ts` (3) |
+
+### Deferred from Phase 8 (tracked)
+- SAML, SCIM provisioning, per-row KMS envelope encryption and key rotation tooling, WAF/DDoS, penetration test, SOC 2/ISO evidence collection.
+- Real load baselines and autoscaling tuning; chaos/failover drills; multi-region topology (a data-residency decision).
+- Mobile application (React Native/PWA) and push notifications; admin UIs for policy, quotas and sub-processors (API only).
+
+## Real-estate CRM extras: DONE (API + pages in the app)
+
+| Feature | Status | Notes |
+|---|---|---|
+| Lead-to-listing matching | Real | Deterministic 0-100 score (budget 40, bedrooms 30, area 30) with plain-language reasons; purpose/type and "more than 10% over budget" are hard exclusions. Panel on every lead (share/dismiss); reverse view per listing via API. Daily sweep persists strong (>=70) matches and notifies the assigned agent once per pair |
+| Saved searches | Real | Criteria saved per user; run on demand in the app; alerts for listings published since the last run, once per listing; pause/resume |
+| In-app notifications | Real | Private per user, deduplicated, unread count in the navigation, `/notifications` page with mark read / mark all |
+| Valuation (comparables) | Real | Median price per sq ft of closed sales (12 months) plus 5%-discounted asking prices in the same community/type/bedroom range; refuses to estimate with fewer than 3 comparables; stored with its comparables; labelled an indication, not a certified valuation |
+| Referral partners and fees | Real | Partner register, one referral per lead, fee % frozen at referral time, settlement from the closed deal's calculated commission (sweep or manual), payment marked with step-up, void with reason. No payout is executed |
+| Tests | Real | `tests/crm-extras.test.ts` (7) |
+
+### Deferred
+- Matching uses published listings only; no off-plan inventory matching, no WhatsApp/e-mail delivery of alerts (in-app only), no ML ranking.
+- Valuation has no external market data, no adjustment for floor/view/condition, no certified-valuer workflow.
+- Referral fee payout through finance (currently a status change).

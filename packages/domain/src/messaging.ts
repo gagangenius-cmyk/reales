@@ -8,6 +8,7 @@ import { normalizeEmail, normalizePhone } from "./normalize";
 import { hmacHex, verifyHmac } from "./providers";
 import { plain, scopeWhere, ScopeColumns } from "./scope";
 import { MessageChannel as Channel, renderTemplate, VariableValues as VariableValuesT } from "./templating";
+import { assertProviderAllowed, meterUsage, remainingQuota } from "./hardening";
 import { ConflictError, NotFoundError, Uow, withUow } from "./uow";
 
 // ---------------------------------------------------------------- provider abstraction
@@ -111,8 +112,13 @@ export async function sendMessage(sq: Sequelize, ctx: RequestContext, i: SendInp
   const gate = await evaluateContactability(sq, ctx.tenantId, { contactId: i.contactId, channel: i.channel, purposeCode: i.purposeCode });
   if (!gate.allowed) return { messageId: "", status: "blocked", blockedReasons: gate.reasons };
 
+  // Monthly send cap (quota key messages_sent.monthly): a blocked message is reported, not thrown, so broadcasts keep processing other recipients.
+  const left = await remainingQuota(sq, ctx.tenantId, "messages_sent");
+  if (left !== null && left < 1 && !existing) return { messageId: "", status: "blocked", blockedReasons: ["quota_exceeded:messages_sent"] };
+
   const prepared = await withUow(sq, ctx, async (u) => {
     const account = await pickAccount(u, i.channel, i.channelAccountId);
+    await assertProviderAllowed(u, account.get("provider"));
     let conv: any = await u.repo("Conversation").findOne({ where: { contactId: i.contactId, channel: i.channel }, transaction: u.tx });
     // 3. WhatsApp: free-form only inside 24h of the customer's last message
     let body = i.body ?? "";
@@ -137,7 +143,14 @@ export async function sendMessage(sq: Sequelize, ctx: RequestContext, i: SendInp
     if (!body.trim()) throw new ConflictError("The message is empty");
     const now = new Date();
     if (!conv) {
-      conv = await u.repo("Conversation").create({ id: randomUUID(), contactId: i.contactId, channel: i.channel, channelAccountId: account.get("id"), status: "open", unreadCount: 0, lastMessageAt: now }, { transaction: u.tx });
+      try {
+        conv = await u.repo("Conversation").create({ id: randomUUID(), contactId: i.contactId, channel: i.channel, channelAccountId: account.get("id"), status: "open", unreadCount: 0, lastMessageAt: now }, { transaction: u.tx });
+      } catch (e: any) {
+        // Two first messages to the same contact raced; the other transaction created the conversation (unique per contact+channel): use it.
+        if (e?.original?.code !== "ER_DUP_ENTRY" && e?.parent?.code !== "ER_DUP_ENTRY") throw e;
+        conv = await u.repo("Conversation").findOne({ where: { contactId: i.contactId, channel: i.channel }, transaction: u.tx });
+        if (!conv) throw e;
+      }
     }
     let msg: any = existing as any;
     if (!msg) {
@@ -167,6 +180,7 @@ export async function sendMessage(sq: Sequelize, ctx: RequestContext, i: SendInp
   try {
     const r = await provider.send({ channel: i.channel, to: gate.destination!, subject: prepared.subject, body: prepared.body, idempotencyKey: i.idempotencyKey, from: prepared.from });
     await settle("sent", { providerMessageId: r.providerMessageId, error: null });
+    await meterUsage(sq, ctx.tenantId, "messages_sent", 1);
     return { messageId: prepared.messageId, status: "sent" };
   } catch (e) {
     const retryable = e instanceof MessagingError ? e.retryable : true;

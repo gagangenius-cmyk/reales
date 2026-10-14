@@ -43,6 +43,22 @@ export const PERMISSIONS = {
   "maintenance.read": "View maintenance tickets", "maintenance.manage": "Triage tickets, request quotes, issue work orders", "maintenance.approve": "Approve costly maintenance quotations",
   "vendor.manage": "Manage vendors", "inspection.read": "View inspections", "inspection.perform": "Perform inspections", "inspection.manage": "Create inspections and templates",
   "statement.read": "View owner statements", "statement.generate": "Generate and issue owner statements",
+  // Compliance (phase 6)
+  "kyc.read": "View KYC profiles", "kyc.manage": "Create and submit KYC profiles, UBO links and documents", "kyc.review": "Approve or reject KYC profiles (maker-checker)",
+  "screening.run": "Run sanctions/PEP screening", "screening.dispose": "Dispose screening hits (human decision)",
+  "case.read": "View compliance cases", "case.manage": "Open, escalate and close compliance cases",
+  "dsr.manage": "Handle data-subject requests", "retention.manage": "Manage retention policies, legal holds and run retention", "aml.export": "Export regulatory reports",
+  // Intelligence (phase 7)
+  "scoring.read": "View lead scores and models", "scoring.manage": "Train, activate and retire scoring models; rescore leads",
+  "bot.read": "View bots and sessions", "bot.manage": "Edit and publish bots", "analytics.read": "View dashboards", "analytics.export": "Export data to the warehouse",
+  // Enterprise hardening (phase 8)
+  "sso.manage": "Manage single sign-on connections", "dataprocessing.manage": "Manage data-processing policy and sub-processors", "usage.read": "View usage and quotas",
+  "quota.manage": "Set tenant quotas", "mobile.sync": "Register devices and sync from the mobile app",
+  // CRM extras
+  "match.read": "View property matches and saved searches", "match.manage": "Run matching and manage saved searches", "valuation.run": "Run valuations", "valuation.read": "View valuations",
+  "referral.read": "View referrals", "referral.manage": "Manage referral partners and referrals", "referral.settle": "Settle and pay referral fees",
+  // Onboarding and data exchange
+  "import.manage": "Import contacts, leads and units from CSV", "export.data": "Export lists to CSV",
   // Reserved for later phases (declared now so role templates are stable)
   "compliance.override": "Override compliance decisions",
 } as const;
@@ -68,6 +84,9 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       ["routing.manage", "tenant"], ["pipeline.manage", "tenant"], ["inventory.read", "tenant"], ["inventory.manage", "tenant"],
       ["listing.read", "branch"], ["listing.manage", "branch"], ["listing.publish", "branch"], ["portal.manage", "tenant"],
       ["compliance.verify", "branch"], ["commission.read", "branch"],
+      ["scoring.read", "branch"], ["analytics.read", "branch"], ["bot.read", "tenant"],
+      ["import.manage", "tenant"], ["export.data", "branch"],
+      ["match.read", "branch"], ["match.manage", "branch"], ["valuation.run", "tenant"], ["valuation.read", "tenant"], ["referral.read", "tenant"], ["referral.manage", "tenant"], ["referral.settle", "tenant"],
       ["viewing.read", "branch"], ["viewing.manage", "branch"], ["offer.read", "branch"], ["offer.manage", "branch"], ["offer.approve", "branch"], ["reservation.manage", "tenant"],
       ["deal.read", "branch"], ["deal.create", "tenant"], ["deal.update", "branch"], ["deal.close", "branch"],
       ["document.read", "branch"], ["document.manage", "branch"], ["signature.manage", "branch"], ["finance.read", "branch"],
@@ -95,6 +114,9 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
       ["inventory.read", "tenant"], ["listing.read", "branch"], ["listing.manage", "own_records"],
       ["commission.read", "own_records"], ["project.read", "tenant"],
       ["viewing.read", "own_records"], ["viewing.manage", "own_records"], ["offer.read", "own_records"], ["offer.manage", "own_records"],
+      ["scoring.read", "own_records"], ["analytics.read", "own_records"],
+      ["export.data", "own_records"],
+      ["match.read", "own_records"], ["match.manage", "own_records"], ["valuation.run", "tenant"], ["valuation.read", "tenant"], ["referral.read", "own_records"],
       ["deal.read", "own_records"], ["deal.update", "own_records"], ["document.read", "own_records"], ["document.manage", "own_records"],
       ["template.read", "tenant"], ["inbox.read", "own_records"], ["inbox.send", "own_records"],
     ],
@@ -103,6 +125,8 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
     key: "compliance_officer", name: "AML/Compliance Officer", requiresMfa: true,
     grants: [
       ["audit.read", "tenant"], ["compliance.override", "tenant"], ["compliance.verify", "tenant"], ["consent.manage", "tenant"],
+      ["analytics.read", "tenant"], ["dataprocessing.manage", "tenant"], ["kyc.read", "tenant"], ["kyc.manage", "tenant"], ["kyc.review", "tenant"], ["screening.run", "tenant"], ["screening.dispose", "tenant"], ["case.read", "tenant"], ["case.manage", "tenant"],
+      ["dsr.manage", "tenant"], ["retention.manage", "tenant"], ["aml.export", "tenant"], ["document.read", "tenant"], ["document.manage", "tenant"], ["deal.read", "tenant"],
       ["user.read", "tenant"], ["lead.read", "tenant"], ["contact.read", "tenant"], ["listing.read", "tenant"],
     ],
   },
@@ -118,7 +142,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
     grants: [
       ["portfolio.read", "tenant"], ["portfolio.manage", "tenant"], ["lease.read", "tenant"], ["lease.manage", "tenant"], ["lease.terminate", "tenant"], ["rent.record", "tenant"], ["deposit.manage", "tenant"],
       ["maintenance.read", "tenant"], ["maintenance.manage", "tenant"], ["maintenance.approve", "tenant"], ["vendor.manage", "tenant"], ["inspection.read", "tenant"], ["inspection.manage", "tenant"],
-      ["statement.read", "tenant"], ["statement.generate", "tenant"], ["contact.read", "tenant"], ["contact.create", "tenant"], ["contact.update", "tenant"], ["inventory.read", "tenant"],
+      ["analytics.read", "tenant"], ["statement.read", "tenant"], ["statement.generate", "tenant"], ["contact.read", "tenant"], ["contact.create", "tenant"], ["contact.update", "tenant"], ["inventory.read", "tenant"],
       ["document.read", "tenant"], ["document.manage", "tenant"], ["project.read", "tenant"], ["org.read", "tenant"], ["finance.read", "tenant"],
     ],
   },
@@ -128,7 +152,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
   },
   {
     key: "inspector", name: "Inspector", requiresMfa: false,
-    grants: [["inspection.read", "own_records"], ["inspection.perform", "own_records"], ["inventory.read", "tenant"], ["maintenance.read", "branch"]],
+    grants: [["inspection.read", "own_records"], ["inspection.perform", "own_records"], ["mobile.sync", "tenant"], ["inventory.read", "tenant"], ["maintenance.read", "branch"]],
   },
   { key: "viewer", name: "Read-only", requiresMfa: false, grants: [["project.read", "tenant"], ["org.read", "tenant"]] },
 ];

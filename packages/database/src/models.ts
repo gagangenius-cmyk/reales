@@ -36,6 +36,16 @@ export const TENANT_OWNED_TABLES = [
   "portfolios", "ownerships", "management_agreements", "leases", "lease_parties", "lease_addenda", "rent_schedules", "rent_allocations",
   "security_deposits", "deposit_movements", "lease_milestones", "vendors", "maintenance_tickets", "quotations", "work_orders", "work_order_events",
   "inspection_templates", "inspections", "inspection_items", "inspection_media", "inspection_mutations", "owner_statements",
+  // phase 6
+  "kyc_profiles", "kyc_documents", "ubo_links", "screening_runs", "screening_hits", "compliance_cases", "case_events", "dsr_requests", "retention_policies", "legal_holds",
+  // phase 7
+  "scoring_models", "lead_scores", "bots", "bot_versions", "bot_sessions", "bot_session_events",
+  // phase 8
+  "sso_connections", "sso_states", "data_processing_policies", "subprocessors", "mobile_devices", "mobile_mutations",
+  // crm extras
+  "saved_searches", "property_matches", "notifications", "referral_partners", "referrals", "valuations",
+  // onboarding and data import
+  "auth_tokens", "import_jobs",
 ] as const;
 
 /** Tables intentionally NOT tenant-owned (global catalogues / tenant root). */
@@ -66,6 +76,11 @@ export interface Models {
   Portfolio: M; Ownership: M; ManagementAgreement: M; Lease: M; LeaseParty: M; LeaseAddendum: M; RentSchedule: M; RentAllocation: M;
   SecurityDeposit: M; DepositMovement: M; LeaseMilestone: M; Vendor: M; Ticket: M; Quotation: M; WorkOrder: M; WorkOrderEvent: M;
   InspectionTemplate: M; Inspection: M; InspectionItem: M; InspectionMedia: M; InspectionMutation: M; OwnerStatement: M;
+  KycProfile: M; KycDocument: M; UboLink: M; ScreeningRun: M; ScreeningHit: M; ComplianceCase: M; CaseEvent: M; DsrRequest: M; RetentionPolicy: M; LegalHold: M;
+  ScoringModel: M; LeadScore: M; Bot: M; BotVersion: M; BotSession: M; BotSessionEvent: M;
+  SsoConnection: M; SsoState: M; DataProcessingPolicy: M; Subprocessor: M; MobileDevice: M; MobileMutation: M;
+  SavedSearch: M; PropertyMatch: M; Notification: M; ReferralPartner: M; Referral: M; Valuation: M;
+  AuthToken: M; ImportJob: M;
 }
 
 const cache = new WeakMap<Sequelize, Models>();
@@ -395,6 +410,72 @@ export function initModels(sq: Sequelize): Models {
     OwnerStatement: d("OwnerStatement", "owner_statements", {
       id: pk(), tenantId: tid(), portfolioId: tid(), period: s(7, false), rentCollected: money(false), managementFee: money(false), maintenanceCost: money(false), netPayable: money(false),
       currency: s(3, false), detail: T.JSON, status: T.ENUM("draft", "issued"), issuedAt: T.DATE(3),
+    }),
+    KycProfile: d("KycProfile", "kyc_profiles", {
+      id: pk(), tenantId: tid(), contactId: tid(), subjectType: T.ENUM("individual", "entity"), status: T.ENUM("draft", "in_review", "approved", "rejected", "expired"),
+      riskLevel: T.ENUM("low", "medium", "high", "unrated"), riskScore: T.INTEGER, riskFactors: T.JSON, isPep: T.BOOLEAN, nationality: s(60), countryOfResidence: s(60),
+      idType: s(40), idNumberEnc: T.TEXT, idNumberLast4: s(4), dateOfBirthEnc: T.TEXT, sourceOfFunds: s(500), occupation: s(160), expiresAt: T.DATEONLY,
+      submittedAt: T.DATE(3), submittedBy: s(64), reviewedBy: s(64), reviewedAt: T.DATE(3), decisionReason: s(500),
+    }),
+    KycDocument: d("KycDocument", "kyc_documents", { id: pk(), tenantId: tid(), profileId: tid(), documentId: tid(), docType: T.ENUM("passport", "emirates_id", "visa", "trade_licence", "proof_of_address", "source_of_funds", "other"), expiresOn: T.DATEONLY }),
+    UboLink: d("UboLink", "ubo_links", { id: pk(), tenantId: tid(), parentContactId: tid(), ownerContactId: tid(), ownershipPct: T.DECIMAL(6, 3), relation: T.ENUM("shareholder", "director", "controller", "trustee") }),
+    ScreeningRun: d("ScreeningRun", "screening_runs", { id: pk(), tenantId: tid(), profileId: tid(), provider: s(40, false), status: T.ENUM("completed", "failed"), hitCount: T.INTEGER, subjects: T.JSON, triggeredBy: s(64), createdAt: dt3() }, noTs2),
+    ScreeningHit: d("ScreeningHit", "screening_hits", {
+      id: pk(), tenantId: tid(), runId: tid(), profileId: tid(), subjectContactId: tid(), listName: s(80, false), matchedName: s(200, false), score: T.INTEGER, detail: T.JSON,
+      status: T.ENUM("open", "true_match", "false_positive"), disposedBy: s(64), disposedReason: s(1000), disposedAt: T.DATE(3),
+    }),
+    ComplianceCase: d("ComplianceCase", "compliance_cases", {
+      id: pk(), tenantId: tid(), profileId: tid(), kind: T.ENUM("screening_hit", "high_risk", "suspicious_activity", "document_issue", "other"), status: T.ENUM("open", "escalated", "closed"),
+      outcome: T.ENUM("cleared", "reported", "rejected"), summary: s(1000, false), assignedUserId: uuid(), openedBy: s(64), closedBy: s(64), closedAt: T.DATE(3), resolution: s(1000),
+    }),
+    CaseEvent: d("CaseEvent", "case_events", { id: pk(), tenantId: tid(), caseId: tid(), type: s(40, false), detail: T.JSON, actorId: s(64), createdAt: dt3() }, noTs2),
+    DsrRequest: d("DsrRequest", "dsr_requests", {
+      id: pk(), tenantId: tid(), contactId: tid(), kind: T.ENUM("access", "rectification", "erasure", "restriction"), status: T.ENUM("received", "completed", "rejected"), dueAt: dt3(),
+      note: s(1000), handledBy: s(64), completedAt: T.DATE(3), result: T.JSON, overdueNotifiedAt: T.DATE(3),
+    }),
+    RetentionPolicy: d("RetentionPolicy", "retention_policies", { id: pk(), tenantId: tid(), entityType: T.ENUM("contact_archived", "kyc_profile", "message"), retainDays: T.INTEGER, action: T.ENUM("anonymise", "delete_content") }),
+    LegalHold: d("LegalHold", "legal_holds", { id: pk(), tenantId: tid(), contactId: tid(), reason: s(500, false), placedBy: s(64), releasedBy: s(64), releasedAt: T.DATE(3) }),
+    ScoringModel: d("ScoringModel", "scoring_models", {
+      id: pk(), tenantId: tid(), version: T.INTEGER, kind: T.ENUM("rules", "logistic"), status: T.ENUM("draft", "active", "retired"), definition: { type: T.JSON, allowNull: false },
+      metrics: T.JSON, trainedOn: T.INTEGER, createdBy: s(64), activatedAt: T.DATE(3),
+    }),
+    LeadScore: d("LeadScore", "lead_scores", {
+      id: pk(), tenantId: tid(), leadId: tid(), modelId: tid(), modelVersion: T.INTEGER, score: T.INTEGER, band: T.ENUM("hot", "warm", "cold"),
+      reasons: { type: T.JSON, allowNull: false }, features: { type: T.JSON, allowNull: false }, createdAt: dt3(),
+    }, noTs2),
+    Bot: d("Bot", "bots", { id: pk(), tenantId: tid(), name: s(160, false), channel: T.ENUM("whatsapp", "sms", "email"), status: T.ENUM("draft", "published", "disabled"), currentVersion: T.INTEGER, draftGraph: T.JSON }),
+    BotVersion: d("BotVersion", "bot_versions", { id: pk(), tenantId: tid(), botId: tid(), version: T.INTEGER, graph: { type: T.JSON, allowNull: false }, createdBy: s(64), createdAt: dt3() }, noTs2),
+    BotSession: d("BotSession", "bot_sessions", {
+      id: pk(), tenantId: tid(), botId: tid(), botVersion: T.INTEGER, contactId: tid(), conversationId: uuid(), leadId: uuid(), status: T.ENUM("active", "handed_off", "completed"),
+      currentNode: s(80), vars: T.JSON, aiTokensUsed: T.INTEGER, stepCount: T.INTEGER, handoffReason: s(255),
+    }),
+    BotSessionEvent: d("BotSessionEvent", "bot_session_events", { id: pk(), tenantId: tid(), sessionId: tid(), direction: T.ENUM("user", "bot", "system"), nodeId: s(80), text: T.TEXT, detail: T.JSON, createdAt: dt3() }, noTs2),
+    SsoConnection: d("SsoConnection", "sso_connections", {
+      id: pk(), tenantId: tid(), name: s(120, false), protocol: T.ENUM("oidc"), issuer: s(255, false), clientId: s(255, false), clientSecretEnc: T.TEXT, authorizationEndpoint: s(500, false),
+      tokenEndpoint: s(500, false), jwksUri: s(500, false), emailDomains: { type: T.JSON, allowNull: false }, jitEnabled: T.BOOLEAN, jitRoleKey: s(60), trustIdpMfa: T.BOOLEAN, enforce: T.BOOLEAN,
+      status: T.ENUM("active", "disabled"),
+    }),
+    SsoState: d("SsoState", "sso_states", {
+      id: pk(), tenantId: tid(), connectionId: tid(), stateHash: s(64, false), nonce: s(64, false), codeVerifierEnc: { type: T.TEXT, allowNull: false }, redirectUri: s(500, false),
+      loginHint: s(254), expiresAt: dt3(), usedAt: T.DATE(3), createdAt: dt3(),
+    }, noTs2),
+    DataProcessingPolicy: d("DataProcessingPolicy", "data_processing_policies", { id: pk(), tenantId: tid(), allowedRegions: { type: T.JSON, allowNull: false }, allowCrossBorder: T.BOOLEAN, requireRegisteredProviders: T.BOOLEAN, updatedBy: s(64) }),
+    Subprocessor: d("Subprocessor", "subprocessors", { id: pk(), tenantId: tid(), code: s(60, false), name: s(160, false), purpose: s(255, false), region: s(32, false), status: T.ENUM("approved", "pending", "blocked"), dpaSignedOn: T.DATEONLY }),
+    MobileDevice: d("MobileDevice", "mobile_devices", { id: pk(), tenantId: tid(), userId: tid(), deviceId: s(80, false), name: s(120), platform: T.ENUM("ios", "android", "web"), status: T.ENUM("active", "revoked"), lastSyncAt: T.DATE(3), revokedAt: T.DATE(3) }),
+    MobileMutation: d("MobileMutation", "mobile_mutations", { id: pk(), tenantId: tid(), deviceId: tid(), clientMutationId: s(80, false), kind: s(60, false), status: T.ENUM("applied", "conflict", "rejected"), result: T.JSON, createdAt: dt3() }, noTs2),
+    SavedSearch: d("SavedSearch", "saved_searches", { id: pk(), tenantId: tid(), name: s(160, false), ownerUserId: tid(), contactId: uuid(), leadId: uuid(), criteria: { type: T.JSON, allowNull: false }, notify: T.BOOLEAN, status: T.ENUM("active", "paused"), lastRunAt: T.DATE(3) }),
+    PropertyMatch: d("PropertyMatch", "property_matches", { id: pk(), tenantId: tid(), leadId: tid(), listingId: tid(), score: T.INTEGER, reasons: { type: T.JSON, allowNull: false }, status: T.ENUM("new", "shared", "dismissed") }),
+    Notification: d("Notification", "notifications", { id: pk(), tenantId: tid(), userId: tid(), kind: s(40, false), title: s(200, false), body: s(500), entityType: s(40), entityId: uuid(), dedupeKey: s(120), readAt: T.DATE(3), createdAt: dt3() }, noTs2),
+    ReferralPartner: d("ReferralPartner", "referral_partners", { id: pk(), tenantId: tid(), name: s(160, false), kind: T.ENUM("broker", "developer", "bank", "corporate", "individual"), contactId: uuid(), feePct: T.DECIMAL(5, 2), status: T.ENUM("active", "inactive") }),
+    Referral: d("Referral", "referrals", {
+      id: pk(), tenantId: tid(), partnerId: tid(), leadId: tid(), dealId: uuid(), feePct: T.DECIMAL(5, 2), status: T.ENUM("submitted", "won", "paid", "void"), feeAmount: money(), currency: s(3, false),
+      settledAt: T.DATE(3), paidAt: T.DATE(3), note: s(500),
+    }),
+    Valuation: d("Valuation", "valuations", { id: pk(), tenantId: tid(), unitId: tid(), estimate: money(false), low: money(false), high: money(false), pricePerSqft: money(false), confidence: T.ENUM("low", "medium", "high"), comps: { type: T.JSON, allowNull: false }, method: s(80), createdBy: s(64), createdAt: dt3() }, noTs2),
+    AuthToken: d("AuthToken", "auth_tokens", { id: pk(), tenantId: tid(), userId: tid(), kind: T.ENUM("password_reset", "invite"), tokenHash: s(64, false), expiresAt: dt3(), usedAt: T.DATE(3), createdAt: dt3() }, noTs2),
+    ImportJob: d("ImportJob", "import_jobs", {
+      id: pk(), tenantId: tid(), kind: T.ENUM("contacts", "leads", "units"), filename: s(255, false), createdBy: tid(), status: T.ENUM("validated", "committed", "failed", "cancelled"),
+      totalRows: T.INTEGER, validRows: T.INTEGER, errorRows: T.INTEGER, committedRows: T.INTEGER, skippedRows: T.INTEGER, payload: T.JSON, errors: T.JSON, options: T.JSON,
     }),
   });
   cache.set(sq, m);

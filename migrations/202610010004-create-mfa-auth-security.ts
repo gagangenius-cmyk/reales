@@ -15,7 +15,7 @@ export async function up({ context: qi }: Ctx) {
   await qi.createTable("login_events", {
     id: id(), tenant_id: { ...uuid(true), references: { model: "tenants", key: "id" } },
     user_id: uuid(), email: str(254, true),
-    outcome: { type: DataTypes.ENUM("success", "bad_password", "unknown_user", "locked", "mfa_required", "mfa_failed", "disabled"), allowNull: false },
+    outcome: { type: DataTypes.ENUM("success", "bad_password", "unknown_user", "locked", "mfa_required", "mfa_failed", "disabled", "sso_success", "sso_required", "sso_failed"), allowNull: false },
     ip: str(64, true), user_agent: str(255, true),
     created_at: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
   });

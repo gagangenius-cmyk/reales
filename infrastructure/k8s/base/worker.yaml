@@ -1,0 +1,31 @@
+# The outbox dispatcher and queue consumers. Safe to run several replicas: the dispatcher claims rows with FOR UPDATE SKIP LOCKED.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reales-worker
+  labels: { app: reales-worker }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: reales-worker }
+  template:
+    metadata:
+      labels: { app: reales-worker }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: worker
+          image: reales
+          command: ["npm", "run", "worker"]
+          envFrom:
+            - configMapRef: { name: reales-config }
+            - secretRef: { name: reales-secrets }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 768Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }

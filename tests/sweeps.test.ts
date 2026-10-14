@@ -31,7 +31,7 @@ describe("deadline sweeps (scheduler)", () => {
     await sq().query("UPDATE reservations SET expires_at = DATE_SUB(NOW(), INTERVAL 1 HOUR) WHERE id=:id", { replacements: { id: res.id } });
 
     const other = await makeTenant(); // a second tenant must be swept independently and stay untouched
-    const results = await runSweeps(sq());
+    const results = await runSweeps(sq(), { tenantIds: [t.tenantId, other.tenantId] });
     const mine = results.find((r) => r.tenantId === t.tenantId)!;
     expect(mine).toMatchObject({ offersExpired: 1, reservationsExpired: 1, listingsUnpublished: 1 });
     expect(results.find((r) => r.tenantId === other.tenantId)).toMatchObject({ offersExpired: 0, reservationsExpired: 0, listingsUnpublished: 0 });
@@ -43,7 +43,7 @@ describe("deadline sweeps (scheduler)", () => {
     expect(await status("units", inv2.unit.id)).toBe("available");
     expect(await status("listings", listing.id)).toBe("unpublished");
 
-    const second = (await runSweeps(sq())).find((r) => r.tenantId === t.tenantId)!;
+    const second = (await runSweeps(sq(), { tenantIds: [t.tenantId] })).find((r) => r.tenantId === t.tenantId)!;
     expect(second).toMatchObject({ offersExpired: 0, reservationsExpired: 0, listingsUnpublished: 0 }); // idempotent
     const audit = await sq().query<{ actor_id: string }>("SELECT actor_id FROM audit_events WHERE tenant_id=:t AND action IN ('reservation.expired','listing.unpublished')", { replacements: { t: t.tenantId }, type: QueryTypes.SELECT });
     expect(audit.length).toBeGreaterThanOrEqual(2);

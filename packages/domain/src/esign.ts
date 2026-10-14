@@ -6,6 +6,7 @@ import { loadVersionBytes } from "./documents";
 import { completeMilestoneInUow, DEAL_SCOPE } from "./deals";
 import { getSignatureProvider, SignatureEvidence, SignatureWebhookEvent } from "./providers";
 import { plain, scopeWhere } from "./scope";
+import { assertProviderAllowed } from "./hardening";
 import { ConflictError, NotFoundError, Uow, withUow } from "./uow";
 import { normalizeEmail } from "./normalize";
 
@@ -36,6 +37,7 @@ export async function createEnvelope(sq: Sequelize, ctx: RequestContext, i: Crea
     if (new Set(emails).size !== emails.length) throw new ConflictError("Signers must have distinct email addresses");
     const provider = getSignatureProvider(i.provider ?? "mock");
     if (!provider) throw new ConflictError("Unknown signature provider");
+    await assertProviderAllowed(u, provider.code);
     const doc: any = await u.repo("Document").findById(i.documentId, { transaction: u.tx });
     if (!doc) throw new NotFoundError("Document");
     if (i.dealId) {
