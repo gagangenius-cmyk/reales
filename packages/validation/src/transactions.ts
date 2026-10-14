@@ -66,5 +66,12 @@ export const paymentListQuery = z.object({ ...page, status: z.enum(["pending", "
 export const commissionPlanSchema = z.object({
   name: z.string().min(1).max(120), dealType: z.enum(["sale", "lease"]), ratePct: z.number().gt(0).max(100),
   splits: z.array(z.object({ role: z.string().min(1).max(40), pct: z.number().gt(0).max(100) }).strict()).min(1).max(10),
+  agentType: z.enum(["any", "internal", "external"]).optional(), vatPct: z.number().min(0).max(30).optional(),
 }).strict();
+export const agentProfileSchema = z.object({
+  userId: z.string().uuid(), agentType: z.enum(["internal", "external"]), commissionPlanId: z.string().uuid().nullable().optional(),
+  brn: z.string().max(40).nullable().optional(), agencyName: z.string().max(160).nullable().optional(), agencyLicenceNo: z.string().max(60).nullable().optional(),
+  payoutNote: z.string().max(255).nullable().optional(), status: z.enum(["active", "inactive"]).optional(),
+}).strict();
+export const commissionPaySchema = z.object({ reference: z.string().min(1).max(120) }).strict();
 export const commissionListQuery = z.object({ ...page, status: z.enum(["calculated", "approved", "void"]).optional() });

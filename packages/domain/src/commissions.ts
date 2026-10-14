@@ -3,6 +3,7 @@ import { Op, Sequelize, WhereOptions } from "sequelize";
 import { mysqlDate, RequestContext } from "@reales/database";
 import { requireStepUp } from "@reales/auth";
 import { authorize } from "@reales/rbac";
+import { getAgentProfileIn } from "./agents";
 import { allocateByPct, fromMinor, toMinor } from "./money";
 import { plain, scopeWhere, ScopeColumns } from "./scope";
 import { ConflictError, NotFoundError, Uow, withUow } from "./uow";
@@ -16,13 +17,13 @@ export const COMMISSION_SCOPE: ScopeColumns = {
   alsoOwnedVia: (ctx) => `id IN (SELECT calculation_id FROM commission_splits WHERE tenant_id = '${ctx.tenantId.replace(/[^a-f0-9-]/gi, "")}' AND user_id = '${ctx.userId.replace(/[^a-f0-9-]/gi, "")}')`,
 };
 
-export async function createCommissionPlan(sq: Sequelize, ctx: RequestContext, i: { name: string; dealType: "sale" | "lease"; ratePct: number; splits: CommissionSplitInput[] }) {
+export async function createCommissionPlan(sq: Sequelize, ctx: RequestContext, i: { name: string; dealType: "sale" | "lease"; ratePct: number; splits: CommissionSplitInput[]; agentType?: "any" | "internal" | "external"; vatPct?: number }) {
   authorize(ctx, "commission.plan.manage");
   if (!(i.ratePct > 0 && i.ratePct <= 100)) throw new ConflictError("Rate must be between 0 and 100 percent");
   if (!i.splits.length || Math.abs(i.splits.reduce((a, s) => a + s.pct, 0) - 100) > 1e-9) throw new ConflictError("Splits must add up to exactly 100 percent");
   if (i.splits.some((s) => !(s.pct > 0))) throw new ConflictError("Every split needs a positive percentage");
   return withUow(sq, ctx, async (u) => {
-    const p = await u.repo("CommissionPlan").create({ id: randomUUID(), name: i.name, dealType: i.dealType, ratePct: i.ratePct, splits: i.splits, active: true }, { transaction: u.tx });
+    const p = await u.repo("CommissionPlan").create({ id: randomUUID(), name: i.name, dealType: i.dealType, ratePct: i.ratePct, splits: i.splits, active: true, agentType: i.agentType ?? "any", vatPct: i.vatPct ?? 5 }, { transaction: u.tx });
     await u.audit({ action: "commission_plan.created", entityType: "commission_plan", entityId: (p as any).get("id"), after: i });
     return plain(p);
   });
@@ -30,17 +31,25 @@ export async function createCommissionPlan(sq: Sequelize, ctx: RequestContext, i
 
 /** Called when a deal closes. The newest active plan for the deal type applies; no plan means no commission (not an error). */
 export async function calculateCommissionInUow(u: Uow, ctx: RequestContext, deal: any) {
-  const plans = await u.repo("CommissionPlan").findAll({ where: { dealType: deal.get("dealType"), active: true }, order: [["createdAt", "DESC"]], transaction: u.tx });
-  const plan: any = plans[0];
+  // Plan choice: the agent's pinned plan, else the newest active plan for this deal type that targets the agent's type (or "any").
+  const profile: any = await getAgentProfileIn(u, deal.get("agentUserId"));
+  const agentType: "internal" | "external" = profile?.get("agentType") ?? "internal";
+  let plan: any = profile?.get("commissionPlanId") ? await u.repo("CommissionPlan").findOne({ where: { id: profile.get("commissionPlanId"), active: true }, transaction: u.tx }) : null;
+  if (!plan) {
+    const plans = await u.repo("CommissionPlan").findAll({ where: { dealType: deal.get("dealType"), active: true, agentType: { [Op.in]: [agentType, "any"] } }, order: [["createdAt", "DESC"]], transaction: u.tx });
+    // A plan written for this agent type beats a generic one.
+    plan = (plans as any[]).find((p) => p.get("agentType") === agentType) ?? plans[0];
+  }
   if (!plan) return null;
   const gross = toMinor(deal.get("amount"));
   const commission = Math.round((gross * Number(plan.get("ratePct"))) / 100);
+  const vat = Math.round((commission * Number(plan.get("vatPct") ?? 5)) / 100);
   const splits = (typeof plan.get("splits") === "string" ? JSON.parse(plan.get("splits")) : plan.get("splits")) as CommissionSplitInput[];
   const parts = allocateByPct(commission, splits.map((s) => s.pct));
   const id = randomUUID();
   await u.repo("CommissionCalculation").create({
     id, dealId: deal.get("id"), planId: plan.get("id"), agentUserId: deal.get("agentUserId"), branchId: deal.get("branchId"),
-    grossAmount: fromMinor(gross), commissionAmount: fromMinor(commission), currency: deal.get("currency"), status: "calculated", calculatedAt: mysqlDate(new Date()),
+    grossAmount: fromMinor(gross), commissionAmount: fromMinor(commission), vatAmount: fromMinor(vat), agentType, currency: deal.get("currency"), status: "calculated", calculatedAt: mysqlDate(new Date()),
   }, { transaction: u.tx });
   for (const [idx, s] of splits.entries()) {
     await u.repo("CommissionSplit").create({
@@ -62,6 +71,23 @@ export async function approveCommission(sq: Sequelize, ctx: RequestContext, id: 
     await u.repo("CommissionCalculation").updateById(id, { status: "approved", approvedBy: ctx.userId, approvedAt: new Date() }, { transaction: u.tx });
     await u.audit({ action: "commission.approved", entityType: "commission", entityId: id, after: { amount: c.get("commissionAmount"), dealId: c.get("dealId") } });
     await u.emit({ type: "commission.approved", aggregateType: "deal", aggregateId: c.get("dealId"), payload: { calculationId: id } });
+    return plain(await u.repo("CommissionCalculation").findById(id, { transaction: u.tx }));
+  });
+}
+
+/** Records the payout of an approved commission (bank transfer reference). Needs commission.approve and a fresh second factor. */
+export async function markCommissionPaid(sq: Sequelize, ctx: RequestContext, id: string, reference: string) {
+  authorize(ctx, "commission.approve");
+  requireStepUp(ctx);
+  if (!reference.trim()) throw new ConflictError("A payment reference is required");
+  return withUow(sq, ctx, async (u) => {
+    const c: any = await u.repo("CommissionCalculation").findById(id, { transaction: u.tx });
+    if (!c) throw new NotFoundError("Commission");
+    if (c.get("status") !== "approved") throw new ConflictError("Only an approved commission can be paid");
+    if (c.get("paidAt")) throw new ConflictError("This commission is already paid");
+    await u.repo("CommissionCalculation").updateById(id, { paidAt: new Date(), paidBy: ctx.userId, paidReference: reference.trim() }, { transaction: u.tx });
+    await u.audit({ action: "commission.paid", entityType: "commission", entityId: id, after: { reference: reference.trim(), amount: c.get("commissionAmount") } });
+    await u.emit({ type: "commission.paid", aggregateType: "deal", aggregateId: c.get("dealId"), payload: { calculationId: id } });
     return plain(await u.repo("CommissionCalculation").findById(id, { transaction: u.tx }));
   });
 }

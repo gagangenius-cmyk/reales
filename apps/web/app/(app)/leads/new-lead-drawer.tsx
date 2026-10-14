@@ -75,83 +75,111 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
     router.refresh();
   }
 
+  const Field = ({ title, children, span }: { title: string; children: React.ReactNode; span?: boolean }) => (
+    <label className={`flex flex-col gap-1.5 ${span ? "sm:col-span-2" : ""}`}><span className="text-xs font-medium muted">{title}</span>{children}</label>
+  );
+  const Section = ({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) => (
+    <section className="rounded-xl border p-5" style={{ borderColor: "var(--border)" }}>
+      <header className="mb-4 flex items-center gap-3">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "var(--accent)" }}>{n}</span>
+        <div><h3 className="font-semibold leading-tight">{title}</h3>{hint && <p className="muted text-xs">{hint}</p>}</div>
+      </header>
+      {children}
+    </section>
+  );
+  const initials = (c: Contact) => label(c).split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
+
   return (
     <>
       <button className="btn" onClick={() => { setOpen(true); setMsg(null); }}>+ Add lead</button>
       {open && (
         <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Add lead">
-          <button className="absolute inset-0 bg-black/40" aria-label="Close" tabIndex={-1} onClick={() => setOpen(false)} />
-          <form onSubmit={submit} className="relative flex h-full w-full max-w-md flex-col gap-4 overflow-y-auto p-5 shadow-xl" style={{ background: "var(--card)" }}>
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Add lead</h2>
-              <button type="button" ref={first} className="btn-ghost text-sm" onClick={() => setOpen(false)}>Close</button>
-            </div>
+          <style>{`@keyframes drawer-in{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}@media (prefers-reduced-motion:no-preference){.drawer-panel{animation:drawer-in .18s ease-out}}`}</style>
+          <button className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" aria-label="Close" tabIndex={-1} onClick={() => setOpen(false)} />
+          <form onSubmit={submit} className="drawer-panel relative flex h-full w-full max-w-3xl flex-col shadow-2xl" style={{ background: "var(--bg, var(--card))" }}>
+            <header className="flex items-start justify-between gap-4 border-b px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
+              <div><h2 className="text-xl font-semibold">Add lead</h2><p className="muted text-sm">Capture the contact, then say where the lead came from and who owns it.</p></div>
+              <button type="button" ref={first} className="btn-ghost text-sm" onClick={() => setOpen(false)} aria-label="Close drawer">&#10005;</button>
+            </header>
 
-            <fieldset className="flex flex-col gap-3">
-              <legend className="mb-1 font-semibold">Contact</legend>
-              <div className="flex gap-2 text-sm">
-                <button type="button" className={mode === "new" ? "btn" : "btn-ghost"} onClick={() => setMode("new")}>New contact</button>
-                {canReadContacts && <button type="button" className={mode === "existing" ? "btn" : "btn-ghost"} onClick={() => setMode("existing")}>Existing contact</button>}
-              </div>
-              {mode === "new" ? (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input className="input" placeholder="First name" value={f.firstName} onChange={set("firstName")} aria-label="First name" />
-                    <input className="input" placeholder="Last name" value={f.lastName} onChange={set("lastName")} aria-label="Last name" />
-                    <input className="input" placeholder="Phone (+971...)" value={f.phone} onChange={set("phone")} aria-label="Phone" />
-                    <input className="input" type="email" placeholder="Email" value={f.email} onChange={set("email")} aria-label="Email" />
-                    <input className="input" placeholder="Nationality" value={f.nationality} onChange={set("nationality")} aria-label="Nationality" />
-                    <select className="input" value={f.contactLanguage} onChange={set("contactLanguage")} aria-label="Contact language"><option value="en">English</option><option value="ar">Arabic</option></select>
-                  </div>
-                  <p className="muted text-xs">If the email or phone already belongs to a contact, that contact is reused instead of creating a duplicate.</p>
-                </>
-              ) : picked ? (
-                <div className="card flex items-center justify-between p-3 text-sm">
-                  <span>{label(picked)}<br /><span className="muted text-xs">{picked.email ?? picked.phoneE164 ?? ""}</span></span>
-                  <button type="button" className="btn-ghost text-xs" onClick={() => setPicked(null)}>Change</button>
+            <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
+              <Section n={1} title="Contact" hint="Who is enquiring? Matching email or phone reuses the existing contact.">
+                <div className="mb-4 inline-flex rounded-lg border p-0.5 text-sm" style={{ borderColor: "var(--border)" }} role="tablist">
+                  <button type="button" role="tab" aria-selected={mode === "new"} className={`rounded-md px-3 py-1.5 ${mode === "new" ? "btn" : ""}`} onClick={() => setMode("new")}>New contact</button>
+                  {canReadContacts && <button type="button" role="tab" aria-selected={mode === "existing"} className={`rounded-md px-3 py-1.5 ${mode === "existing" ? "btn" : ""}`} onClick={() => setMode("existing")}>Existing contact</button>}
                 </div>
-              ) : (
-                <>
-                  <input className="input" placeholder="Search name, email or phone" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search contacts" autoComplete="off" />
-                  <ul className="flex flex-col gap-1 text-sm">
-                    {found.map((c) => <li key={c.id}><button type="button" className="btn-ghost w-full text-left" onClick={() => setPicked(c)}>{label(c)} <span className="muted text-xs">{c.email ?? c.phoneE164 ?? ""}</span></button></li>)}
-                    {q.trim().length >= 2 && found.length === 0 && <li className="muted">No matching contacts.</li>}
-                  </ul>
-                </>
-              )}
-            </fieldset>
+                {mode === "new" ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field title="First name"><input className="input" value={f.firstName} onChange={set("firstName")} autoComplete="off" /></Field>
+                    <Field title="Last name"><input className="input" value={f.lastName} onChange={set("lastName")} autoComplete="off" /></Field>
+                    <Field title="Phone"><input className="input" inputMode="tel" placeholder="+971 50 123 4567" value={f.phone} onChange={set("phone")} autoComplete="off" /></Field>
+                    <Field title="Email"><input className="input" type="email" placeholder="name@example.com" value={f.email} onChange={set("email")} autoComplete="off" /></Field>
+                    <Field title="Nationality"><input className="input" value={f.nationality} onChange={set("nationality")} /></Field>
+                    <Field title="Contact language"><select className="input" value={f.contactLanguage} onChange={set("contactLanguage")}><option value="en">English</option><option value="ar">Arabic</option></select></Field>
+                  </div>
+                ) : picked ? (
+                  <div className="flex items-center justify-between rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: "var(--accent)" }}>{initials(picked)}</span>
+                      <div><p className="font-medium">{label(picked)}</p><p className="muted text-xs">{[picked.email, picked.phoneE164].filter(Boolean).join(" - ")}</p></div>
+                    </div>
+                    <button type="button" className="btn-ghost text-xs" onClick={() => setPicked(null)}>Change</button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <input className="input" placeholder="Search by name, email or phone (2+ characters)" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search contacts" autoComplete="off" autoFocus />
+                    <ul className="flex flex-col gap-1 text-sm">
+                      {found.map((c) => (
+                        <li key={c.id}><button type="button" className="flex w-full items-center gap-3 rounded-lg border p-2.5 text-left hover:opacity-80" style={{ borderColor: "var(--border)" }} onClick={() => setPicked(c)}>
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/10 text-xs font-bold">{initials(c)}</span>
+                          <span>{label(c)}<br /><span className="muted text-xs">{[c.email, c.phoneE164].filter(Boolean).join(" - ")}</span></span>
+                        </button></li>
+                      ))}
+                      {q.trim().length >= 2 && found.length === 0 && <li className="muted p-2">No matching contacts. Use "New contact" to create one.</li>}
+                    </ul>
+                  </div>
+                )}
+              </Section>
 
-            <fieldset className="flex flex-col gap-3">
-              <legend className="mb-1 font-semibold">Lead</legend>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="text-sm">Lead status<select className="input mt-1" value={f.stageId} onChange={set("stageId")}><option value="">{stages[0]?.name ?? "New"} (default)</option>{stages.slice(1).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-                <label className="text-sm">Source<select className="input mt-1" value={f.sourceCode} onChange={set("sourceCode")}>{sources.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}</select></label>
-                <label className="text-sm">Campaign<input className="input mt-1" list="lead-campaigns" value={f.campaign} onChange={set("campaign")} placeholder="e.g. Instagram Ramadan" /><datalist id="lead-campaigns">{campaigns.map((c) => <option key={c} value={c} />)}</datalist></label>
-                <label className="text-sm">Assign to
-                  <select className="input mt-1" value={f.assignedUserId || defaultOwner} onChange={set("assignedUserId")} disabled={users.length === 1}>
-                    {users.length !== 1 && <option value="">Auto-assign (routing rules)</option>}
-                    {users.map((u) => <option key={u.id} value={u.id}>{u.email}{u.id === meId ? " (me)" : ""}</option>)}
-                  </select>
-                </label>
-                <label className="col-span-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={f.isHot} onChange={(e) => setF({ ...f, isHot: e.target.checked })} /> Hot lead (needs a fast response)</label>
-              </div>
-              <details>
-                <summary className="cursor-pointer text-sm font-semibold">More details (purpose, budget, project, areas)</summary>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <label className="text-sm">Purpose<select className="input mt-1" value={f.purpose} onChange={set("purpose")}><option value="buy">Buy</option><option value="rent">Rent</option><option value="invest">Invest</option><option value="off_plan">Off-plan</option></select></label>
-                  <label className="text-sm">Language<select className="input mt-1" value={f.language} onChange={set("language")}><option value="en">English</option><option value="ar">Arabic</option></select></label>
-                  <label className="col-span-2 text-sm">Project (optional)<select className="input mt-1" value={f.projectId} onChange={set("projectId")}><option value="">None</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-                  <label className="text-sm">Budget min<input className="input mt-1" type="number" min="0" value={f.budgetMin} onChange={set("budgetMin")} /></label>
-                  <label className="text-sm">Budget max<input className="input mt-1" type="number" min="0" value={f.budgetMax} onChange={set("budgetMax")} /></label>
-                  <label className="text-sm">Currency<select className="input mt-1" value={f.currency} onChange={set("currency")}><option>AED</option><option>USD</option><option>EUR</option><option>GBP</option></select></label>
-                  <label className="text-sm">Bedrooms<input className="input mt-1" type="number" min="0" max="20" value={f.bedrooms} onChange={set("bedrooms")} /></label>
-                  <label className="col-span-2 text-sm">Preferred areas (comma separated)<input className="input mt-1" value={f.areas} onChange={set("areas")} placeholder="Dubai Marina, Downtown" /></label>
+              <Section n={2} title="Lead" hint="Status, origin and ownership.">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field title="Lead status"><select className="input" value={f.stageId} onChange={set("stageId")}><option value="">{stages[0]?.name ?? "New"}</option>{stages.slice(1).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
+                  <Field title="Source"><select className="input" value={f.sourceCode} onChange={set("sourceCode")}>{sources.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}</select></Field>
+                  <Field title="Campaign"><input className="input" list="lead-campaigns" value={f.campaign} onChange={set("campaign")} placeholder="e.g. Instagram Ramadan" /><datalist id="lead-campaigns">{campaigns.map((c) => <option key={c} value={c} />)}</datalist></Field>
+                  <Field title="Assign to">
+                    <select className="input" value={f.assignedUserId || defaultOwner} onChange={set("assignedUserId")} disabled={users.length === 1}>
+                      {users.length !== 1 && <option value="">Auto-assign (routing rules)</option>}
+                      {users.map((u) => <option key={u.id} value={u.id}>{u.email}{u.id === meId ? " (me)" : ""}</option>)}
+                    </select>
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <button type="button" role="switch" aria-checked={f.isHot} onClick={() => setF({ ...f, isHot: !f.isHot })} className="flex w-full items-center justify-between rounded-lg border p-3 text-left" style={{ borderColor: f.isHot ? "var(--accent)" : "var(--border)" }}>
+                      <span><span className="font-medium">&#9650; Hot lead</span><br /><span className="muted text-xs">Flag for a fast response; shown first in the list.</span></span>
+                      <span className="relative inline-block h-6 w-11 rounded-full" style={{ background: f.isHot ? "var(--accent)" : "rgba(128,128,128,.4)" }}><span className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all" style={{ left: f.isHot ? "1.375rem" : "0.125rem" }} /></span>
+                    </button>
+                  </div>
+                </div>
+              </Section>
+
+              <details className="rounded-xl border" style={{ borderColor: "var(--border)" }}>
+                <summary className="cursor-pointer px-5 py-4 font-semibold">Requirements <span className="muted text-xs font-normal">(optional: purpose, budget, project, areas)</span></summary>
+                <div className="grid gap-4 border-t p-5 sm:grid-cols-2" style={{ borderColor: "var(--border)" }}>
+                  <Field title="Purpose"><select className="input" value={f.purpose} onChange={set("purpose")}><option value="buy">Buy</option><option value="rent">Rent</option><option value="invest">Invest</option><option value="off_plan">Off-plan</option></select></Field>
+                  <Field title="Lead language"><select className="input" value={f.language} onChange={set("language")}><option value="en">English</option><option value="ar">Arabic</option></select></Field>
+                  <Field title="Project" span><select className="input" value={f.projectId} onChange={set("projectId")}><option value="">None</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                  <Field title="Budget min"><input className="input" type="number" min="0" value={f.budgetMin} onChange={set("budgetMin")} /></Field>
+                  <Field title="Budget max"><input className="input" type="number" min="0" value={f.budgetMax} onChange={set("budgetMax")} /></Field>
+                  <Field title="Currency"><select className="input" value={f.currency} onChange={set("currency")}><option>AED</option><option>USD</option><option>EUR</option><option>GBP</option></select></Field>
+                  <Field title="Bedrooms"><input className="input" type="number" min="0" max="20" value={f.bedrooms} onChange={set("bedrooms")} /></Field>
+                  <Field title="Preferred areas (comma separated)" span><input className="input" value={f.areas} onChange={set("areas")} placeholder="Dubai Marina, Downtown" /></Field>
                 </div>
               </details>
-            </fieldset>
+            </div>
 
-            {msg && <p role={msg.ok ? "status" : "alert"} className={`${msg.ok ? "muted" : "err"} text-sm`}>{msg.text}</p>}
-            <div className="mt-auto flex gap-2"><button className="btn" disabled={busy}>{busy ? "Saving..." : "Add lead"}</button><button type="button" className="btn-ghost" onClick={() => setOpen(false)}>Done</button></div>
+            <footer className="flex items-center justify-between gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
+              <p role={msg?.ok ? "status" : "alert"} className={`min-w-0 flex-1 text-sm ${msg?.ok ? "muted" : "err"}`}>{msg?.text}</p>
+              <div className="flex shrink-0 gap-2"><button type="button" className="btn-ghost" onClick={() => setOpen(false)}>Close</button><button className="btn" disabled={busy}>{busy ? "Saving..." : "Add lead"}</button></div>
+            </footer>
           </form>
         </div>
       )}

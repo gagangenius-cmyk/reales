@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { QueryTypes } from "sequelize";
 import { getSequelize } from "@reales/database";
@@ -6,6 +5,7 @@ import { countMyUnread } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { LogoutButton } from "./logout-button";
+import { SidebarNav } from "./sidebar-nav";
 import { LanguageSwitch } from "@/components/language-switch";
 import { getLang, translate } from "@/lib/i18n";
 
@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (ctx.grants.length > 0 && ctx.grants.every((g) => g.permission === "portal.access")) redirect("/portal");
   const [t] = await getSequelize().query<{ name: string; jurisdiction: string }>("SELECT name, jurisdiction FROM tenants WHERE id=:t", { replacements: { t: ctx.tenantId }, type: QueryTypes.SELECT });
   const unread = await countMyUnread(getSequelize(), ctx).catch(() => 0);
-  const nav = [
+  const flat = [
     { href: "/notifications", label: unread ? `Notifications (${unread})` : "Notifications", show: true },
     { href: "/dashboard", label: "Dashboard", show: true },
     { href: "/calendar", label: "Calendar", show: true },
@@ -49,19 +49,28 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/settings", label: "Settings", show: hasPermission(ctx, "sso.manage") || hasPermission(ctx, "dataprocessing.manage") || hasPermission(ctx, "usage.read") },
     { href: "/audit", label: "Audit log", show: hasPermission(ctx, "audit.read") },
   ].filter((n) => n.show);
+  const byHref = new Map(flat.map((n) => [n.href, n]));
+  const groupDefs: Record<string, string[]> = {"Overview": ["/dashboard", "/notifications", "/calendar", "/tasks"], "Sales": ["/leads", "/contacts", "/viewings", "/deals", "/searches", "/referrals", "/valuation"], "Inventory": ["/inventory", "/listings", "/projects"], "Marketing": ["/inbox", "/templates", "/campaigns", "/bots", "/automation"], "Property management": ["/portfolios", "/leases", "/maintenance", "/inspections"], "Finance": ["/finance"], "Compliance": ["/compliance"], "Administration": ["/organization", "/users", "/portal-access", "/imports", "/settings", "/audit"]};
+  const groups = Object.entries(groupDefs).map(([title, hrefs]) => ({
+    title: translate(lang, title),
+    items: hrefs.map((h) => byHref.get(h)).filter((n): n is NonNullable<typeof n> => !!n).map((n) => ({ href: n.href, label: translate(lang, n.href === "/notifications" ? "Notifications" : n.label), count: n.href === "/notifications" ? unread : undefined })),
+  }));
   return (
-    <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-6 md:flex-row">
-      <aside className="md:w-56">
-        <div className="mb-4">
-          <p className="font-semibold">{t?.name}</p>
-          <p className="muted text-xs">{t?.jurisdiction}</p>
+    <div className="shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="logo">R</span>
+          <div className="min-w-0"><p className="truncate font-semibold text-white">{t?.name ?? "Reales"}</p><p className="truncate text-xs opacity-60">{t?.jurisdiction}</p></div>
         </div>
-        <nav className="flex flex-wrap gap-2 md:flex-col" aria-label="Main">
-          {nav.map((n) => <Link key={n.href} href={n.href} className="btn-ghost text-sm">{n.href === "/notifications" && unread ? `${translate(lang, "Notifications")} (${unread})` : translate(lang, n.label)}</Link>)}
-        </nav>
-        <div className="mt-6 flex flex-wrap gap-2"><LogoutButton /><LanguageSwitch lang={lang} /></div>
+        <SidebarNav groups={groups} />
       </aside>
-      <main className="min-w-0 flex-1">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="topbar">
+          <p className="muted text-sm">Reales CRM</p>
+          <div className="flex items-center gap-2"><LanguageSwitch lang={lang} /><LogoutButton /></div>
+        </header>
+        <main className="content">{children}</main>
+      </div>
     </div>
   );
 }

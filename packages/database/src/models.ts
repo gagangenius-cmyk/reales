@@ -69,7 +69,7 @@ export interface Models {
   Viewing: M; ViewingFeedback: M; Offer: M; OfferRevision: M; Reservation: M; Deal: M; DealStageEvent: M; DealParty: M; DealMilestone: M;
   Document: M; DocumentVersion: M; DocumentLink: M; SignatureEnvelope: M; SignatureSigner: M; SignatureEvent: M;
   Counter: M; Invoice: M; InvoiceLine: M; Payment: M; PaymentAllocation: M; Receipt: M; WebhookEvent: M;
-  CommissionPlan: M; CommissionCalculation: M; CommissionSplit: M;
+  CommissionPlan: M; CommissionCalculation: M; CommissionSplit: M; AgentProfile: M;
   ChannelAccount: M; Conversation: M; Message: M; MessageEvent: M; Template: M; TemplateVersion: M;
   Segment: M; Campaign: M; CampaignRecipient: M; CampaignEvent: M;
   Workflow: M; WorkflowVersion: M; WorkflowRun: M; WorkflowStep: M; WorkflowWait: M;
@@ -319,10 +319,12 @@ export function initModels(sq: Sequelize): Models {
       id: pk(), tenantId: uuid(), provider: s(40, false), kind: s(20, false), eventId: s(160, false), rawBody: { type: T.TEXT("medium"), allowNull: false }, signatureValid: T.BOOLEAN,
       status: T.ENUM("received", "processed", "failed", "ignored"), error: T.TEXT, receivedAt: dt3(), processedAt: T.DATE(3),
     }, noTs2),
-    CommissionPlan: d("CommissionPlan", "commission_plans", { id: pk(), tenantId: tid(), name: s(120, false), dealType: T.ENUM("sale", "lease"), ratePct: T.DECIMAL(6, 3), splits: { type: T.JSON, allowNull: false }, active: T.BOOLEAN }),
+    CommissionPlan: d("CommissionPlan", "commission_plans", { id: pk(), tenantId: tid(), name: s(120, false), dealType: T.ENUM("sale", "lease"), ratePct: T.DECIMAL(6, 3), splits: { type: T.JSON, allowNull: false }, active: T.BOOLEAN, agentType: T.ENUM("any", "internal", "external"), vatPct: T.DECIMAL(5, 2) }),
+    AgentProfile: d("AgentProfile", "agent_profiles", { id: pk(), tenantId: tid(), userId: tid(), agentType: T.ENUM("internal", "external"), commissionPlanId: uuid(), brn: s(40), agencyName: s(160), agencyLicenceNo: s(60), payoutNote: s(255), status: T.ENUM("active", "inactive") }),
     CommissionCalculation: d("CommissionCalculation", "commission_calculations", {
       id: pk(), tenantId: tid(), dealId: tid(), planId: tid(), agentUserId: uuid(), branchId: uuid(), grossAmount: money(false), commissionAmount: money(false), currency: s(3, false),
       status: T.ENUM("calculated", "approved", "void"), approvedBy: s(64), approvedAt: T.DATE(3), calculatedAt: dt3(),
+      agentType: T.ENUM("internal", "external"), vatAmount: money(false), paidAt: T.DATE(3), paidBy: s(64), paidReference: s(120),
     }),
     CommissionSplit: d("CommissionSplit", "commission_splits", { id: pk(), tenantId: tid(), calculationId: tid(), role: s(40, false), userId: uuid(), pct: T.DECIMAL(6, 3), amount: money(false) }),
   });
