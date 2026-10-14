@@ -1,3 +1,4 @@
+import * as mysql2 from "mysql2";
 import { Sequelize } from "sequelize";
 import { logger } from "@reales/observability";
 
@@ -28,6 +29,8 @@ export function createSequelize(cfg: DbConfig = dbConfigFromEnv(process.env.NODE
     host: cfg.host,
     port: cfg.port,
     dialect: "mysql",
+    // Sequelize normally loads the driver with a dynamic require that serverless bundlers cannot trace ("Please install mysql2 package manually").
+    dialectModule: mysql2,
     timezone: "+00:00",
     logging: process.env.DB_LOG === "1" ? (sql) => logger.debug({ sql }) : false,
     pool: { max: cfg.poolMax ?? 10, min: 0, idle: 10000 },
