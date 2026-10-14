@@ -12,7 +12,7 @@ const ICONS: Record<string, LucideIcon> = {
   "/inventory": Building2, "/listings": Home, "/searches": Search, "/valuation": Calculator, "/referrals": Handshake, "/viewings": Eye, "/inbox": Inbox,
   "/templates": FileText, "/campaigns": Megaphone, "/broadcasts": Megaphone, "/bots": Bot, "/automation": Workflow, "/deals": FileSignature, "/finance": Wallet,
   "/portfolios": Briefcase, "/leases": KeyRound, "/maintenance": Wrench, "/compliance": ShieldCheck, "/inspections": ClipboardCheck, "/projects": FolderKanban,
-  "/organization": Network, "/portal-access": UserCog, "/imports": Upload, "/users": UserCog, "/settings": Settings, "/audit": ScrollText, "/availability": CalendarDays,
+  "/organization": Network, "/portal-access": UserCog, "/imports": Upload, "/users": UserCog, "/settings": Settings, "/audit": ScrollText, "/availability": CalendarDays, "/roles": KeyRound, "/agents": UserCog, "/commissions": Wallet,
 };
 
 export type NavGroup = { title: string; items: { href: string; label: string; count?: number }[] };

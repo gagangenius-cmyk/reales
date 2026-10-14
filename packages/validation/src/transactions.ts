@@ -75,3 +75,11 @@ export const agentProfileSchema = z.object({
 }).strict();
 export const commissionPaySchema = z.object({ reference: z.string().min(1).max(120) }).strict();
 export const commissionListQuery = z.object({ ...page, status: z.enum(["calculated", "approved", "void"]).optional() });
+
+// ---- roles and permissions
+const grantSchema = z.object({ permission: z.string().min(1).max(100), scope: z.enum(["tenant", "business_unit", "branch", "project", "portfolio", "own_records"]) }).strict();
+export const createRoleSchema = z.object({
+  name: z.string().trim().min(2).max(120), requiresMfa: z.boolean().optional(),
+  grants: z.array(grantSchema).max(400).default([]), copyFromRoleId: z.string().uuid().optional(),
+}).strict();
+export const setRoleGrantsSchema = z.object({ grants: z.array(grantSchema).max(400), name: z.string().trim().min(2).max(120).optional(), requiresMfa: z.boolean().optional() }).strict();
