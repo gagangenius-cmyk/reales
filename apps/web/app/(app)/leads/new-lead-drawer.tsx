@@ -6,8 +6,9 @@ import { errMsg, postJson } from "@/lib/client";
 
 type Contact = { id: string; firstName?: string | null; lastName?: string | null; companyName?: string | null; email?: string | null; phoneE164?: string | null };
 type Opt = { id?: string; code?: string; name: string };
+const tagList = (s: string) => s.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 20);
 const label = (c: Contact) => [c.firstName, c.lastName].filter(Boolean).join(" ") || c.companyName || c.email || c.phoneE164 || "Unnamed";
-const empty = { stageId: "", assignedUserId: "", campaign: "", isHot: false, firstName: "", lastName: "", phone: "", email: "", contactLanguage: "en", nationality: "", purpose: "buy", sourceCode: "walk_in", projectId: "", budgetMin: "", budgetMax: "", currency: "AED", bedrooms: "", areas: "", language: "en" };
+const empty = { salutation: "", gender: "", dateOfBirth: "", jobTitle: "", employer: "", phoneSecondary: "", whatsapp: "", city: "", country: "", residency: "", preferredChannel: "", preferredContactTime: "", contactNotes: "", contactTags: "", financing: "", purchaseTimeline: "", propertyTypes: [] as string[], leadTags: "", leadNotes: "", nextFollowUpAt: "", expectedCloseDate: "", stageId: "", assignedUserId: "", campaign: "", isHot: false, firstName: "", lastName: "", phone: "", email: "", contactLanguage: "en", nationality: "", purpose: "buy", sourceCode: "walk_in", projectId: "", budgetMin: "", budgetMax: "", currency: "AED", bedrooms: "", areas: "", language: "en" };
 
 export function NewLeadDrawer({ sources, projects, canReadContacts, stages, users, campaigns, meId }: { sources: Opt[]; projects: Opt[]; canReadContacts: boolean; stages: Opt[]; users: { id: string; email: string }[]; campaigns: string[]; meId: string }) {
   const router = useRouter();
@@ -20,7 +21,7 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const first = useRef<HTMLButtonElement>(null);
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   const defaultOwner = users.length === 1 ? users[0]!.id : "";
 
   useEffect(() => {
@@ -48,6 +49,13 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
     setMsg(null);
     const lead: Record<string, unknown> = { purpose: f.purpose, sourceCode: f.sourceCode, currency: f.currency, language: f.language, isHot: f.isHot };
     if (f.stageId) lead.stageId = f.stageId;
+    if (f.financing) lead.financing = f.financing;
+    if (f.purchaseTimeline) lead.purchaseTimeline = f.purchaseTimeline;
+    if (f.propertyTypes.length) lead.propertyTypes = f.propertyTypes;
+    if (tagList(f.leadTags).length) lead.tags = tagList(f.leadTags);
+    if (f.leadNotes.trim()) lead.notes = f.leadNotes.trim();
+    if (f.nextFollowUpAt) lead.nextFollowUpAt = new Date(`${f.nextFollowUpAt}:00+04:00`).toISOString();
+    if (f.expectedCloseDate) lead.expectedCloseDate = f.expectedCloseDate;
     if (f.campaign.trim()) lead.campaign = f.campaign.trim();
     if (f.assignedUserId || defaultOwner) lead.assignedUserId = f.assignedUserId || defaultOwner;
     if (f.projectId) lead.projectId = f.projectId;
@@ -61,7 +69,9 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
       if (!picked) return setMsg({ ok: false, text: "Choose a contact to attach." });
       lead.contactId = picked.id;
     } else {
-      const contact = Object.fromEntries(Object.entries({ firstName: f.firstName, lastName: f.lastName, phone: f.phone, email: f.email, language: f.contactLanguage, nationality: f.nationality }).filter(([, v]) => v.trim()));
+      const contact: Record<string, unknown> = Object.fromEntries(Object.entries({ firstName: f.firstName, lastName: f.lastName, phone: f.phone, email: f.email, language: f.contactLanguage, nationality: f.nationality, salutation: f.salutation, gender: f.gender, dateOfBirth: f.dateOfBirth, jobTitle: f.jobTitle, employer: f.employer, phoneSecondary: f.phoneSecondary, whatsapp: f.whatsapp, city: f.city, country: f.country, residency: f.residency, preferredChannel: f.preferredChannel, preferredContactTime: f.preferredContactTime, notes: f.contactNotes }).filter(([, v]) => v.trim()));
+      const ctags = tagList(f.contactTags);
+      if (ctags.length) contact.tags = ctags;
       if (!f.firstName.trim() && !f.phone.trim() && !f.email.trim()) return setMsg({ ok: false, text: "Enter a name, phone or email for the contact." });
       lead.contact = contact;
     }
@@ -116,6 +126,25 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
                     <Field title="Email"><input className="input" type="email" placeholder="name@example.com" value={f.email} onChange={set("email")} autoComplete="off" /></Field>
                     <Field title="Nationality"><input className="input" value={f.nationality} onChange={set("nationality")} /></Field>
                     <Field title="Contact language"><select className="input" value={f.contactLanguage} onChange={set("contactLanguage")}><option value="en">English</option><option value="ar">Arabic</option></select></Field>
+                    <details className="sm:col-span-2 rounded-lg border" style={{ borderColor: "var(--border)" }}>
+                      <summary className="cursor-pointer px-3 py-2.5 text-sm font-semibold">More about this person <span className="muted text-xs font-normal">(title, ID details, work, address, contact preferences)</span></summary>
+                      <div className="grid gap-4 border-t p-3 sm:grid-cols-2" style={{ borderColor: "var(--border)" }}>
+                        <Field title="Salutation"><select className="input" value={f.salutation} onChange={set("salutation")}><option value="">-</option>{["Mr", "Mrs", "Ms", "Dr", "Eng", "Sheikh", "Sheikha"].map((x) => <option key={x}>{x}</option>)}</select></Field>
+                        <Field title="Gender"><select className="input" value={f.gender} onChange={set("gender")}><option value="">-</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></Field>
+                        <Field title="Date of birth"><input className="input" type="date" value={f.dateOfBirth} onChange={set("dateOfBirth")} /></Field>
+                        <Field title="UAE residency"><select className="input" value={f.residency} onChange={set("residency")}><option value="">-</option><option value="uae_resident">UAE resident</option><option value="non_resident">Non-resident</option></select></Field>
+                        <Field title="Job title"><input className="input" value={f.jobTitle} onChange={set("jobTitle")} /></Field>
+                        <Field title="Employer / company"><input className="input" value={f.employer} onChange={set("employer")} /></Field>
+                        <Field title="Second phone"><input className="input" inputMode="tel" value={f.phoneSecondary} onChange={set("phoneSecondary")} /></Field>
+                        <Field title="WhatsApp number (if different)"><input className="input" inputMode="tel" value={f.whatsapp} onChange={set("whatsapp")} /></Field>
+                        <Field title="City"><input className="input" value={f.city} onChange={set("city")} /></Field>
+                        <Field title="Country"><input className="input" value={f.country} onChange={set("country")} /></Field>
+                        <Field title="Prefers to be contacted by"><select className="input" value={f.preferredChannel} onChange={set("preferredChannel")}><option value="">No preference</option><option value="phone">Phone call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="sms">SMS</option></select></Field>
+                        <Field title="Best time to reach"><input className="input" value={f.preferredContactTime} onChange={set("preferredContactTime")} placeholder="Weekdays after 6pm" /></Field>
+                        <Field title="Tags (comma separated)" span><input className="input" value={f.contactTags} onChange={set("contactTags")} placeholder="investor, golden-visa" /></Field>
+                        <Field title="Notes about the person" span><textarea className="input min-h-20" value={f.contactNotes} onChange={set("contactNotes")} /></Field>
+                      </div>
+                    </details>
                   </div>
                 ) : picked ? (
                   <div className="flex items-center justify-between rounded-lg border p-3" style={{ borderColor: "var(--border)" }}>
@@ -172,6 +201,13 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
                   <Field title="Currency"><select className="input" value={f.currency} onChange={set("currency")}><option>AED</option><option>USD</option><option>EUR</option><option>GBP</option></select></Field>
                   <Field title="Bedrooms"><input className="input" type="number" min="0" max="20" value={f.bedrooms} onChange={set("bedrooms")} /></Field>
                   <Field title="Preferred areas (comma separated)" span><input className="input" value={f.areas} onChange={set("areas")} placeholder="Dubai Marina, Downtown" /></Field>
+                  <Field title="Financing"><select className="input" value={f.financing} onChange={set("financing")}><option value="">Not known</option><option value="cash">Cash</option><option value="mortgage">Mortgage</option><option value="undecided">Undecided</option></select></Field>
+                  <Field title="Looking to move"><select className="input" value={f.purchaseTimeline} onChange={set("purchaseTimeline")}><option value="">Not known</option><option value="immediate">Immediately</option><option value="one_to_three_months">In 1-3 months</option><option value="three_to_six_months">In 3-6 months</option><option value="over_six_months">After 6 months</option><option value="exploring">Just exploring</option></select></Field>
+                  <div className="sm:col-span-2"><span className="muted text-xs font-medium">Property types</span><div className="mt-1.5 flex flex-wrap gap-2">{["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land"].map((t) => <button key={t} type="button" className={f.propertyTypes.includes(t) ? "btn text-xs" : "btn-ghost text-xs"} onClick={() => setF({ ...f, propertyTypes: f.propertyTypes.includes(t) ? f.propertyTypes.filter((x) => x !== t) : [...f.propertyTypes, t] })}>{t}</button>)}</div></div>
+                  <Field title="Next follow-up (Dubai time)"><input className="input" type="datetime-local" value={f.nextFollowUpAt} onChange={set("nextFollowUpAt")} /></Field>
+                  <Field title="Expected close date"><input className="input" type="date" value={f.expectedCloseDate} onChange={set("expectedCloseDate")} /></Field>
+                  <Field title="Lead tags (comma separated)" span><input className="input" value={f.leadTags} onChange={set("leadTags")} placeholder="golden-visa, off-plan-investor" /></Field>
+                  <Field title="Notes on the enquiry" span><textarea className="input min-h-20" value={f.leadNotes} onChange={set("leadNotes")} /></Field>
                 </div>
               </details>
             </div>

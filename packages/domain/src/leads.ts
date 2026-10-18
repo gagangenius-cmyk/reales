@@ -19,6 +19,8 @@ export interface LeadInput {
   budgetMin?: number; budgetMax?: number; currency?: string;
   preferredAreas?: string[]; bedrooms?: number; language?: string; branchId?: string;
   stageId?: string; assignedUserId?: string; isHot?: boolean; campaign?: string;
+  financing?: "cash" | "mortgage" | "undecided"; purchaseTimeline?: "immediate" | "one_to_three_months" | "three_to_six_months" | "over_six_months" | "exploring";
+  propertyTypes?: string[]; tags?: string[]; notes?: string; nextFollowUpAt?: string; expectedCloseDate?: string;
 }
 
 export interface LeadResult { lead: any; duplicate: boolean; contactReused: boolean; assignedUserId: string | null }
@@ -91,6 +93,8 @@ export async function createLeadCore(u: Uow, ctx: RequestContext, input: LeadInp
     budgetMin: input.budgetMin ?? null, budgetMax: input.budgetMax ?? null, currency: input.currency ?? "AED",
     preferredAreas: input.preferredAreas ?? null, bedrooms: input.bedrooms ?? null, language, branchId,
     isHot: input.isHot ?? false, campaign: input.campaign?.trim() || null,
+    financing: input.financing ?? null, purchaseTimeline: input.purchaseTimeline ?? null, propertyTypes: input.propertyTypes ?? null, tags: input.tags ?? null,
+    notes: input.notes?.trim() || null, nextFollowUpAt: input.nextFollowUpAt ? new Date(input.nextFollowUpAt) : null, expectedCloseDate: input.expectedCloseDate ?? null,
   }, { transaction: u.tx });
   await u.repo("LeadStageEvent").create({ id: randomUUID(), leadId: id, fromStageId: null, toStageId: first.get("id"), actorId: actorOf(ctx), reason: "created", createdAt: mysqlDate(new Date()) }, { transaction: u.tx });
 
@@ -186,11 +190,14 @@ export async function getLead(sq: Sequelize, ctx: RequestContext, id: string) {
   });
 }
 
-export async function updateLead(sq: Sequelize, ctx: RequestContext, id: string, patch: Partial<Pick<LeadInput, "budgetMin" | "budgetMax" | "currency" | "preferredAreas" | "bedrooms" | "language" | "purpose">>) {
+export async function updateLead(sq: Sequelize, ctx: RequestContext, id: string, patch: Partial<Pick<LeadInput, "budgetMin" | "budgetMax" | "currency" | "preferredAreas" | "bedrooms" | "language" | "purpose" | "isHot" | "campaign" | "financing" | "purchaseTimeline" | "propertyTypes" | "tags" | "notes" | "nextFollowUpAt" | "expectedCloseDate">>) {
   return withUow(sq, ctx, async (u) => {
     const lead = await scopedLead(u, ctx, id);
     authorize(ctx, "lead.update", ref(lead));
-    await u.repo("Lead").updateById(id, patch as Record<string, unknown>, { transaction: u.tx });
+    const values: Record<string, unknown> = { ...patch };
+    if (patch.nextFollowUpAt !== undefined) values.nextFollowUpAt = patch.nextFollowUpAt ? new Date(patch.nextFollowUpAt) : null;
+    await u.repo("Lead").updateById(id, values, { transaction: u.tx });
+    await u.audit({ action: "lead.updated", entityType: "lead", entityId: id, before: Object.fromEntries(Object.keys(patch).map((k) => [k, lead.get(k)])), after: patch });
     await u.emit({ type: "lead.updated", aggregateType: "lead", aggregateId: id, projectId: lead.get("projectId"), payload: { fields: Object.keys(patch) } });
     return plain(await u.repo("Lead").findById(id, { transaction: u.tx }));
   });
@@ -241,6 +248,11 @@ export async function addLeadActivity(sq: Sequelize, ctx: RequestContext, id: st
     const lead = await scopedLead(u, ctx, id);
     authorize(ctx, "lead.update", ref(lead));
     await addActivityRow(u, id, input.kind, input.summary, ctx);
+    if (["call", "whatsapp", "email", "sms", "viewing"].includes(input.kind)) {
+      const now = new Date();
+      await u.repo("Lead").updateById(id, { lastContactedAt: now }, { transaction: u.tx });
+      await u.repo("Contact").updateById(lead.get("contactId"), { lastContactedAt: now }, { transaction: u.tx });
+    }
     // The first outbound touch by a person starts the response-SLA clock's "answered" state.
     if (["call", "whatsapp", "email", "sms"].includes(input.kind) && !lead.get("firstResponseAt")) {
       await u.repo("Lead").updateById(id, { firstResponseAt: new Date() }, { transaction: u.tx });
@@ -290,4 +302,12 @@ export async function closeLeadAsWon(u: Uow, ctx: RequestContext, leadId: string
   await u.repo("Lead").updateById(leadId, { stageId: won.get("id"), status: "won", lostReason: null }, { transaction: u.tx });
   await u.repo("LeadStageEvent").create({ id: randomUUID(), leadId, fromStageId: lead.get("stageId"), toStageId: won.get("id"), actorId: actorOf(ctx), reason: "deal closed", createdAt: mysqlDate(new Date()) }, { transaction: u.tx });
   await u.emit({ type: "lead.stage_changed", aggregateType: "lead", aggregateId: leadId, projectId: lead.get("projectId"), payload: { to: won.get("id"), stageKey: won.get("key"), status: "won" } });
+}
+
+/** Leads of one contact that the caller may see (newest first). */
+export async function leadsForContact(sq: Sequelize, ctx: RequestContext, contactId: string) {
+  return withUow(sq, ctx, async (u) => {
+    const scope = await scopeWhere(u, ctx, "lead.read", LEAD_SCOPE);
+    return (await u.repo("Lead").findAll({ where: { [Op.and]: [{ contactId }, scope] }, order: [["createdAt", "DESC"]], limit: 50, transaction: u.tx })).map(plain);
+  });
 }

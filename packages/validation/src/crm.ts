@@ -16,9 +16,16 @@ export const contactSchema = z.object({
   organizationId: uuid.optional(),
   branchId: uuid.optional(),
   allowDuplicate: z.boolean().optional(),
+  salutation: z.string().max(20).optional(), gender: z.enum(["male", "female", "other"]).optional(), dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  jobTitle: z.string().max(120).optional(), employer: z.string().max(160).optional(), phoneSecondary: z.string().max(40).optional(), whatsapp: z.string().max(40).optional(),
+  addressLine: z.string().max(255).optional(), city: z.string().max(80).optional(), country: z.string().max(80).optional(), residency: z.enum(["uae_resident", "non_resident"]).optional(),
+  preferredChannel: z.enum(["phone", "whatsapp", "email", "sms"]).optional(), preferredContactTime: z.string().max(60).optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(), notes: z.string().max(5000).optional(),
 }).strict();
 
-export const updateContactSchema = contactSchema.omit({ allowDuplicate: true, branchId: true, type: true }).strict();
+const CLEARABLE = ["firstName", "lastName", "companyName", "nationality", "salutation", "gender", "dateOfBirth", "jobTitle", "employer", "addressLine", "city", "country", "residency", "preferredChannel", "preferredContactTime", "notes"] as const;
+/** Like create, but a clearable field set to null is erased (omitted means unchanged). */
+export const updateContactSchema = contactSchema.omit({ allowDuplicate: true, branchId: true, type: true }).extend(Object.fromEntries(CLEARABLE.map((k) => [k, contactSchema.shape[k].nullable()])) as { [K in (typeof CLEARABLE)[number]]: z.ZodNullable<(typeof contactSchema.shape)[K]> }).strict();
 
 export const contactListQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
@@ -46,6 +53,12 @@ export const suppressionSchema = z.object({
 
 export const liftSuppressionSchema = z.object({ reason: z.string().min(10).max(500) }).strict();
 
+const leadProfile = {
+  financing: z.enum(["cash", "mortgage", "undecided"]).optional(),
+  purchaseTimeline: z.enum(["immediate", "one_to_three_months", "three_to_six_months", "over_six_months", "exploring"]).optional(),
+  propertyTypes: z.array(z.string().max(30)).max(10).optional(), tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(), notes: z.string().max(5000).optional(),
+  nextFollowUpAt: z.string().datetime().optional(), expectedCloseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+};
 export const leadSchema = z.object({
   contactId: uuid.optional(),
   contact: contactSchema.optional(),
@@ -63,10 +76,12 @@ export const leadSchema = z.object({
   assignedUserId: uuid.optional(),
   isHot: z.boolean().optional(),
   campaign: z.string().trim().max(160).optional(),
+  ...leadProfile,
 }).strict().refine((v) => !!v.contactId !== !!v.contact, { message: "provide exactly one of contactId or contact" })
   .refine((v) => v.budgetMin === undefined || v.budgetMax === undefined || v.budgetMin <= v.budgetMax, { message: "budgetMin must not exceed budgetMax" });
 
 export const updateLeadSchema = z.object({
+  ...leadProfile, isHot: z.boolean().optional(), campaign: z.string().trim().max(160).optional(),
   budgetMin: z.number().nonnegative().optional(),
   budgetMax: z.number().nonnegative().optional(),
   currency: z.string().length(3).optional(),
@@ -141,6 +156,7 @@ export const updateListingSchema = z.object({
 export const listingListQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50), offset: z.coerce.number().int().min(0).default(0),
   status: z.enum(["draft", "published", "unpublished"]).optional(),
+  purpose: z.enum(["sale", "rent"]).optional(), q: z.string().max(100).optional(),
 });
 export const mediaSchema = z.object({ kind: z.enum(["image", "video", "floorplan"]), storageKey: z.string().min(1).max(500), position: z.number().int().min(0).optional() }).strict();
 export const permitSchema = z.object({ permitNo: z.string().min(1).max(80), authority: z.string().min(1).max(60), issuedAt: isoDate.optional(), expiresAt: isoDate }).strict();

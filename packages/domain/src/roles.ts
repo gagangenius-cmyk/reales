@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { QueryTypes, Sequelize } from "sequelize";
 import type { RequestContext } from "@reales/database";
 import { requireStepUp } from "@reales/auth";
-import { authorize, can, ForbiddenError, PERMISSIONS } from "@reales/rbac";
+import { authorize, ForbiddenError, holdsAtLeast, PERMISSIONS } from "@reales/rbac";
 import { ConflictError, NotFoundError, withUow } from "./uow";
 
 export const GRANT_SCOPES = ["tenant", "business_unit", "branch", "project", "portfolio", "own_records"] as const;
@@ -40,8 +40,8 @@ function validateGrants(ctx: RequestContext, grants: GrantInput[]) {
     if (seen.has(g.permission)) throw new ConflictError(`Duplicate permission ${g.permission}`);
     seen.add(g.permission);
   }
-  // Privilege-escalation guard: you can only put permissions into a role that you hold yourself.
-  const missing = grants.filter((g) => !can(ctx, g.permission)).map((g) => g.permission);
+  // Privilege-escalation guard: you can only put a permission into a role at a scope you hold yourself, or a narrower one.
+  const missing = grants.filter((g) => !holdsAtLeast(ctx, g.permission, g.scope)).map((g) => `${g.permission} (${g.scope})`);
   if (missing.length) throw new ForbiddenError(`You cannot grant permissions you do not hold: ${missing.slice(0, 3).join(", ")}`);
 }
 

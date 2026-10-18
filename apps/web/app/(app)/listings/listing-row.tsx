@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
+import { ListingDrawer, type AgentOpt, type EditTarget } from "./listing-drawer";
 
 interface Issue { code: string; message: string }
 
-export function ListingRow({ listing, canPublish }: { listing: { id: string; title: string; purpose: string; price: string; jurisdiction: string; status: string }; canPublish: boolean }) {
+export function ListingRow({ listing, canPublish, edit }: { listing: { id: string; title: string; purpose: string; price: string; jurisdiction: string; status: string; unit?: string }; canPublish: boolean; edit?: { target: EditTarget; agents: AgentOpt[]; canReassign: boolean } }) {
   const router = useRouter();
   const [issues, setIssues] = useState<Issue[] | null>(null);
   const [ok, setOk] = useState<boolean | null>(null);
@@ -38,7 +39,7 @@ export function ListingRow({ listing, canPublish }: { listing: { id: string; tit
   }
   return (
     <tr>
-      <td>{listing.title}</td><td>{listing.purpose}</td><td>{listing.price}</td><td>{listing.jurisdiction}</td><td>{listing.status}</td>
+      <td className="font-medium">{listing.title}</td><td>{listing.unit ?? "-"}</td><td><span className="badge badge-gray">{listing.purpose}</span></td><td>{listing.price}</td><td>{listing.jurisdiction}</td><td><span className={`badge ${listing.status === "published" ? "badge-ok" : listing.status === "draft" ? "badge-warn" : "badge-gray"}`}>{listing.status}</span></td>
       <td>
         <div className="flex flex-wrap gap-2">
           <button className="btn-ghost text-xs" onClick={validate} disabled={busy}>Check</button>
@@ -51,6 +52,7 @@ export function ListingRow({ listing, canPublish }: { listing: { id: string; tit
         )}
         {error && <p role="alert" className="err mt-1 text-xs">{error}</p>}
       </td>
+      <td className="text-right">{edit && <ListingDrawer mode="edit" target={edit.target} agents={edit.agents} canReassign={edit.canReassign} />}</td>
     </tr>
   );
 }

@@ -46,6 +46,8 @@ export const TENANT_OWNED_TABLES = [
   "saved_searches", "property_matches", "notifications", "referral_partners", "referrals", "valuations",
   // onboarding and data import
   "auth_tokens", "import_jobs", "portal_links",
+  // agents, commissions by type, availability
+  "agent_profiles", "agent_availability", "agent_time_off",
 ] as const;
 
 /** Tables intentionally NOT tenant-owned (global catalogues / tenant root). */
@@ -69,7 +71,7 @@ export interface Models {
   Viewing: M; ViewingFeedback: M; Offer: M; OfferRevision: M; Reservation: M; Deal: M; DealStageEvent: M; DealParty: M; DealMilestone: M;
   Document: M; DocumentVersion: M; DocumentLink: M; SignatureEnvelope: M; SignatureSigner: M; SignatureEvent: M;
   Counter: M; Invoice: M; InvoiceLine: M; Payment: M; PaymentAllocation: M; Receipt: M; WebhookEvent: M;
-  CommissionPlan: M; CommissionCalculation: M; CommissionSplit: M; AgentProfile: M;
+  CommissionPlan: M; CommissionCalculation: M; CommissionSplit: M; AgentProfile: M; AgentAvailability: M; AgentTimeOff: M;
   ChannelAccount: M; Conversation: M; Message: M; MessageEvent: M; Template: M; TemplateVersion: M;
   Segment: M; Campaign: M; CampaignRecipient: M; CampaignEvent: M;
   Workflow: M; WorkflowVersion: M; WorkflowRun: M; WorkflowStep: M; WorkflowWait: M;
@@ -181,6 +183,9 @@ export function initModels(sq: Sequelize): Models {
       id: pk(), tenantId: tid(), type: T.ENUM("person", "company"), firstName: s(120), lastName: s(120), companyName: s(180),
       email: s(254), normalizedEmail: s(254), phoneE164: s(32), language: s(10), nationality: s(60),
       organizationId: uuid(), ownerUserId: uuid(), branchId: uuid(), status: T.ENUM("active", "archived"),
+      salutation: s(20), gender: T.ENUM("male", "female", "other"), dateOfBirth: T.DATEONLY, jobTitle: s(120), employer: s(160), phoneSecondary: s(32), whatsappE164: s(32),
+      addressLine: s(255), city: s(80), country: s(80), residency: T.ENUM("uae_resident", "non_resident"), preferredChannel: T.ENUM("phone", "whatsapp", "email", "sms"),
+      preferredContactTime: s(60), tags: T.JSON, notes: T.TEXT, lastContactedAt: T.DATE(3),
     }),
     ConsentPurpose: d("ConsentPurpose", "consent_purposes", { id: pk(), tenantId: tid(), code: s(60, false), name: s(120, false), description: s(500), defaultBasis: T.ENUM("consent", "contract", "legitimate_interest", "legal_obligation") }),
     ConsentRecord: d("ConsentRecord", "consent_records", {
@@ -208,6 +213,8 @@ export function initModels(sq: Sequelize): Models {
       status: T.ENUM("open", "won", "lost"), purpose: T.ENUM("buy", "rent", "invest", "off_plan"), budgetMin: money(), budgetMax: money(),
       currency: s(3, false), preferredAreas: T.JSON, bedrooms: T.INTEGER, language: s(10), assignedUserId: uuid(), branchId: uuid(),
       score: T.DECIMAL(6, 3), lostReason: s(255), firstResponseAt: T.DATE(3), isHot: T.BOOLEAN, campaign: s(160),
+      financing: T.ENUM("cash", "mortgage", "undecided"), purchaseTimeline: T.ENUM("immediate", "one_to_three_months", "three_to_six_months", "over_six_months", "exploring"),
+      propertyTypes: T.JSON, tags: T.JSON, notes: T.TEXT, nextFollowUpAt: T.DATE(3), lastContactedAt: T.DATE(3), expectedCloseDate: T.DATEONLY,
     }),
     LeadStageEvent: d("LeadStageEvent", "lead_stage_events", { id: pk(), tenantId: tid(), leadId: tid(), fromStageId: uuid(), toStageId: tid(), actorId: s(64), reason: s(255), createdAt: dt3() }, noTs2),
     LeadAssignment: d("LeadAssignment", "lead_assignments", {
@@ -320,6 +327,8 @@ export function initModels(sq: Sequelize): Models {
       status: T.ENUM("received", "processed", "failed", "ignored"), error: T.TEXT, receivedAt: dt3(), processedAt: T.DATE(3),
     }, noTs2),
     CommissionPlan: d("CommissionPlan", "commission_plans", { id: pk(), tenantId: tid(), name: s(120, false), dealType: T.ENUM("sale", "lease"), ratePct: T.DECIMAL(6, 3), splits: { type: T.JSON, allowNull: false }, active: T.BOOLEAN, agentType: T.ENUM("any", "internal", "external"), vatPct: T.DECIMAL(5, 2) }),
+    AgentAvailability: d("AgentAvailability", "agent_availability", { id: pk(), tenantId: tid(), userId: tid(), weekday: T.INTEGER, startTime: s(5, false), endTime: s(5, false) }),
+    AgentTimeOff: d("AgentTimeOff", "agent_time_off", { id: pk(), tenantId: tid(), userId: tid(), startsAt: dt3(), endsAt: dt3(), reason: s(160), createdBy: s(64) }),
     AgentProfile: d("AgentProfile", "agent_profiles", { id: pk(), tenantId: tid(), userId: tid(), agentType: T.ENUM("internal", "external"), commissionPlanId: uuid(), brn: s(40), agencyName: s(160), agencyLicenceNo: s(60), payoutNote: s(255), status: T.ENUM("active", "inactive") }),
     CommissionCalculation: d("CommissionCalculation", "commission_calculations", {
       id: pk(), tenantId: tid(), dealId: tid(), planId: tid(), agentUserId: uuid(), branchId: uuid(), grossAmount: money(false), commissionAmount: money(false), currency: s(3, false),

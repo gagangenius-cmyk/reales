@@ -19,6 +19,9 @@ export interface ContactInput {
   email?: string; phone?: string; language?: string; nationality?: string;
   organizationId?: string; branchId?: string; ownerUserId?: string;
   allowDuplicate?: boolean;
+  salutation?: string; gender?: "male" | "female" | "other"; dateOfBirth?: string; jobTitle?: string; employer?: string; phoneSecondary?: string; whatsapp?: string;
+  addressLine?: string; city?: string; country?: string; residency?: "uae_resident" | "non_resident"; preferredChannel?: "phone" | "whatsapp" | "email" | "sms";
+  preferredContactTime?: string; tags?: string[]; notes?: string;
 }
 
 export const CONTACT_SCOPE: ScopeColumns = {
@@ -38,6 +41,20 @@ export async function findDuplicateContacts(u: Uow, ctx: Pick<RequestContext, "t
   if (!or.length) return [];
   const where: WhereOptions = excludeId ? { [Op.and]: [{ [Op.or]: or }, { id: { [Op.ne]: excludeId } }] } : { [Op.or]: or };
   return u.repo("Contact").findAll({ where, transaction: u.tx });
+}
+
+const PROFILE_KEYS = ["salutation", "gender", "dateOfBirth", "jobTitle", "employer", "addressLine", "city", "country", "residency", "preferredChannel", "preferredContactTime", "tags", "notes"] as const;
+/** Optional profile fields plus the two extra phone numbers, validated and normalised. */
+function profileValues(input: Partial<ContactInput>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of PROFILE_KEYS) if (input[k] !== undefined) out[k] = typeof input[k] === "string" ? ((input[k] as string).trim() || null) : input[k];
+  for (const [from, to] of [["phoneSecondary", "phoneSecondary"], ["whatsapp", "whatsappE164"]] as const) {
+    if (input[from] === undefined) continue;
+    const p = normalizePhone(input[from]);
+    if (input[from] && !p) throw new ConflictError(`Invalid ${from === "whatsapp" ? "WhatsApp" : "second phone"} number`);
+    out[to] = p;
+  }
+  return out;
 }
 
 export async function createContactInUow(u: Uow, ctx: RequestContext, input: ContactInput) {
@@ -65,6 +82,7 @@ export async function createContactInUow(u: Uow, ctx: RequestContext, input: Con
     language: input.language ?? null, nationality: input.nationality ?? null, organizationId: input.organizationId ?? null,
     ownerUserId: input.ownerUserId ?? (ctx.userId === "system" ? null : ctx.userId),
     branchId: input.branchId ?? ctx.membership.branchIds[0] ?? null, status: "active",
+    ...profileValues(input),
   }, { transaction: u.tx });
   await u.emit({ type: "contact.created", aggregateType: "contact", aggregateId: id, payload: { type: (c as any).get("type") } });
   return c;
@@ -97,7 +115,9 @@ export async function listContacts(sq: Sequelize, ctx: RequestContext, opts: { l
   });
 }
 
-export async function updateContact(sq: Sequelize, ctx: RequestContext, id: string, input: Partial<Omit<ContactInput, "allowDuplicate">>) {
+export type ContactPatch = { [K in keyof Omit<ContactInput, "allowDuplicate">]?: Omit<ContactInput, "allowDuplicate">[K] | null };
+
+export async function updateContact(sq: Sequelize, ctx: RequestContext, id: string, input: ContactPatch) {
   return withUow(sq, ctx, async (u) => {
     const scope = await scopeWhere(u, ctx, "contact.read", CONTACT_SCOPE);
     const c: any = await u.repo("Contact").findOne({ where: { [Op.and]: [{ id }, scope] }, transaction: u.tx });
@@ -105,6 +125,9 @@ export async function updateContact(sq: Sequelize, ctx: RequestContext, id: stri
     authorize(ctx, "contact.update", { ownerUserId: c.get("ownerUserId"), branchId: c.get("branchId") });
     const patch: Record<string, unknown> = {};
     for (const k of ["firstName", "lastName", "companyName", "language", "nationality", "organizationId"] as const) if (input[k] !== undefined) patch[k] = input[k];
+    const cleared = Object.entries(input).filter(([, v]) => v === null).map(([k]) => k);
+    if (cleared.some((k) => ["firstName", "lastName", "companyName"].includes(k)) && !(input.firstName ?? c.get("firstName")) && !(input.lastName ?? c.get("lastName")) && !(input.companyName ?? c.get("companyName")) && !c.get("email") && !c.get("phoneE164")) throw new ConflictError("A contact needs a name, email or phone");
+    Object.assign(patch, profileValues(input as Partial<ContactInput>));
     if (input.email !== undefined) {
       const e = normalizeEmail(input.email);
       if (input.email && !e) throw new ConflictError("Invalid email address");

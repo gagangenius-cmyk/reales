@@ -1,3 +1,4 @@
+import { assertAgentAvailable } from "./availability";
 import { randomUUID } from "node:crypto";
 import { Op, Sequelize, WhereOptions } from "sequelize";
 import { mysqlDate, RequestContext } from "@reales/database";
@@ -63,6 +64,7 @@ export async function scheduleViewing(sq: Sequelize, ctx: RequestContext, input:
     const duration = input.durationMin ?? 30;
     const end = new Date(start.getTime() + duration * 60_000);
 
+    await assertAgentAvailable(u, agentId, start, end);
     await u.sq.query("SELECT id FROM users WHERE id=:id AND tenant_id=:t FOR UPDATE", { replacements: { id: agentId, t: ctx.tenantId }, transaction: u.tx });
     const nearby = await u.repo("Viewing").findAll({
       where: { agentUserId: agentId, status: { [Op.in]: OPEN }, scheduledAt: { [Op.between]: [new Date(start.getTime() - 8 * 3_600_000), end] } }, transaction: u.tx,

@@ -270,3 +270,39 @@ export async function getListing(sq: Sequelize, ctx: RequestContext, id: string)
 }
 
 void hasPermission; void ForbiddenError;
+
+/** Listings page query: free-text search over title/unit/building, status and purpose filters, a total for pagination, and the unit summary of each row. */
+export async function searchListings(sq: Sequelize, ctx: RequestContext, opts: { limit: number; offset: number; status?: string; purpose?: string; q?: string }) {
+  return withUow(sq, ctx, async (u) => {
+    const and: WhereOptions[] = [await scopeWhere(u, ctx, "listing.read", LISTING_SCOPE)];
+    if (opts.status) and.push({ status: opts.status });
+    if (opts.purpose) and.push({ purpose: opts.purpose });
+    if (opts.q?.trim()) {
+      const like = `%${opts.q.trim().replace(/[\%_]/g, (m) => "\\" + m)}%`;
+      const [units, buildings] = await Promise.all([
+        u.repo("Unit").findAll({ where: { unitNumber: { [Op.like]: like } }, limit: 200, transaction: u.tx }),
+        u.repo("Building").findAll({ where: { [Op.or]: [{ name: { [Op.like]: like } }, { community: { [Op.like]: like } }] }, limit: 100, transaction: u.tx }),
+      ]);
+      const byBuilding = buildings.length ? await u.repo("Unit").findAll({ where: { buildingId: { [Op.in]: buildings.map((b: any) => b.get("id")) } }, limit: 500, transaction: u.tx }) : [];
+      const unitIds = [...new Set([...units, ...byBuilding].map((x: any) => x.get("id") as string))];
+      and.push({ [Op.or]: [{ title: { [Op.like]: like } }, { unitId: { [Op.in]: unitIds.length ? unitIds : ["-"] } }] });
+    }
+    const where = { [Op.and]: and };
+    const [rows, total] = await Promise.all([
+      u.repo("Listing").findAll({ where, order: [["createdAt", "DESC"]], limit: opts.limit, offset: opts.offset, transaction: u.tx }),
+      u.repo("Listing").count({ where, transaction: u.tx }),
+    ]);
+    const unitRows = rows.length ? await u.repo("Unit").findAll({ where: { id: { [Op.in]: rows.map((r: any) => r.get("unitId")) } }, transaction: u.tx }) : [];
+    const buildingRows = unitRows.length ? await u.repo("Building").findAll({ where: { id: { [Op.in]: [...new Set(unitRows.map((x: any) => x.get("buildingId") as string))] } }, transaction: u.tx }) : [];
+    const unitById = new Map(unitRows.map((x: any) => [x.get("id"), x]));
+    const buildingById = new Map(buildingRows.map((x: any) => [x.get("id"), x]));
+    return {
+      total: Number(total),
+      rows: rows.map((r: any) => {
+        const unit: any = unitById.get(r.get("unitId"));
+        const b: any = unit ? buildingById.get(unit.get("buildingId")) : null;
+        return { ...plain(r), unit: unit ? { unitNumber: unit.get("unitNumber"), type: unit.get("type"), bedrooms: unit.get("bedrooms"), areaSqft: unit.get("areaSqft"), building: b?.get("name") ?? null, community: b?.get("community") ?? null } : null };
+      }),
+    };
+  });
+}

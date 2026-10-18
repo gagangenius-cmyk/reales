@@ -83,3 +83,11 @@ export const createRoleSchema = z.object({
   grants: z.array(grantSchema).max(400).default([]), copyFromRoleId: z.string().uuid().optional(),
 }).strict();
 export const setRoleGrantsSchema = z.object({ grants: z.array(grantSchema).max(400), name: z.string().trim().min(2).max(120).optional(), requiresMfa: z.boolean().optional() }).strict();
+
+// ---- agent availability
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+export const weeklyAvailabilitySchema = z.object({
+  windows: z.array(z.object({ weekday: z.number().int().min(0).max(6), startTime: hhmm, endTime: hhmm }).strict()).max(60),
+}).strict();
+export const timeOffSchema = z.object({ startsAt: z.string().min(10), endsAt: z.string().min(10), reason: z.string().max(160).optional() }).strict();
+export const freeSlotsQuery = z.object({ agentUserId: z.string().uuid(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), durationMin: z.coerce.number().int().min(10).max(240).default(30) });

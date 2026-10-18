@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { QueryTypes, Sequelize, Op, WhereOptions } from "sequelize";
 import { assertPasswordPolicy, hashPassword, revokeAllSessions, requireStepUp } from "@reales/auth";
 import type { RequestContext } from "@reales/database";
-import { authorize, can, ForbiddenError, widestScope } from "@reales/rbac";
+import { authorize, can, ForbiddenError, holdsAtLeast, widestScope } from "@reales/rbac";
 import { assertQuota, ConflictError, NotFoundError, withUow } from "./uow";
 
 export interface CreateUserInput {
@@ -118,10 +118,10 @@ export async function assignRole(
     if (ELEVATED_ROLE_KEYS.has(input.roleKey)) requireStepUp(ctx);
     // Privilege-escalation guard: you can only grant a role whose permissions you already hold at tenant scope.
     const granted: any[] = await sq.query(
-      "SELECT p.`key` AS perm FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id WHERE rp.tenant_id=:t AND rp.role_id=:r",
+      "SELECT p.`key` AS perm, rp.scope AS scope FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id WHERE rp.tenant_id=:t AND rp.role_id=:r",
       { replacements: { t: ctx.tenantId, r: role.get("id") }, transaction: u.tx, type: QueryTypes.SELECT },
     );
-    const missing = granted.filter((g) => !can(ctx, g.perm)).map((g) => g.perm);
+    const missing = granted.filter((g) => !holdsAtLeast(ctx, g.perm, g.scope)).map((g) => `${g.perm} (${g.scope})`);
     if (missing.length) throw new ForbiddenError(`Cannot grant a role containing permissions you do not hold: ${missing.slice(0, 3).join(", ")}`);
     await u.repo("UserRole").create({ userId, roleId: role.get("id"), anchorType: input.anchorType ?? null, anchorId: input.anchorId ?? null }, { transaction: u.tx });
     await u.audit({ action: "user.role_assigned", entityType: "user", entityId: userId, after: input });

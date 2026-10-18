@@ -254,3 +254,26 @@ Legend: **Real** = implemented and tested. **Mock** = interface plus a stand-in 
 - A UAE legal/compliance review of the illustrative regulatory rules, risk weights and contract wording.
 - Penetration test, accessibility audit, load baseline; validating Helm/Terraform; running the Docker image in a cluster.
 - Native iOS/Android app; SAML/SCIM; certified valuation; online rent payment; full Arabic content.
+
+## Enterprise detail pass (migrations 048-051)
+
+Real (typechecked and built; **not browser-tested, no automated tests yet**):
+- **Design system and shell**: new tokens/components in `apps/web/app/globals.css`; grouped, icon sidebar with active state (`(app)/sidebar-nav.tsx`).
+- **Leads**: drawer with contact (new or existing, searchable), status (open stage), source, campaign, hot flag, assign-to (admin: all active users; branch/unit manager: own branch/unit; agent: self only, enforced in `createLeadCore`), plus financing, timeline, property types, follow-up, expected close, tags, notes. Lead detail shows enquiry and contact panels. Migration 048, 051.
+- **Contacts**: list with search and pagination, create/edit drawer, detail page with leads. 16 new profile columns (migration 051).
+- **Listings**: search, status/purpose filters, pagination, add (pick an available unit) and edit drawer.
+- **Agents and commissions**: internal vs external agent profiles, plan selection by agent type or pinned plan, VAT on commission, approve and mark-paid (step-up), commission and plan pages (migration 049).
+- **Roles and permissions**: matrix editor per module and scope, custom roles (system roles are copy-only), assign/revoke on Users page, last-admin and escalation guards. Existing tables and seeder were reused.
+- **Availability**: weekly working hours and time off per agent (Dubai time), free-slot finder, and `scheduleViewing` refuses bookings outside them (migration 050). Agents with no hours are unrestricted.
+- **Broadcasts**: 5-step wizard (channel, audience builder with live count, approved template preview, sending, review) over the existing consent-checked engine.
+- `scripts/ensure-triggers.ts` installs the append-only triggers on a database migrated while the host denied CREATE TRIGGER. `MIGRATE_ALLOW_NO_TRIGGERS=1` exists as an explicit opt-in and is off by default.
+
+Also done in the same pass: lead edit drawer and lead-list pagination with follow-up column, clearing optional contact fields (null = erase), "last contacted" refreshed when a call/message/viewing is logged, dashboard with greeting and due follow-ups, inventory management (add developer/project/building/unit, status tiles, filters), deals summary and pagination.
+
+Still open: browser/E2E and unit tests for everything above (local Docker was unavailable and the only local DB is MariaDB 10.4, which the MySQL 8 schema does not target), editing an existing template as a new version in the UI (creation with the Unlayer email editor, WhatsApp and SMS already exists), the always-on worker host with Redis, real provider integrations, pen test, accessibility audit, legal review.
+
+`npm run test:unit` (no database needed) runs 14 checks: permission catalogue, role-template sanity, Dubai time maths, lead/contact/commission/availability validation, and that every API route uses the shared wrapper. All pass. The 220-test database suite has not been re-run since these changes.
+
+Verified on local Docker MySQL 8 (DB env forced to 127.0.0.1:3307 so the live database is never touched): migrations 1-51 rebuild the schema from zero (154 tables) and the full suite ran 251 tests, 249 passing. The two failures were the tenant-isolation schema guard flagging three new tables missing from `TENANT_OWNED_TABLES`; fixed and the isolation suite re-run green (11/11). The new screens have still not been exercised in a browser.
+
+Runtime check against a local dev server and Docker MySQL 8 (local data only): all new pages render (HTTP 200, no error markers) and a scripted 36-step API walkthrough passed 36/36: lead with every new field, owner assignment, edit, call logging stamping "last contacted", contact field clearing, working hours / time off / free slots / double booking, external agent profile and plan, role copy / edit / assign / protect, listing create / edit / search, broadcast setup and audience preview. `tests/agents-availability-roles.test.ts` (4 tests) covers agent-type commission with VAT and payout, availability enforcement, role management, and owner-choice rules; it passes. Not done: a real-browser pass (the Chrome extension was not connected), so layout and interaction of the drawers are unverified.

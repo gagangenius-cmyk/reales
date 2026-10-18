@@ -307,3 +307,20 @@ export function widestScope(ctx: Authz, permission: PermissionKey | string): Sco
   const scopes = ctx.grants.filter((g) => g.permission === permission).map((g) => g.scope);
   return order.find((s) => scopes.includes(s)) ?? null;
 }
+
+const SCOPE_COVERS: Record<string, string[]> = {
+  tenant: ["tenant", "business_unit", "branch", "project", "portfolio", "own_records"],
+  business_unit: ["business_unit", "branch", "own_records"],
+  branch: ["branch", "own_records"],
+  project: ["project", "own_records"],
+  portfolio: ["portfolio", "own_records"],
+  own_records: ["own_records"],
+};
+
+/**
+ * True when the caller holds `permission` at `scope` or wider. Used to stop role managers from creating or assigning a role that is broader than
+ * what they hold themselves (holding lead.read for your own records does not let you hand out lead.read for the whole tenant).
+ */
+export function holdsAtLeast(ctx: Authz, permission: PermissionKey | string, scope: ScopeType | string): boolean {
+  return ctx.grants.some((g) => g.permission === permission && (SCOPE_COVERS[g.scope] ?? [g.scope]).includes(scope));
+}

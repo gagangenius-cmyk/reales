@@ -22,10 +22,10 @@ export default async function Finance() {
   ]);
   return (
     <section className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Finance</h1>
+      <div className="page-head"><div><h1>Finance</h1><p className="muted text-sm">Invoices, payments and commissions you can see. <a className="underline" href="/commissions">Open commissions</a></p></div></div>
       {finance && (
-        <div className="card overflow-x-auto p-2">
-          <h2 className="p-2 font-semibold">Invoices</h2>
+        <div className="card overflow-x-auto">
+          <h2 className="p-4 pb-2 font-semibold">Invoices</h2>
           <table className="t">
             <thead><tr><th>Number</th><th>Status</th><th>Due</th><th>Total (incl. VAT)</th></tr></thead>
             <tbody>
@@ -36,8 +36,8 @@ export default async function Finance() {
         </div>
       )}
       {payments.length > 0 && (
-        <div className="card overflow-x-auto p-2">
-          <h2 className="p-2 font-semibold">Payments</h2>
+        <div className="card overflow-x-auto">
+          <h2 className="p-4 pb-2 font-semibold">Payments</h2>
           <table className="t">
             <thead><tr><th>Received</th><th>Method</th><th>Status</th><th>Amount</th><th /></tr></thead>
             <tbody>{payments.map((p) => <tr key={p.id}><td>{p.receivedAt ? new Date(p.receivedAt).toISOString().slice(0, 10) : "-"}</td><td>{p.method}</td><td>{p.status}</td><td>{money(p.amount, p.currency)}</td><td>{p.status === "succeeded" && <PdfActions href={`/api/v1/payments/${p.id}/receipt`} kind="receipt" id={p.id} label="Receipt (PDF)" />}</td></tr>)}</tbody>
@@ -45,8 +45,8 @@ export default async function Finance() {
         </div>
       )}
       {commissions && (
-        <div className="card overflow-x-auto p-2">
-          <h2 className="p-2 font-semibold">Commissions</h2>
+        <div className="card overflow-x-auto">
+          <h2 className="p-4 pb-2 font-semibold">Commissions</h2>
           <table className="t">
             <thead><tr><th>Calculated</th><th>Status</th><th>Gross</th><th>Commission</th><th>Splits</th></tr></thead>
             <tbody>

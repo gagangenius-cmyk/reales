@@ -1,6 +1,7 @@
 import { getSequelize } from "@reales/database";
 import { getDashboard, type DashboardKind } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
+import Link from "next/link";
 import { QueryTypes } from "sequelize";
 import { requireContext } from "@/lib/page-context";
 
@@ -11,10 +12,13 @@ type Tile = { label: string; value: string | number };
 function Tiles({ title, tiles }: { title: string; tiles: Tile[] }) {
   return (
     <div>
-      <h2 className="mb-2 font-semibold">{title}</h2>
+      <h2 className="mb-3 text-lg font-semibold">{title}</h2>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {tiles.map((t) => (
-          <div key={t.label} className="card p-4"><p className="muted text-xs uppercase tracking-wide">{t.label}</p><p className="text-3xl font-semibold">{t.value}</p></div>
+          <div key={t.label} className="card stat relative overflow-hidden">
+            <span className="absolute inset-y-0 left-0 w-1" style={{ background: "linear-gradient(180deg, var(--accent), var(--accent-2))" }} />
+            <p className="muted text-xs font-medium uppercase tracking-wide">{t.label}</p><b>{t.value}</b>
+          </div>
         ))}
       </div>
     </div>
@@ -40,9 +44,25 @@ export default async function Dashboard() {
     hasPermission(ctx, "audit.read") && { label: "Audit events", value: await count("audit_events") },
   ].filter(Boolean) as Tile[];
   const [sales, mgr, prop, comp] = await Promise.all([dash("sales"), dash("manager"), dash("property"), dash("compliance")]);
+  // Follow-ups the signed-in person owns that are due, oldest first. Own leads only, whatever the role.
+  const due = hasPermission(ctx, "lead.read")
+    ? await sq.query<{ id: string; purpose: string; is_hot: number; next_follow_up_at: Date }>(
+        "SELECT id, purpose, is_hot, next_follow_up_at FROM leads WHERE tenant_id=:t AND assigned_user_id=:u AND status='open' AND next_follow_up_at IS NOT NULL AND next_follow_up_at <= NOW() ORDER BY next_follow_up_at ASC LIMIT 6",
+        { replacements: { t: ctx.tenantId, u: ctx.userId }, type: QueryTypes.SELECT }).catch(() => [])
+    : [];
+  const hour = (new Date().getUTCHours() + 4) % 24;
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   return (
     <section className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <div className="page-head"><div><h1>{greeting}</h1><p className="muted text-sm">Here is where things stand across what you can see.</p></div></div>
+      {due.length > 0 && (
+        <div className="card p-4" style={{ borderColor: "var(--warn)" }}>
+          <h2 className="mb-2 font-semibold">Follow-ups due ({due.length})</h2>
+          <ul className="flex flex-col gap-1.5 text-sm">
+            {due.map((d) => <li key={d.id} className="flex items-center justify-between gap-3"><span>{d.is_hot ? <span className="err">&#9650; </span> : null}{d.purpose} lead &middot; due {new Date(d.next_follow_up_at).toLocaleString("en-GB", { timeZone: "Asia/Dubai", dateStyle: "medium", timeStyle: "short" })}</span><Link className="btn-ghost text-xs" href={`/leads/${d.id}`}>Open</Link></li>)}
+          </ul>
+        </div>
+      )}
       {sales && (
         <Tiles title="Sales (your visible leads)" tiles={[
           { label: "Open leads", value: sales.leads.open }, { label: "Won", value: sales.leads.won }, { label: "Conversion", value: pct(sales.leads.conversionRate) },

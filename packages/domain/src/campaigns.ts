@@ -305,3 +305,29 @@ export async function campaignFunnel(sq: Sequelize, ctx: RequestContext, id: str
     };
   });
 }
+
+/** Everything the "new broadcast" wizard needs in one call: active sending accounts, approved templates (with their live version), saved audiences and consent purposes. */
+export async function broadcastSetup(sq: Sequelize, ctx: RequestContext) {
+  authorize(ctx, "campaign.manage");
+  return withUow(sq, ctx, async (u) => {
+    const [accounts, templates, segments, purposes] = await Promise.all([
+      u.repo("ChannelAccount").findAll({ where: { status: "active" }, order: [["createdAt", "ASC"]], transaction: u.tx }),
+      u.repo("Template").findAll({ where: { status: "approved" }, order: [["name", "ASC"]], transaction: u.tx }),
+      u.repo("Segment").findAll({ order: [["createdAt", "DESC"]], transaction: u.tx }),
+      u.repo("ConsentPurpose").findAll({ order: [["name", "ASC"]], transaction: u.tx }),
+    ]);
+    const versionIds = (templates as any[]).map((t) => t.get("currentVersionId")).filter(Boolean);
+    const versions = versionIds.length ? await u.repo("TemplateVersion").findAll({ where: { id: { [Op.in]: versionIds } }, transaction: u.tx }) : [];
+    const vById = new Map((versions as any[]).map((v) => [v.get("id"), v]));
+    return {
+      accounts: (accounts as any[]).map((a) => ({ id: a.get("id"), channel: a.get("channel"), name: a.get("name"), identity: a.get("identity"), provider: a.get("provider") })),
+      templates: (templates as any[]).flatMap((t) => {
+        const v: any = vById.get(t.get("currentVersionId"));
+        if (!v || ["pending", "rejected"].includes(v.get("approvalStatus"))) return [];
+        return [{ id: t.get("id"), versionId: v.get("id"), name: t.get("name"), channel: t.get("channel"), subject: v.get("subject") ?? null, text: String(v.get("textBody") ?? v.get("structuredComponentsJson")?.body?.text ?? "").slice(0, 600) }];
+      }),
+      segments: (segments as any[]).map((s) => ({ id: s.get("id"), name: s.get("name"), definition: s.get("definition") })),
+      purposes: (purposes as any[]).map((p) => ({ code: p.get("code"), name: p.get("name") })),
+    };
+  });
+}
