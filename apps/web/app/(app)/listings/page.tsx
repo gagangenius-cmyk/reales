@@ -1,67 +1,118 @@
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { listAssignableUsers, listInventoryTree, listUnits, searchListings } from "@reales/domain";
+import { listAssignableUsers, listInventoryTree, listUnits, searchListingsAdvanced, type ListingFilters } from "@reales/domain";
 import { can, hasPermission } from "@reales/rbac";
+import { ActiveChips, Check, Field, Num, Sel, SortTh, ViewTabs, date, num, pick, qs } from "@/components/filter-bits";
+import { LiveSearch } from "@/components/live-search";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
-import { ListingRow } from "./listing-row";
 import { ListingDrawer } from "./listing-drawer";
+import { ListingsTable } from "./listings-table";
 
 export const metadata = { title: "Listings | Reales CRM" };
 
 const PAGE = 25;
-type SP = { q?: string; status?: string; purpose?: string; page?: string };
+const TYPES = ["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land"] as const;
+const SORTS = ["newest", "oldest", "price_asc", "price_desc", "views", "enquiries", "expiry"] as const;
+type SP = Record<string, string | undefined>;
+const KEYS = ["q", "status", "purpose", "type", "bedsMin", "bedsMax", "minPrice", "maxPrice", "community", "agent", "featured", "exclusivity", "expiring", "noPhotos", "permit", "web", "furnishing", "from", "to", "stale", "enq", "sort"];
 
 export default async function Listings({ searchParams }: { searchParams: Promise<SP> }) {
   const ctx = await requireContext();
   if (!hasPermission(ctx, "listing.read")) return <NoAccess />;
   const sp = await searchParams;
-  const status = ["draft", "published", "unpublished"].includes(sp.status ?? "") ? sp.status : undefined;
-  const purpose = ["sale", "rent"].includes(sp.purpose ?? "") ? sp.purpose : undefined;
   const page = Math.max(1, Number(sp.page) || 1);
+  const filters: ListingFilters = {
+    q: sp.q?.trim() || undefined, status: pick(sp.status, ["draft", "published", "unpublished"]), purpose: pick(sp.purpose, ["sale", "rent"]), types: pick(sp.type, TYPES) ? [sp.type!] : undefined,
+    bedsMin: num(sp.bedsMin), bedsMax: num(sp.bedsMax), minPrice: num(sp.minPrice), maxPrice: num(sp.maxPrice), community: sp.community?.trim() || undefined, agentId: sp.agent && (sp.agent === "me" || /^[0-9a-f-]{36}$/i.test(sp.agent)) ? sp.agent : undefined,
+    featured: sp.featured === "1" || undefined, exclusivity: pick(sp.exclusivity, ["exclusive", "non_exclusive", "none"]), expiringInDays: num(sp.expiring), noPhotos: sp.noPhotos === "1" || undefined, permit: pick(sp.permit, ["missing", "expiring", "valid"]),
+    onWebsite: sp.web === "1" || undefined, furnishing: pick(sp.furnishing, ["unfurnished", "semi_furnished", "furnished"]), createdFrom: date(sp.from), createdTo: date(sp.to), staleDays: num(sp.stale), hasEnquiries: sp.enq === "1" || undefined,
+    sort: pick(sp.sort, SORTS) ?? "newest", limit: PAGE, offset: (page - 1) * PAGE,
+  };
   const sq = getSequelize();
   const manage = hasPermission(ctx, "listing.manage");
   const readInv = hasPermission(ctx, "inventory.read") || hasPermission(ctx, "inventory.manage");
   const [res, agents, tree, units] = await Promise.all([
-    searchListings(sq, ctx, { limit: PAGE, offset: (page - 1) * PAGE, status, purpose, q: sp.q }),
-    manage ? listAssignableUsers(sq, ctx) : Promise.resolve([]),
+    searchListingsAdvanced(sq, ctx, filters),
+    manage || hasPermission(ctx, "listing.read") ? listAssignableUsers(sq, ctx).catch(() => []) : Promise.resolve([]),
     manage && readInv ? listInventoryTree(sq, ctx) : Promise.resolve(null),
     manage && readInv ? (listUnits(sq, ctx, { limit: 200, offset: 0, status: "available" }) as Promise<any[]>) : Promise.resolve([]),
   ]);
   const bName = new Map<string, string>((tree?.buildings ?? []).map((b: any) => [b.id, `${b.name}${b.community ? `, ${b.community}` : ""}`]));
   const unitOpts = units.map((u: any) => ({ id: u.id, label: `${u.unitNumber} - ${bName.get(u.buildingId) ?? "Building"} - ${u.bedrooms ?? "?"} bed ${u.type}${u.listPrice ? ` - ${u.currency} ${Number(u.listPrice).toLocaleString("en-US")}` : ""}`, listPrice: u.listPrice ? Number(u.listPrice) : null, currency: u.currency }));
+  const agentOpts = agents.map((a: any) => ({ id: a.id, email: a.email }));
   const pages = Math.max(1, Math.ceil(res.total / PAGE));
-  const qs = (over: Partial<SP>) => { const p = new URLSearchParams(); const m = { q: sp.q, status, purpose, ...over }; for (const [k, v] of Object.entries(m)) if (v) p.set(k, String(v)); const s = p.toString(); return s ? `?${s}` : "?"; };
+  const current: SP = Object.fromEntries(KEYS.map((k) => [k, sp[k]]));
+  const href = (over: SP) => `/listings${qs({ ...current, ...over })}`;
+  const sortHref = (s: string) => href({ sort: s, page: undefined });
+  const advancedKeys = KEYS.filter((k) => !["q", "status", "purpose", "sort"].includes(k));
+  const advancedOn = advancedKeys.some((k) => sp[k]);
+  const label: Record<string, string> = { q: "Search", status: "Status", purpose: "Purpose", type: "Type", bedsMin: "Beds from", bedsMax: "Beds to", minPrice: "Min price", maxPrice: "Max price", community: "Community", agent: "Agent", featured: "Featured", exclusivity: "Exclusivity", expiring: "Expiring (days)", noPhotos: "No photos", permit: "Permit", web: "On website", furnishing: "Furnishing", from: "Created from", to: "Created to", stale: "Not refreshed (days)", enq: "Has enquiries" };
+  const chips = KEYS.filter((k) => k !== "sort" && sp[k]).map((k) => ({ label: `${label[k]}${["featured", "noPhotos", "web", "enq"].includes(k) ? "" : `: ${sp[k]}`}`, href: href({ [k]: undefined, page: undefined }) }));
+  const chip = (active: boolean) => (active ? "btn" : "btn-ghost");
+  const rows = res.rows.map((l: any) => {
+    const scope = { ownerUserId: l.agentUserId, branchId: l.branchId, projectId: l.projectId };
+    return {
+      data: { id: l.id, reference: l.reference ?? "", title: l.title ?? "(untitled)", purpose: l.purpose, price: l.price ? `${l.currency} ${Number(l.price).toLocaleString("en-US")}` : "-", jurisdiction: l.jurisdictionCode, status: l.status,
+        unit: l.unit ? `${l.unit.unitNumber}${l.unit.building ? ` - ${l.unit.building}` : ""}${l.unit.bedrooms != null ? ` - ${l.unit.bedrooms} bed` : ""}` : "-", photos: l.photoCount ?? 0, views: Number(l.viewCount ?? 0), enquiries: Number(l.enquiryCount ?? 0), featured: !!l.featured, web: !!l.shareEnabled, expiresOn: l.expiresOn ?? null },
+      canPublish: can(ctx, "listing.publish", scope),
+      edit: can(ctx, "listing.manage", scope) ? { target: { id: l.id, title: l.title ?? "", description: l.description ?? "", price: l.price ? Number(l.price) : null, agentUserId: l.agentUserId }, agents: agentOpts, canReassign: can(ctx, "lead.assign") } : undefined,
+    };
+  });
+  const head = (
+    <>
+      <SortTh label="Listing" sort={filters.sort} asc="oldest" desc="newest" href={sortHref} /><th>Unit</th><th>Purpose</th><SortTh label="Price" sort={filters.sort} asc="price_asc" desc="price_desc" href={sortHref} />
+      <SortTh label="Media and reach" sort={filters.sort} asc="enquiries" desc="views" href={sortHref} /><th>Status</th><SortTh label="Expires" sort={filters.sort} asc="expiry" desc="expiry" href={sortHref} /><th />
+    </>
+  );
   return (
     <section>
       <div className="page-head">
-        <div><h1>Listings</h1><p className="muted text-sm">{res.total} listing{res.total === 1 ? "" : "s"}. Publishing is blocked until the permit, brokerage licence and required fields pass the jurisdiction rules.</p></div>
-        {manage && <ListingDrawer mode="create" units={unitOpts} agents={agents.map((a) => ({ id: a.id, email: a.email }))} />}
+        <div><h1>Listings</h1><p className="muted text-sm">{res.total} listing{res.total === 1 ? "" : "s"}. Tick listings to create a client PDF or act on several at once. Publishing is blocked until the permit, brokerage licence and required fields pass the jurisdiction rules.</p></div>
+        <div className="flex items-center gap-3"><ViewTabs base="/listings" active="list" />{manage && <ListingDrawer mode="create" units={unitOpts} agents={agentOpts} />}</div>
       </div>
-      <form className="card mb-4 flex flex-wrap items-end gap-3 p-3" action="/listings">
-        <label className="grow text-sm"><span className="muted text-xs font-medium">Search</span><input className="input mt-1" name="q" defaultValue={sp.q ?? ""} placeholder="Title, unit number, building or community" /></label>
-        <label className="text-sm"><span className="muted text-xs font-medium">Status</span><select className="input mt-1" name="status" defaultValue={status ?? ""}><option value="">All</option><option value="draft">Draft</option><option value="published">Published</option><option value="unpublished">Unpublished</option></select></label>
-        <label className="text-sm"><span className="muted text-xs font-medium">Purpose</span><select className="input mt-1" name="purpose" defaultValue={purpose ?? ""}><option value="">All</option><option value="sale">Sale</option><option value="rent">Rent</option></select></label>
-        <button className="btn">Filter</button>{(sp.q || status || purpose) && <Link className="btn-ghost" href="/listings">Clear</Link>}
+      <form className="card mb-3 flex flex-col gap-3 p-3" action="/listings">
+        {filters.sort !== "newest" && <input type="hidden" name="sort" value={filters.sort} />}
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Search" wide><LiveSearch placeholder="Title, reference, unit number, building or community" /></Field>
+          <Field label="Status"><Sel name="status" value={filters.status} any="All" options={["draft", "published", "unpublished"]} /></Field>
+          <Field label="Purpose"><Sel name="purpose" value={filters.purpose} any="All" options={["sale", "rent"]} /></Field>
+          <button className="btn">Filter</button>{(chips.length > 0) && <Link className="btn-ghost" href="/listings">Clear all</Link>}
+        </div>
+        <details open={advancedOn}>
+          <summary className="cursor-pointer text-sm font-medium">Advanced filters</summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Property type"><Sel name="type" value={sp.type} options={[...TYPES]} /></Field>
+            <Field label="Bedrooms from"><Num name="bedsMin" value={filters.bedsMin} /></Field>
+            <Field label="Bedrooms to"><Num name="bedsMax" value={filters.bedsMax} /></Field>
+            <Field label="Community or area"><input className="input" name="community" defaultValue={sp.community ?? ""} /></Field>
+            <Field label="Min price (AED)"><Num name="minPrice" value={filters.minPrice} /></Field>
+            <Field label="Max price (AED)"><Num name="maxPrice" value={filters.maxPrice} /></Field>
+            <Field label="Furnishing"><Sel name="furnishing" value={filters.furnishing} options={[["unfurnished", "Unfurnished"], ["semi_furnished", "Semi-furnished"], ["furnished", "Furnished"]]} /></Field>
+            <Field label="Agent"><Sel name="agent" value={sp.agent} options={[["me", "Mine"], ...agentOpts.map((a: any): [string, string] => [a.id, a.email])]} /></Field>
+            <Field label="Exclusivity"><Sel name="exclusivity" value={filters.exclusivity} options={[["exclusive", "Exclusive"], ["non_exclusive", "Non-exclusive"], ["none", "None"]]} /></Field>
+            <Field label="Permit"><Sel name="permit" value={filters.permit} options={[["valid", "Valid"], ["expiring", "Expiring soon"], ["missing", "Missing or expired"]]} /></Field>
+            <Field label="Listing expires within (days)"><Num name="expiring" value={filters.expiringInDays} /></Field>
+            <Field label="Not refreshed for (days)"><Num name="stale" value={filters.staleDays} /></Field>
+            <Field label="Created from"><input className="input" type="date" name="from" defaultValue={sp.from ?? ""} /></Field>
+            <Field label="Created to"><input className="input" type="date" name="to" defaultValue={sp.to ?? ""} /></Field>
+            <div className="flex flex-col justify-end gap-2"><Check name="featured" checked={!!filters.featured} label="Featured only" /><Check name="web" checked={!!filters.onWebsite} label="On public website" /></div>
+            <div className="flex flex-col justify-end gap-2"><Check name="noPhotos" checked={!!filters.noPhotos} label="Missing photos" /><Check name="enq" checked={!!filters.hasEnquiries} label="Has enquiries" /></div>
+          </div>
+        </details>
       </form>
-      <div className="card overflow-x-auto">
-        <table className="t">
-          <thead><tr><th>Listing</th><th>Unit</th><th>Purpose</th><th>Price</th><th>Jurisdiction</th><th>Status</th><th>Compliance</th><th /></tr></thead>
-          <tbody>
-            {res.rows.map((l: any) => (
-              <ListingRow key={l.id} listing={{ id: l.id, title: l.title ?? "(untitled)", purpose: l.purpose, price: l.price ? `${l.currency} ${Number(l.price).toLocaleString("en-US")}` : "-", jurisdiction: l.jurisdictionCode, status: l.status,
-                unit: l.unit ? `${l.unit.unitNumber}${l.unit.building ? ` - ${l.unit.building}` : ""}${l.unit.bedrooms != null ? ` - ${l.unit.bedrooms} bed` : ""}` : "-" }}
-                canPublish={can(ctx, "listing.publish", { ownerUserId: l.agentUserId, branchId: l.branchId, projectId: l.projectId })}
-                edit={can(ctx, "listing.manage", { ownerUserId: l.agentUserId, branchId: l.branchId, projectId: l.projectId }) ? { target: { id: l.id, title: l.title ?? "", description: l.description ?? "", price: l.price ? Number(l.price) : null, agentUserId: l.agentUserId }, agents: agents.map((a) => ({ id: a.id, email: a.email })), canReassign: can(ctx, "lead.assign") } : undefined} />
-            ))}
-            {res.rows.length === 0 && <tr><td colSpan={8} className="muted">No listings match.</td></tr>}
-          </tbody>
-        </table>
-      </div>
+      <nav className="mb-3 flex flex-wrap gap-2 text-sm" aria-label="Quick filters">
+        <Link className={chip(!filters.status && !filters.purpose)} href={href({ status: undefined, purpose: undefined, page: undefined })}>All</Link>
+        {["published", "draft", "unpublished"].map((s) => <Link key={s} className={chip(filters.status === s)} href={href({ status: s, page: undefined })}>{s[0]!.toUpperCase() + s.slice(1)}</Link>)}
+        <Link className={chip(filters.purpose === "sale")} href={href({ purpose: "sale", page: undefined })}>Sale</Link><Link className={chip(filters.purpose === "rent")} href={href({ purpose: "rent", page: undefined })}>Rent</Link>
+        <Link className={chip(sp.agent === "me")} href={href({ agent: "me", page: undefined })}>Mine</Link>
+      </nav>
+      <div className="mb-3"><ActiveChips chips={chips} /></div>
+      <ListingsTable rows={rows} head={head} agents={agentOpts} canBulk={manage || hasPermission(ctx, "listing.publish")} canPdf defaults={{ clientName: sp.client, leadId: sp.lead && /^[0-9a-f-]{36}$/i.test(sp.lead) ? sp.lead : undefined }} />
       {pages > 1 && (
         <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Pagination">
           <span className="muted">Page {page} of {pages}</span>
-          <div className="flex gap-2">{page > 1 && <Link className="btn-ghost" href={qs({ page: String(page - 1) })}>Previous</Link>}{page < pages && <Link className="btn-ghost" href={qs({ page: String(page + 1) })}>Next</Link>}</div>
+          <div className="flex gap-2">{page > 1 && <Link className="btn-ghost" href={href({ page: String(page - 1) })}>Previous</Link>}{page < pages && <Link className="btn-ghost" href={href({ page: String(page + 1) })}>Next</Link>}</div>
         </nav>
       )}
     </section>

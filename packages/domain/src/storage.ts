@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { logger } from "@reales/observability";
+import { s3FromEnv } from "./storage-s3";
 
 /** S3-compatible object storage sits behind this interface; dev uses the local filesystem driver. */
 export interface ObjectStorage {
@@ -33,8 +34,13 @@ export class LocalObjectStorage implements ObjectStorage {
 }
 
 let storage: ObjectStorage | null = null;
+/** S3-compatible storage when S3_ENDPOINT/S3_BUCKET/S3_ACCESS_KEY/S3_SECRET_KEY are set (required on serverless hosts); otherwise the local folder (development). */
 export function getStorage(): ObjectStorage {
-  storage ??= new LocalObjectStorage(process.env.STORAGE_LOCAL_DIR ?? path.resolve(process.cwd(), ".storage"));
+  if (!storage) {
+    const s3 = s3FromEnv();
+    storage = s3 ?? new LocalObjectStorage(process.env.STORAGE_LOCAL_DIR ?? path.resolve(process.cwd(), ".storage"));
+    if (!s3 && process.env.VERCEL) logger.warn("Object storage is the local filesystem on a serverless host: uploads will not persist. Set S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY and S3_SECRET_KEY.");
+  }
   return storage;
 }
 export const setStorage = (s: ObjectStorage | null) => void (storage = s);
@@ -48,6 +54,7 @@ export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 const SIGNATURES: Array<{ mime: string; ext: string[]; test: (b: Buffer) => boolean }> = [
   { mime: "application/pdf", ext: [".pdf"], test: (b) => b.subarray(0, 5).toString("latin1") === "%PDF-" },
   { mime: "image/png", ext: [".png"], test: (b) => b.length > 8 && b[0] === 0x89 && b.subarray(1, 4).toString("latin1") === "PNG" },
+  { mime: "image/webp", ext: [".webp"], test: (b) => b.length > 12 && b.subarray(0, 4).toString("latin1") === "RIFF" && b.subarray(8, 12).toString("latin1") === "WEBP" },
   { mime: "image/jpeg", ext: [".jpg", ".jpeg"], test: (b) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
   { mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ext: [".docx"], test: (b) => b.length > 4 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04 },
   { mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ext: [".xlsx"], test: (b) => b.length > 4 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04 },
@@ -75,7 +82,7 @@ export function validateUpload(input: { filename: string; mime?: string; bytes: 
   if (!base || base.startsWith(".")) throw new UploadRejectedError("Invalid file name");
   const ext = path.extname(base).toLowerCase();
   const sniffed = SIGNATURES.find((s) => s.test(bytes) && s.ext.includes(ext));
-  if (!sniffed) throw new UploadRejectedError("Unsupported or mismatched file type (allowed: PDF, PNG, JPEG, DOCX, XLSX)");
+  if (!sniffed) throw new UploadRejectedError("Unsupported or mismatched file type (allowed: PDF, PNG, JPEG, WEBP, DOCX, XLSX)");
   if (input.mime && input.mime !== sniffed.mime && !(input.mime === "application/octet-stream")) throw new UploadRejectedError("Declared file type does not match the file content");
   return { filename: base, mime: sniffed.mime, bytes, hash: sha256Hex(bytes) };
 }

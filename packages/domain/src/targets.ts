@@ -74,7 +74,7 @@ async function actual(sq: Sequelize, tenantId: string, metric: TargetMetric, use
   };
   if (metric === "closed_value") return q("SELECT COALESCE(SUM(amount),0) AS v FROM deals WHERE tenant_id=:t AND stage='closed' AND closed_at >= :s AND closed_at < :e {user}", "agent_user_id");
   if (metric === "closed_deals") return q("SELECT COUNT(*) AS v FROM deals WHERE tenant_id=:t AND stage='closed' AND closed_at >= :s AND closed_at < :e {user}", "agent_user_id");
-  if (metric === "new_leads") return q("SELECT COUNT(*) AS v FROM leads WHERE tenant_id=:t AND created_at >= :s AND created_at < :e {user}", "assigned_user_id");
+  if (metric === "new_leads") return q("SELECT COUNT(*) AS v FROM leads WHERE tenant_id=:t AND deleted_at IS NULL AND created_at >= :s AND created_at < :e {user}", "assigned_user_id");
   return q("SELECT COUNT(*) AS v FROM viewings WHERE tenant_id=:t AND status='completed' AND completed_at >= :s AND completed_at < :e {user}", "agent_user_id");
 }
 

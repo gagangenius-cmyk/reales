@@ -67,7 +67,7 @@ export async function routeLead(u: Uow, ctx: Pick<RequestContext, "tenantId">, l
     if (!candidates.length) continue;
 
     const open = await u.sq.query<{ uid: string; n: number }>(
-      "SELECT assigned_user_id AS uid, COUNT(*) AS n FROM leads WHERE tenant_id=:t AND status='open' AND assigned_user_id IN (:ids) GROUP BY assigned_user_id",
+      "SELECT assigned_user_id AS uid, COUNT(*) AS n FROM leads WHERE tenant_id=:t AND deleted_at IS NULL AND status='open' AND assigned_user_id IN (:ids) GROUP BY assigned_user_id",
       { replacements: { t: ctx.tenantId, ids: candidates }, transaction: u.tx, type: QueryTypes.SELECT },
     );
     const load = new Map(open.map((o) => [o.uid, Number(o.n)]));

@@ -34,7 +34,7 @@ export async function listPools(sq: Sequelize, ctx: RequestContext) {
   if (!hasPermission(ctx, "pool.claim") && !hasPermission(ctx, "pool.manage")) throw new ForbiddenError("Missing permission: pool.claim");
   return withUow(sq, ctx, async (u) => {
     const pools = (await u.repo("LeadPool").findAll({ order: [["name", "ASC"]], transaction: u.tx })) as any[];
-    const counts = await u.sq.query<{ pool_id: string; n: number }>("SELECT pool_id, COUNT(*) AS n FROM leads WHERE tenant_id=:t AND status='open' AND assigned_user_id IS NULL AND pool_id IS NOT NULL GROUP BY pool_id", { replacements: { t: ctx.tenantId }, transaction: u.tx, type: QueryTypes.SELECT });
+    const counts = await u.sq.query<{ pool_id: string; n: number }>("SELECT pool_id, COUNT(*) AS n FROM leads WHERE tenant_id=:t AND deleted_at IS NULL AND status='open' AND assigned_user_id IS NULL AND pool_id IS NOT NULL GROUP BY pool_id", { replacements: { t: ctx.tenantId }, transaction: u.tx, type: QueryTypes.SELECT });
     const n = new Map(counts.map((c) => [c.pool_id, Number(c.n)]));
     return pools.map((p) => ({ ...plain(p), waiting: n.get(p.get("id")) ?? 0 }));
   });
@@ -150,7 +150,7 @@ export async function repoolSweep(sq: Sequelize, ctx: RequestContext, now = new 
     const due = await sq.query<{ id: string; assigned_user_id: string; since: Date }>(
       `SELECT l.id, l.assigned_user_id, COALESCE(a.at, l.created_at) AS since
          FROM leads l LEFT JOIN (SELECT lead_id, MAX(created_at) AS at FROM lead_assignments WHERE tenant_id=:t AND assigned_user_id IS NOT NULL GROUP BY lead_id) a ON a.lead_id = l.id
-        WHERE l.tenant_id=:t AND l.status='open' AND l.assigned_user_id IS NOT NULL AND l.repool_count < :max
+        WHERE l.tenant_id=:t AND l.deleted_at IS NULL AND l.status='open' AND l.assigned_user_id IS NOT NULL AND l.repool_count < :max
           AND (:hot = 0 OR l.is_hot = 1)
           AND ${rule.get("triggerKind") === "no_first_response" ? "l.first_response_at IS NULL AND COALESCE(a.at, l.created_at) <= :cutoff" : "GREATEST(COALESCE(l.last_contacted_at, '1970-01-01'), COALESCE(a.at, l.created_at)) <= :cutoff"}
         ORDER BY since ASC LIMIT 200`,

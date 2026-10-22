@@ -1,3 +1,4 @@
+import { DeleteButton } from "@/components/delete-button";
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
 import { getContact, leadsForContact } from "@reales/domain";
@@ -30,6 +31,7 @@ export default async function ContactPage({ params }: { params: Promise<{ id: st
     <section className="flex flex-col gap-5">
       <div className="page-head">
         <div><Link className="muted text-sm" href="/contacts">&larr; Contacts</Link><h1>{name}</h1><p className="muted text-sm">{c.type === "company" ? "Company" : "Person"} &middot; added {new Date(c.createdAt).toISOString().slice(0, 10)}{c.lastContactedAt ? ` · last contacted ${new Date(c.lastContactedAt).toISOString().slice(0, 10)}` : ""}</p></div>
+        {canEdit && <DeleteButton entity="contact" id={c.id} name={name} redirectTo="/contacts" small={false} />}
         {canEdit && <ContactDrawer id={c.id} initial={{ firstName: c.firstName ?? "", lastName: c.lastName ?? "", companyName: c.companyName ?? "", email: c.email ?? "", phone: c.phoneE164 ?? "", language: c.language ?? "en", nationality: c.nationality ?? "", salutation: c.salutation ?? "", gender: c.gender ?? "", dateOfBirth: c.dateOfBirth ?? "", jobTitle: c.jobTitle ?? "", employer: c.employer ?? "", phoneSecondary: c.phoneSecondary ?? "", whatsapp: c.whatsappE164 ?? "", addressLine: c.addressLine ?? "", city: c.city ?? "", country: c.country ?? "", residency: c.residency ?? "", preferredChannel: c.preferredChannel ?? "", preferredContactTime: c.preferredContactTime ?? "", tags: (c.tags ?? []).join(", "), notes: c.notes ?? "" }} />}
       </div>
       <div className="grid gap-5 lg:grid-cols-2">

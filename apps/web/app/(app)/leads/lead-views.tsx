@@ -16,9 +16,14 @@ const dt = (s: string) => new Date(s).toLocaleString("en-GB", { timeZone: "Asia/
 const overdue = (l: LeadRow) => !!l.followUp && l.status === "open" && new Date(l.followUp) < new Date();
 const money = (v: number | null, c: string) => (v ? `${c} ${Number(v).toLocaleString("en-US")}` : "-");
 
+function Th({ label, cur, asc, desc, hrefs }: { label: string; cur: string; asc: string; desc: string; hrefs: [string, string] }) {
+  const on = cur === asc || cur === desc;
+  return <th aria-sort={on ? "ascending" : "none"}><Link href={on && cur === asc && asc !== desc ? hrefs[1] : hrefs[0]} className="whitespace-nowrap">{label}{on ? (cur === desc && asc !== desc ? " ▼" : " ▲") : ""}</Link></th>;
+}
+
 /* ------------------------------------------------------------------ list with bulk actions */
 
-export function LeadsTable({ rows, stages, users, canAssign, canUpdate }: { rows: LeadRow[]; stages: StageOpt[]; users: UserOpt[]; canAssign: boolean; canUpdate: boolean }) {
+export function LeadsTable({ rows, stages, users, canAssign, canUpdate, sortLinks }: { rows: LeadRow[]; stages: StageOpt[]; users: UserOpt[]; canAssign: boolean; canUpdate: boolean; sortLinks?: { sort: string; received: [string, string]; followUp: [string, string]; budget: [string, string]; contacted: [string, string] } }) {
   const router = useRouter();
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -71,7 +76,7 @@ export function LeadsTable({ rows, stages, users, canAssign, canUpdate }: { rows
         <table className="t">
           <thead><tr>
             <th className="w-8"><input type="checkbox" aria-label="Select all" checked={all} onChange={() => setSel(all ? new Set() : new Set(rows.map((r) => r.id)))} /></th>
-            <th>Contact</th><th>Received</th><th>Purpose</th><th>Stage</th><th>Status</th><th>Campaign</th><th>Assigned to</th><th>Follow-up</th><th>Budget (max)</th><th />
+            <th>Contact</th>{sortLinks ? <Th label="Received" cur={sortLinks.sort} asc="oldest" desc="newest" hrefs={sortLinks.received} /> : <th>Received</th>}<th>Purpose</th><th>Stage</th><th>Status</th><th>Campaign</th><th>Assigned to</th>{sortLinks ? <><Th label="Follow-up" cur={sortLinks.sort} asc="followup" desc="followup" hrefs={sortLinks.followUp} /><Th label="Budget (max)" cur={sortLinks.sort} asc="budget" desc="budget" hrefs={sortLinks.budget} /></> : <><th>Follow-up</th><th>Budget (max)</th></>}<th />
           </tr></thead>
           <tbody>
             {rows.map((l) => (

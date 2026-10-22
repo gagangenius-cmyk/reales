@@ -1,3 +1,4 @@
+import { DeleteButton } from "@/components/delete-button";
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
 import { getContact, getLead, listPipelines, listPools, matchesForLead } from "@reales/domain";
@@ -49,6 +50,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <p className="muted text-sm">Status {lead.status} - stage {name.get(lead.stageId) ?? "-"}{lead.lostReason ? ` - lost: ${lead.lostReason}` : ""}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+        {hasPermission(ctx, "lead.assign") && <DeleteButton entity="lead" id={lead.id} name={`Lead - ${lead.purpose}`} redirectTo="/leads" small={false} />}
         {hasPermission(ctx, "call.log") && lead.status === "open" && <LogCallDrawer leadId={lead.id} contactLabel={contactName ?? undefined} label="Log call" />}
         {lead.status === "open" && (lead.assignedUserId === ctx.userId || hasPermission(ctx, "lead.assign")) && <ReleaseButton leadId={lead.id} pools={pools.filter((p) => p.active).map((p) => ({ id: p.id, name: p.name }))} />}
         {can(ctx, "lead.update", { ownerUserId: lead.assignedUserId, branchId: lead.branchId, projectId: lead.projectId }) && <EditLeadDrawer leadId={lead.id} initial={{ purpose: lead.purpose, budgetMin: lead.budgetMin ? String(Number(lead.budgetMin)) : "", budgetMax: lead.budgetMax ? String(Number(lead.budgetMax)) : "", currency: lead.currency ?? "AED", bedrooms: lead.bedrooms != null ? String(lead.bedrooms) : "", preferredAreas: (lead.preferredAreas ?? []).join(", "), language: lead.language ?? "en", isHot: !!lead.isHot, campaign: lead.campaign ?? "", financing: lead.financing ?? "", purchaseTimeline: lead.purchaseTimeline ?? "", propertyTypes: lead.propertyTypes ?? [], tags: (lead.tags ?? []).join(", "), notes: lead.notes ?? "", nextFollowUpAt: lead.nextFollowUpAt ? new Date(new Date(lead.nextFollowUpAt).getTime() + 4 * 3600000).toISOString().slice(0, 16) : "", expectedCloseDate: lead.expectedCloseDate ?? "" }} />}

@@ -1,3 +1,4 @@
+import { TableTools } from "@/components/table-tools";
 import { redirect } from "next/navigation";
 import { QueryTypes } from "sequelize";
 import { getSequelize } from "@reales/database";
@@ -27,6 +28,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/contacts", label: "Contacts", show: hasPermission(ctx, "contact.read") },
     { href: "/inventory", label: "Inventory", show: hasPermission(ctx, "inventory.read") || hasPermission(ctx, "inventory.manage") },
     { href: "/listings", label: "Listings", show: hasPermission(ctx, "listing.read") },
+    { href: "/trash", label: "Trash", show: ["contact.update", "lead.assign", "listing.manage", "inventory.manage", "org.manage", "project.manage", "campaign.manage", "template.manage"].some((p) => hasPermission(ctx, p)) },
+    { href: "/distribution", label: "Portals and feeds", show: hasPermission(ctx, "portal.manage") },
+    { href: "/website", label: "Public website", show: hasPermission(ctx, "site.manage") },
     { href: "/searches", label: "Saved searches", show: hasPermission(ctx, "match.read") },
     { href: "/valuation", label: "Valuation", show: hasPermission(ctx, "valuation.run") },
     { href: "/referrals", label: "Referrals", show: hasPermission(ctx, "referral.read") },
@@ -64,7 +68,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/audit", label: "Audit log", show: hasPermission(ctx, "audit.read") },
   ].filter((n) => n.show);
   const byHref = new Map(flat.map((n) => [n.href, n]));
-  const groupDefs: Record<string, string[]> = {"Overview": ["/dashboard", "/insights", "/noticeboard", "/support", "/notifications", "/calendar", "/tasks"], "Sales": ["/leads", "/pools", "/calls", "/contacts", "/viewings", "/availability", "/deals", "/targets", "/checklists", "/searches", "/referrals", "/valuation"], "Inventory": ["/inventory", "/listings", "/projects"], "Marketing": ["/inbox", "/lead-sources", "/templates", "/campaigns", "/bots", "/automation"], "Property management": ["/portfolios", "/leases", "/maintenance", "/inspections"], "Finance": ["/finance", "/commissions", "/payouts", "/agents"], "Compliance": ["/compliance"], "Administration": ["/organization", "/users", "/roles", "/portal-access", "/imports", "/settings", "/audit"]};
+  const groupDefs: Record<string, string[]> = {"Overview": ["/dashboard", "/insights", "/noticeboard", "/support", "/notifications", "/calendar", "/tasks"], "Sales": ["/leads", "/pools", "/calls", "/contacts", "/viewings", "/availability", "/deals", "/targets", "/checklists", "/searches", "/referrals", "/valuation"], "Inventory": ["/inventory", "/listings", "/distribution", "/website", "/projects"], "Marketing": ["/inbox", "/lead-sources", "/templates", "/campaigns", "/bots", "/automation"], "Property management": ["/portfolios", "/leases", "/maintenance", "/inspections"], "Finance": ["/finance", "/commissions", "/payouts", "/agents"], "Compliance": ["/compliance"], "Administration": ["/organization", "/users", "/roles", "/portal-access", "/imports", "/settings", "/trash", "/audit"]};
   const groups = Object.entries(groupDefs).map(([title, hrefs]) => ({
     title: translate(lang, title),
     items: hrefs.map((h) => byHref.get(h)).filter((n): n is NonNullable<typeof n> => !!n).map((n) => ({ href: n.href, label: translate(lang, n.href === "/notifications" ? "Notifications" : n.label), count: n.href === "/notifications" ? unread : undefined })),
@@ -83,7 +87,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <CommandPalette pages={flat.map((n) => ({ href: n.href, label: translate(lang, n.label) }))} />
           <div className="flex items-center gap-2"><LanguageSwitch lang={lang} /><LogoutButton /></div>
         </header>
-        <main className="content">{children}</main>
+        <main className="content">{children}<TableTools /></main>
       </div>
     </div>
   );

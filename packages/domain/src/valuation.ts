@@ -54,7 +54,7 @@ export async function valuateUnit(sq: Sequelize, ctx: RequestContext, unitId: st
     );
     const asking = await u.sq.query<any>(
       `SELECT l.id, l.price, l.published_at, un.unit_number, un.bedrooms, un.area_sqft FROM listings l JOIN units un ON un.id = l.unit_id AND un.tenant_id = l.tenant_id JOIN buildings b ON b.id = un.building_id AND b.tenant_id = un.tenant_id
-        WHERE l.tenant_id=:t AND l.status='published' AND l.purpose='sale' AND l.price > 0 AND un.id<>:id AND b.community=:community AND un.type=:type AND un.bedrooms BETWEEN :lo AND :hi AND un.area_sqft > 0 LIMIT 40`,
+        WHERE l.tenant_id=:t AND l.deleted_at IS NULL AND un.deleted_at IS NULL AND l.status='published' AND l.purpose='sale' AND l.price > 0 AND un.id<>:id AND b.community=:community AND un.type=:type AND un.bedrooms BETWEEN :lo AND :hi AND un.area_sqft > 0 LIMIT 40`,
       { replacements: common, transaction: u.tx, type: QueryTypes.SELECT },
     );
     const comps: Comp[] = [

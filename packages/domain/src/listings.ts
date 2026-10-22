@@ -1,7 +1,8 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { Op, Sequelize, WhereOptions } from "sequelize";
 import { mysqlDate, RequestContext } from "@reales/database";
 import { authorize, ForbiddenError, hasPermission } from "@reales/rbac";
+import { nextCounter } from "./finance";
 import { buildCanonicalListing, publishToPortals } from "./portal-publish";
 import { resolveListingRule } from "./regulatory";
 import { plain, scopeWhere, ScopeColumns } from "./scope";
@@ -101,10 +102,13 @@ export async function createListing(sq: Sequelize, ctx: RequestContext, input: C
     if (!(await u.repo("User").findOne({ where: { id: agent, status: "active" }, transaction: u.tx }))) throw new NotFoundError("Agent");
     if (input.brokerLicenceId && !(await u.repo("BrokerLicence").findById(input.brokerLicenceId, { transaction: u.tx }))) throw new NotFoundError("Broker licence");
     if (input.projectId && !(await u.repo("Project").findById(input.projectId, { transaction: u.tx }))) throw new NotFoundError("Project");
+    const live: any = await u.repo("Listing").findOne({ where: { unitId: input.unitId, purpose: input.purpose, status: { [Op.in]: ["draft", "published"] } }, transaction: u.tx });
+    if (live) throw new ConflictError(`A live ${input.purpose} listing already exists for this unit${live.get("reference") ? ` (${live.get("reference")})` : ""}`);
     const id = randomUUID();
+    const reference = `RLS-${String(await nextCounter(u, ctx.tenantId, "listing")).padStart(6, "0")}`;
     const price = input.price ?? (unit.get("listPrice") != null ? Number(unit.get("listPrice")) : null);
     const l = await u.repo("Listing").create({
-      id, unitId: input.unitId, purpose: input.purpose, status: "draft", title: input.title ?? null, description: input.description ?? null,
+      id, reference, unitId: input.unitId, purpose: input.purpose, status: "draft", title: input.title ?? null, description: input.description ?? null,
       price, currency: input.currency ?? unit.get("currency"), agentUserId: agent, branchId: input.branchId ?? ctx.membership.branchIds[0] ?? null,
       projectId: input.projectId ?? project.get("crmProjectId") ?? null, jurisdictionCode: project.get("jurisdictionCode"), brokerLicenceId: input.brokerLicenceId ?? null,
     }, { transaction: u.tx });
@@ -200,7 +204,7 @@ export async function publishListing(sq: Sequelize, ctx: RequestContext, id: str
     const evaluation = await evaluateListing(u, l);
     if (!evaluation.publishable) throw new ListingNotPublishableError(evaluation); // hard gate, before any adapter runs
     const action = l.get("status") === "published" ? "update" : "publish";
-    await u.repo("Listing").updateById(id, { status: "published", publishedAt: l.get("publishedAt") ?? new Date() }, { transaction: u.tx });
+    await u.repo("Listing").updateById(id, { status: "published", publishedAt: l.get("publishedAt") ?? new Date(), ...(l.get("shareToken") ? {} : { shareToken: randomBytes(24).toString("base64url") }), ...(l.get("expiresOn") ? {} : { expiresOn: new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10) }), lastRefreshedAt: new Date() }, { transaction: u.tx });
     const snapshot = await buildCanonicalListing(u, await u.repo("Listing").findById(id, { transaction: u.tx }));
     const portals = await publishToPortals(u, ctx, l, snapshot, action);
     await u.audit({ action: "listing.published", entityType: "listing", entityId: id, after: { ruleVersion: evaluation.ruleVersion, portals: portals.length } });

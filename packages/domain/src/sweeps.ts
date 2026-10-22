@@ -15,8 +15,10 @@ import { matchSweep } from "./matching";
 import { settleDueReferrals } from "./referrals";
 import { taskReminderSweep } from "./calendar";
 import { repoolSweep } from "./pools";
+import { listingLifecycleSweep } from "./listing-details";
+import { deliverQueuedPublications } from "./syndication";
 
-export interface SweepResult { tenantId: string; offersExpired: number; reservationsExpired: number; listingsUnpublished: number; workflowsResumed: number; campaignBatches: number; leaseNotices: number; slaBreaches: number; kycExpired: number; dsrOverdue: number; leadsScored: number; matchAlerts: number; referralsSettled: number; taskReminders: number; leadsRepooled: number; error?: string }
+export interface SweepResult { tenantId: string; offersExpired: number; reservationsExpired: number; listingsUnpublished: number; workflowsResumed: number; campaignBatches: number; leaseNotices: number; slaBreaches: number; kycExpired: number; dsrOverdue: number; leadsScored: number; matchAlerts: number; referralsSettled: number; taskReminders: number; leadsRepooled: number; listingsExpired: number; error?: string }
 
 /**
  * Business deadlines live in the database, not in queue timers (BullMQ delays are not exact and are not the record of truth).
@@ -43,10 +45,12 @@ export async function runSweeps(sq: Sequelize, o: { tenantIds?: string[] } = {})
       const referralsSettled = await settleDueReferrals(sq, ctx);
       const taskReminders = await taskReminderSweep(sq, ctx);
       const repooled = await repoolSweep(sq, ctx);
-      out.push({ tenantId: t.id, offersExpired: offers.length, reservationsExpired: reservations.length, listingsUnpublished: listings.length, workflowsResumed: waits.resumed + waits.timedOut, campaignBatches: campaigns.length, leaseNotices: leases.ended + leases.overdueMarked + leases.expiringNotices, slaBreaches, kycExpired, dsrOverdue, leadsScored, matchAlerts: matches.leadAlerts + matches.searchAlerts, referralsSettled, taskReminders, leadsRepooled: repooled.reassigned + repooled.pooled });
+      const lifecycle = await listingLifecycleSweep(sq, ctx);
+      await deliverQueuedPublications(sq, ctx);
+      out.push({ tenantId: t.id, offersExpired: offers.length, reservationsExpired: reservations.length, listingsUnpublished: listings.length, workflowsResumed: waits.resumed + waits.timedOut, campaignBatches: campaigns.length, leaseNotices: leases.ended + leases.overdueMarked + leases.expiringNotices, slaBreaches, kycExpired, dsrOverdue, leadsScored, matchAlerts: matches.leadAlerts + matches.searchAlerts, referralsSettled, taskReminders, leadsRepooled: repooled.reassigned + repooled.pooled, listingsExpired: lifecycle.expired });
     } catch (e) {
       logger.error({ err: e, tenantId: t.id }, "sweep failed for tenant");
-      out.push({ tenantId: t.id, offersExpired: 0, reservationsExpired: 0, listingsUnpublished: 0, workflowsResumed: 0, campaignBatches: 0, leaseNotices: 0, slaBreaches: 0, kycExpired: 0, dsrOverdue: 0, leadsScored: 0, matchAlerts: 0, referralsSettled: 0, taskReminders: 0, leadsRepooled: 0, error: String((e as Error).message) });
+      out.push({ tenantId: t.id, offersExpired: 0, reservationsExpired: 0, listingsUnpublished: 0, workflowsResumed: 0, campaignBatches: 0, leaseNotices: 0, slaBreaches: 0, kycExpired: 0, dsrOverdue: 0, leadsScored: 0, matchAlerts: 0, referralsSettled: 0, taskReminders: 0, leadsRepooled: 0, listingsExpired: 0, error: String((e as Error).message) });
     }
   }
   return out;

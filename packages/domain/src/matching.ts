@@ -55,7 +55,7 @@ async function publishedCandidates(u: Uow, o: { since?: Date } = {}): Promise<Ca
   const rows = await u.sq.query<any>(
     `SELECT l.id listing_id, l.title, l.purpose, l.price, l.currency, un.bedrooms, un.type, un.unit_number, un.area_sqft, b.community
        FROM listings l JOIN units un ON un.id = l.unit_id AND un.tenant_id = l.tenant_id JOIN buildings b ON b.id = un.building_id AND b.tenant_id = un.tenant_id
-      WHERE l.tenant_id=:t AND l.status='published' AND l.price IS NOT NULL ${o.since ? "AND l.published_at > :since" : ""} ORDER BY l.published_at DESC LIMIT 1000`,
+      WHERE l.tenant_id=:t AND l.deleted_at IS NULL AND un.deleted_at IS NULL AND l.status='published' AND l.price IS NOT NULL ${o.since ? "AND l.published_at > :since" : ""} ORDER BY l.published_at DESC LIMIT 1000`,
     { replacements: { t: u.tenantId, since: o.since ? o.since.toISOString().replace("T", " ").replace("Z", "") : null }, transaction: u.tx, type: QueryTypes.SELECT },
   );
   return rows.map((r) => ({ listingId: r.listing_id, title: r.title, purpose: r.purpose, price: Number(r.price), currency: r.currency, bedrooms: r.bedrooms, type: r.type, community: r.community, unitNumber: r.unit_number, areaSqft: r.area_sqft ? Number(r.area_sqft) : null }));

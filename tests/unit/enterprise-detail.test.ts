@@ -145,3 +145,15 @@ describe("inbound lead payloads", () => {
     expect(a).not.toBe(c);
   });
 });
+
+describe("S3 request signing", () => {
+  it("matches AWS's published Signature Version 4 example (GET Object with a Range header)", async () => {
+    const { signAwsV4 } = await import("@reales/domain");
+    const r = signAwsV4({
+      method: "GET", host: "examplebucket.s3.amazonaws.com", path: "/test.txt", headers: { range: "bytes=0-9" },
+      payloadHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", accessKey: "AKIAIOSFODNN7EXAMPLE", secretKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", region: "us-east-1", amzDate: "20130524T000000Z",
+    });
+    expect(r.signature).toBe("f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c6036bdb41");
+    expect(r.headers.authorization).toContain("SignedHeaders=host;range;x-amz-content-sha256;x-amz-date");
+  });
+});

@@ -314,3 +314,15 @@ The attached blueprint describes a different codebase (NestJS/Prisma/Postgres, s
 - After deploying: run `npm run db:migrate` then `npm run db:sync-roles`. New permissions: `pool.claim`, `pool.manage`, `call.log`, `call.read`, `payout.request`, `notice.manage`, `support.manage`, `leadsource.manage`.
 
 Not built from the blueprint: the BIMA-style assistant with tool policy, Google Workspace (Gmail/Calendar) sync, WhatsApp conversation sync with a hosted provider, Odoo and portal feed sync, KYC document upload UI, the separate Communications/AI services (this CRM keeps them in-process behind provider interfaces), a mobile client.
+
+## Listings enterprise, syndication and public website (migrations 056-057)
+
+- **Listing workspace** (`/listings/[id]`): details, amenities (catalogue with Arabic labels and Property Finder codes), photos / floor plans / brochure / video / virtual tour, price and compliance, activity; quality score; share link; duplicate; refresh; 90-day expiry sweep. Media is content-addressed (`tenantId/sha256`) on local disk or any S3-compatible bucket (hand-written SigV4, verified against AWS's published vector).
+- **Portals** (`/distribution`): per-account encrypted credentials, Test connection, feed or API mode (API mode needs a successful test), secret feed URL (`/api/v1/feeds/{token}`) for Bayut and Property Finder, per-listing channel switches, queued delivery with retry. The Bayut and Property Finder field mappings and the PF API paths are best effort: both contracts are private, so confirm against the spec the portal gives you when you get credentials.
+- **Public website** (`/p/{slug}`, settings at `/website`): search, listing pages, gallery with lightbox, English/Arabic with RTL, enquiry form that creates a lead (rate limited, honeypot), brochure PDF, sitemap, robots, JSON-LD. Own animated stylesheet (`app/p/site.css`), tenant colour drives all accents.
+- **Client PDF**: tick listings on `/listings`, "Create client PDF" (table and/or property pages, prices, photos, floor plans, validity, note). With `?lead=` it is logged on the lead.
+- **Filters and sorting**: basic plus advanced filters in the URL on `/leads` and `/listings` (removable chips), sortable column headings, search that queries the database as you type. Other list tables get client-side column sorting and a row filter box (`components/table-tools.tsx`); that sorts only the rows on the page.
+- **Overview pages**: `/leads/overview`, `/listings/overview` (KPIs, charts, needs-attention lists linking back to pre-filtered lists).
+- Checked: typecheck, production build, unit/security tests, and `scripts/smoke-listing-views.ts` (every sort and filter combination executes against the migrated schema; the database is empty so it proves the SQL, not the results).
+- Not done yet: soft delete across models (designed, not built), database tests for the listing module, browser walkthrough of the new pages, live Bayut/PF credentials.
+- After deploying: `npm run db:migrate`, `npm run db:sync-roles`; set `PUBLIC_BASE_URL` (feeds and public media links) and, on Vercel, S3 storage env vars because local disk is not persistent.

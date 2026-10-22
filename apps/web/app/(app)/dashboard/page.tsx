@@ -47,7 +47,7 @@ export default async function Dashboard() {
   // Follow-ups the signed-in person owns that are due, oldest first. Own leads only, whatever the role.
   const due = hasPermission(ctx, "lead.read")
     ? await sq.query<{ id: string; purpose: string; is_hot: number; next_follow_up_at: Date }>(
-        "SELECT id, purpose, is_hot, next_follow_up_at FROM leads WHERE tenant_id=:t AND assigned_user_id=:u AND status='open' AND next_follow_up_at IS NOT NULL AND next_follow_up_at <= NOW() ORDER BY next_follow_up_at ASC LIMIT 6",
+        "SELECT id, purpose, is_hot, next_follow_up_at FROM leads WHERE tenant_id=:t AND deleted_at IS NULL AND assigned_user_id=:u AND status='open' AND next_follow_up_at IS NOT NULL AND next_follow_up_at <= NOW() ORDER BY next_follow_up_at ASC LIMIT 6",
         { replacements: { t: ctx.tenantId, u: ctx.userId }, type: QueryTypes.SELECT }).catch(() => [])
     : [];
   const hour = (new Date().getUTCHours() + 4) % 24;

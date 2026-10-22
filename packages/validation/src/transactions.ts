@@ -149,3 +149,51 @@ export const supportTicketSchema = z.object({ subject: z.string().trim().min(1).
 export const supportCommentSchema = z.object({ body: z.string().trim().min(1).max(20000), internal: z.boolean().optional() }).strict();
 export const supportUpdateSchema = z.object({ status: z.enum(["open", "in_progress", "waiting", "resolved", "closed"]).optional(), priority: z.enum(["low", "normal", "high", "urgent"]).optional(), assigneeId: z.string().uuid().nullable().optional() }).strict();
 export const supportListQuery = z.object({ status: z.string().max(20).optional(), mine: z.enum(["true", "false"]).optional(), limit: z.coerce.number().int().min(1).max(200).default(50), offset: z.coerce.number().int().min(0).default(0) });
+
+// ---- listing detail, distribution, website
+const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export const listingDetailsSchema = z.object({
+  title: z.string().max(255).nullable().optional(), description: z.string().max(10000).nullable().optional(), titleAr: z.string().max(255).nullable().optional(), descriptionAr: z.string().max(10000).nullable().optional(),
+  price: z.number().positive().nullable().optional(), ownerPrice: z.number().positive().nullable().optional(), features: z.array(z.string().max(60)).max(80).optional(),
+  furnishing: z.enum(["unfurnished", "semi_furnished", "furnished"]).nullable().optional(), parkingSpaces: z.number().int().min(0).max(50).nullable().optional(),
+  rentFrequency: z.enum(["yearly", "quarterly", "monthly"]).nullable().optional(), cheques: z.number().int().min(1).max(12).nullable().optional(),
+  securityDeposit: z.number().min(0).nullable().optional(), serviceCharge: z.number().min(0).nullable().optional(), commissionPct: z.number().min(0).max(100).nullable().optional(),
+  videoUrl: z.string().max(300).nullable().optional(), virtualTourUrl: z.string().max(300).nullable().optional(),
+  exclusivity: z.enum(["none", "exclusive", "non_exclusive"]).optional(), agreementStartsOn: dateStr.nullable().optional(), agreementExpiresOn: dateStr.nullable().optional(), expiresOn: dateStr.nullable().optional(),
+  featured: z.boolean().optional(), latitude: z.number().min(-90).max(90).nullable().optional(), longitude: z.number().min(-180).max(180).nullable().optional(),
+}).strict();
+export const mediaOrderSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(100) }).strict();
+export const mediaPatchSchema = z.object({ caption: z.string().max(200).nullable().optional(), cover: z.boolean().optional() }).strict();
+export const shareSchema = z.object({ enabled: z.boolean().optional(), regenerate: z.boolean().optional() }).strict();
+export const channelSchema = z.object({ portalAccountId: z.string().uuid(), enabled: z.boolean() }).strict();
+export const bulkListingSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(100),
+  action: z.discriminatedUnion("type", [
+    z.object({ type: z.literal("publish") }).strict(), z.object({ type: z.literal("unpublish"), reason: z.string().max(200).optional() }).strict(), z.object({ type: z.literal("refresh") }).strict(),
+    z.object({ type: z.literal("assign"), userId: z.string().uuid() }).strict(), z.object({ type: z.literal("feature"), value: z.boolean() }).strict(),
+  ]),
+}).strict();
+export const credentialsSchema = z.object({
+  baseUrl: z.string().url().max(300), apiKey: z.string().min(1).max(300), apiSecret: z.string().min(1).max(300),
+  tokenPath: z.string().max(120).optional(), listingsPath: z.string().max(120).optional(), locationsPath: z.string().max(120).optional(), locationMap: z.record(z.union([z.string(), z.number()])).optional(),
+}).strict();
+export const portalModeSchema = z.object({ mode: z.enum(["export", "api"]) }).strict();
+export const siteSettingsSchema = z.object({
+  enabled: z.boolean().optional(), title: z.string().max(120).nullable().optional(), tagline: z.string().max(200).nullable().optional(), about: z.string().max(8000).nullable().optional(),
+  phone: z.string().max(40).nullable().optional(), whatsapp: z.string().max(40).nullable().optional(), email: z.string().max(254).nullable().optional(), address: z.string().max(255).nullable().optional(),
+  logoUrl: z.string().max(400).nullable().optional(), primaryColor: z.string().max(9).nullable().optional(), defaultLanguage: z.enum(["en", "ar"]).optional(), showPrices: z.boolean().optional(),
+  areaUnit: z.enum(["sqft", "sqm"]).optional(), seoDescription: z.string().max(300).nullable().optional(), social: z.record(z.string().max(400)).optional(),
+}).strict();
+export const publicEnquirySchema = z.object({
+  token: z.string().min(20).max(60), name: z.string().trim().min(1).max(120), phone: z.string().max(40).optional(), email: z.string().max(254).optional(), message: z.string().max(2000).optional(), website: z.string().max(200).optional(),
+}).strict();
+
+export const shortlistPdfSchema = z.object({
+  listingIds: z.array(z.string().uuid()).min(1).max(30), clientName: z.string().trim().max(120).optional(), title: z.string().trim().max(120).optional(), notes: z.string().max(1500).optional(), leadId: z.string().uuid().optional(),
+  layout: z.enum(["table", "detailed", "both"]).optional(), showPrice: z.boolean().optional(), includePhotos: z.boolean().optional(), includeFloorPlans: z.boolean().optional(), validityDays: z.number().int().min(1).max(90).optional(),
+}).strict();
+
+const trashRef = z.object({ entity: z.string().min(1).max(40), id: z.string().uuid() });
+export const trashDeleteSchema = trashRef.extend({ reason: z.string().trim().max(300).optional() }).strict();
+export const trashActionSchema = trashRef.strict();
+export const trashListQuery = z.object({ entity: z.string().max(40).optional(), q: z.string().max(100).optional(), limit: z.coerce.number().int().min(1).max(200).optional(), offset: z.coerce.number().int().min(0).optional() });

@@ -53,8 +53,15 @@ export const TENANT_OWNED_TABLES = [
   // lead pools, repool rules, call logs
   "lead_pools", "repool_rules", "call_logs", "lead_ingest_sources", "lead_ingest_events",
   // payouts, noticeboard, support
-  "payout_requests", "payout_request_items", "notice_posts", "notice_reads", "support_tickets", "support_comments",
+  "listing_enquiries", "listing_channels", "site_settings", "payout_requests", "payout_request_items", "notice_posts", "notice_reads", "support_tickets", "support_comments",
 ] as const;
+
+/** Tables whose rows are soft-deleted (see migration 058 for what is deliberately excluded). Must stay in step with that migration. */
+export const SOFT_DELETE_TABLES = [
+  "organizations", "contacts", "leads", "tasks", "developers", "real_estate_projects", "buildings", "units", "listings", "viewings", "templates", "segments",
+  "campaigns", "workflows", "bots", "vendors", "portfolios", "saved_searches", "referral_partners", "notice_posts", "support_tickets", "lead_pools", "documents",
+] as const;
+const SOFT_DELETE_SET = new Set<string>(SOFT_DELETE_TABLES);
 
 /** Tables intentionally NOT tenant-owned (global catalogues / tenant root). */
 export const GLOBAL_TABLES = [
@@ -77,7 +84,7 @@ export interface Models {
   Viewing: M; ViewingFeedback: M; Offer: M; OfferRevision: M; Reservation: M; Deal: M; DealStageEvent: M; DealParty: M; DealMilestone: M;
   Document: M; DocumentVersion: M; DocumentLink: M; SignatureEnvelope: M; SignatureSigner: M; SignatureEvent: M;
   Counter: M; Invoice: M; InvoiceLine: M; Payment: M; PaymentAllocation: M; Receipt: M; WebhookEvent: M;
-  CommissionPlan: M; CommissionCalculation: M; CommissionSplit: M; AgentProfile: M; AgentAvailability: M; AgentTimeOff: M; LeadPool: M; RepoolRule: M; CallLog: M; LeadIngestSource: M; LeadIngestEvent: M; PayoutRequest: M; PayoutRequestItem: M; NoticePost: M; NoticeRead: M; SupportTicket: M; SupportComment: M; SalesTarget: M; DealChecklistTemplate: M; DealChecklistTemplateItem: M; DealChecklistItem: M;
+  CommissionPlan: M; CommissionCalculation: M; CommissionSplit: M; AgentProfile: M; AgentAvailability: M; AgentTimeOff: M; LeadPool: M; RepoolRule: M; CallLog: M; LeadIngestSource: M; LeadIngestEvent: M; ListingEnquiry: M; ListingChannel: M; SiteSetting: M; PayoutRequest: M; PayoutRequestItem: M; NoticePost: M; NoticeRead: M; SupportTicket: M; SupportComment: M; SalesTarget: M; DealChecklistTemplate: M; DealChecklistTemplateItem: M; DealChecklistItem: M;
   ChannelAccount: M; Conversation: M; Message: M; MessageEvent: M; Template: M; TemplateVersion: M;
   Segment: M; Campaign: M; CampaignRecipient: M; CampaignEvent: M;
   Workflow: M; WorkflowVersion: M; WorkflowRun: M; WorkflowStep: M; WorkflowWait: M;
@@ -97,7 +104,10 @@ export function initModels(sq: Sequelize): Models {
   const hit = cache.get(sq);
   if (hit) return hit;
   const d = (name: string, table: string, attrs: Record<string, any>, opts: Record<string, any> = {}): M =>
-    sq.define(name, attrs, { tableName: table, underscored: true, ...opts }) as M;
+    SOFT_DELETE_SET.has(table)
+      // Paranoid: every find and count skips rows with deleted_at set; Model.destroy() stamps it instead of deleting. Trash reads use `paranoid: false`.
+      ? sq.define(name, { ...attrs, deletedBy: uuid() }, { tableName: table, underscored: true, paranoid: true, ...opts }) as M
+      : sq.define(name, attrs, { tableName: table, underscored: true, ...opts }) as M;
   const noTs = { timestamps: false };
   const createdOnly = { timestamps: true, updatedAt: false };
 
@@ -252,16 +262,23 @@ export function initModels(sq: Sequelize): Models {
       id: pk(), tenantId: tid(), unitId: tid(), purpose: T.ENUM("sale", "rent"), status: T.ENUM("draft", "published", "unpublished"), title: s(255),
       description: T.TEXT, price: money(), currency: s(3, false), agentUserId: uuid(), branchId: uuid(), projectId: uuid(), jurisdictionCode: s(40, false),
       brokerLicenceId: uuid(), publishedAt: T.DATE(3),
+      reference: s(30), features: T.JSON, furnishing: T.ENUM("unfurnished", "semi_furnished", "furnished"), parkingSpaces: T.INTEGER, rentFrequency: T.ENUM("yearly", "quarterly", "monthly"), cheques: T.INTEGER,
+      securityDeposit: money(), serviceCharge: money(), videoUrl: s(300), virtualTourUrl: s(300), titleAr: s(255), descriptionAr: T.TEXT, exclusivity: T.ENUM("none", "exclusive", "non_exclusive"),
+      agreementStartsOn: T.DATEONLY, agreementExpiresOn: T.DATEONLY, ownerPrice: money(), commissionPct: T.DECIMAL(5, 2), featured: T.BOOLEAN, expiresOn: T.DATEONLY, lastRefreshedAt: T.DATE(3),
+      shareToken: s(40), shareEnabled: T.BOOLEAN, viewCount: T.INTEGER, enquiryCount: T.INTEGER, latitude: T.DECIMAL(9, 6), longitude: T.DECIMAL(9, 6), coverMediaId: uuid(),
     }),
-    ListingMedia: d("ListingMedia", "listing_media", { id: pk(), tenantId: tid(), listingId: tid(), kind: T.ENUM("image", "video", "floorplan"), storageKey: s(500, false), position: T.INTEGER }),
+    ListingChannel: d("ListingChannel", "listing_channels", { id: pk(), tenantId: tid(), listingId: tid(), channelKind: T.ENUM("website", "portal"), portalAccountId: uuid(), enabled: T.BOOLEAN, externalId: s(120), externalUrl: s(400), pendingPublicationId: uuid(), lastSyncedAt: T.DATE(3), lastStatus: s(20), lastError: s(500), attempts: T.INTEGER }),
+    SiteSetting: d("SiteSetting", "site_settings", { id: pk(), tenantId: tid(), enabled: T.BOOLEAN, title: s(120), tagline: s(200), about: T.TEXT, phone: s(40), whatsapp: s(40), email: s(254), address: s(255), logoUrl: s(400), primaryColor: s(9), defaultLanguage: T.ENUM("en", "ar"), showPrices: T.BOOLEAN, areaUnit: T.ENUM("sqft", "sqm"), seoDescription: s(300), social: T.JSON }),
+    ListingEnquiry: d("ListingEnquiry", "listing_enquiries", { id: pk(), tenantId: tid(), listingId: tid(), leadId: uuid(), contactId: uuid(), channel: T.ENUM("web", "portal", "whatsapp", "phone", "other"), message: T.TEXT, duplicate: T.BOOLEAN }),
+    ListingMedia: d("ListingMedia", "listing_media", { id: pk(), tenantId: tid(), listingId: tid(), kind: T.ENUM("image", "video", "floorplan"), storageKey: s(500, false), position: T.INTEGER, caption: s(200), fileName: s(200), mime: s(80), sizeBytes: T.INTEGER }),
     ListingPrice: d("ListingPrice", "listing_prices", { id: pk(), tenantId: tid(), listingId: tid(), price: money(false), currency: s(3, false), changedBy: s(64), createdAt: dt3() }, noTs2),
     ListingPermit: d("ListingPermit", "listing_permits", {
       id: pk(), tenantId: tid(), listingId: tid(), permitNo: s(80, false), authority: s(60, false), issuedAt: T.DATEONLY, expiresAt: { type: T.DATEONLY, allowNull: false },
       status: T.ENUM("pending", "valid", "revoked", "rejected"), source: T.ENUM("manual", "api"), verifiedAt: T.DATE(3), verifiedBy: s(64),
     }),
-    PortalAccount: d("PortalAccount", "portal_accounts", { id: pk(), tenantId: tid(), provider: s(40, false), name: s(120, false), mode: T.ENUM("export", "api"), config: T.JSON, status: T.ENUM("active", "disabled") }),
+    PortalAccount: d("PortalAccount", "portal_accounts", { id: pk(), tenantId: tid(), provider: s(40, false), name: s(120, false), mode: T.ENUM("export", "api"), config: T.JSON, status: T.ENUM("active", "disabled"), feedToken: s(48), credentialsEnc: T.TEXT, lastTestedAt: T.DATE(3), lastTestOk: T.BOOLEAN, lastTestMessage: s(300) }),
     PortalPublication: d("PortalPublication", "portal_publications", {
-      id: pk(), tenantId: tid(), listingId: tid(), portalAccountId: tid(), action: T.ENUM("publish", "update", "unpublish"), status: T.ENUM("exported", "sent", "failed"),
+      id: pk(), tenantId: tid(), listingId: tid(), portalAccountId: tid(), action: T.ENUM("publish", "update", "unpublish"), status: T.ENUM("exported", "sent", "failed", "queued"),
       snapshot: { type: T.JSON, allowNull: false }, snapshotHash: s(64, false), payloadFormat: s(20), payload: T.TEXT("medium"), externalRef: s(120), error: T.TEXT, actorId: s(64), createdAt: dt3(),
     }, noTs2),
     PortalSyncLog: d("PortalSyncLog", "portal_sync_logs", { id: pk(), tenantId: tid(), portalAccountId: tid(), listingId: uuid(), action: s(40, false), outcome: s(20, false), detail: s(500), createdAt: dt3() }, noTs2),

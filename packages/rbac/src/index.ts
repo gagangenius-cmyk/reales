@@ -15,6 +15,7 @@ export const PERMISSIONS = {
   "pool.claim": "Claim leads from a pool", "pool.manage": "Manage lead pools and repool rules",
   "leadsource.manage": "Manage inbound lead sources (Meta, portals, web forms)",
   "payout.request": "Request payout of your commission share",
+  "site.manage": "Manage the public property website",
   "notice.manage": "Post and manage noticeboard notices",
   "support.manage": "Work the internal support desk",
   "call.log": "Log calls", "call.read": "View call logs and call statistics",
