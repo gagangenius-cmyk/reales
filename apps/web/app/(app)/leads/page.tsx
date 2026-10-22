@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { DEFAULT_SOURCES, listAssignableUsers, listContacts, listPipelines, listProjects, searchLeadsAdvanced, type LeadFilters } from "@reales/domain";
+import { DEFAULT_SOURCES, listAssignableUsers, listContacts, listPipelines, listProjects, searchLeadsAdvanced, leadStatusSummary, type LeadFilters } from "@reales/domain";
 import { can, hasPermission } from "@reales/rbac";
 import { ActiveChips, Check, Field, Num, Sel, SortTh, ViewTabs, date, num, pick, qs } from "@/components/filter-bits";
 import { LiveSearch } from "@/components/live-search";
@@ -33,7 +33,8 @@ export default async function Leads({ searchParams }: { searchParams: Promise<SP
     tags: sp.tag ? [sp.tag] : undefined, language: sp.language?.trim() || undefined, financing: sp.financing || undefined, timeline: sp.timeline || undefined, inPool: sp.pool === "1" || undefined, minScore: num(sp.minScore), neverContacted: sp.never === "1" || undefined,
     sort: pick(sp.sort, SORTS) ?? "newest",
   };
-  const [found, pipelines, contacts, projects, assignable] = await Promise.all([
+  const [summary, found, pipelines, contacts, projects, assignable] = await Promise.all([
+    leadStatusSummary(sq, ctx),
     searchLeadsAdvanced(sq, ctx, board ? { ...filters, limit: 300, offset: 0 } : { ...filters, limit: PAGE, offset: (page - 1) * PAGE }),
     listPipelines(sq, ctx) as Promise<any[]>,
     readContacts ? (listContacts(sq, ctx, { limit: 500, offset: 0 }) as Promise<any[]>) : Promise.resolve([]),
@@ -83,6 +84,21 @@ export default async function Leads({ searchParams }: { searchParams: Promise<SP
         <div className="card stat"><span className="muted text-xs">Hot</span><b className={hot ? "err" : ""}>{hot}</b></div>
         <div className="card stat"><span className="muted text-xs">Follow-ups overdue</span><b className={overdue ? "err" : ""}>{overdue}</b></div>
         <div className="card stat"><span className="muted text-xs">Unassigned</span><b>{unassigned}</b></div>
+      </div>
+      <div className="card flex flex-col gap-3 p-4" aria-label="Lead status overview">
+        <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-semibold">Lead status at a glance</h2><span className="muted text-xs">{summary.today} new today - {summary.open} open - {summary.won} won - {summary.lost} lost</span></div>
+        <div className="flex flex-wrap gap-2 text-sm">
+          {summary.stages.map((st) => <Link key={st.id} href={q({ stage: st.id, status: "open", page: undefined })} className={sp.stage === st.id ? "btn" : "btn-ghost"}>{st.name} <b>{st.count}</b></Link>)}
+          <Link href={q({ status: "won", stage: undefined, page: undefined })} className={status === "won" ? "btn" : "btn-ghost"}>Won <b>{summary.won}</b></Link>
+          <Link href={q({ status: "lost", stage: undefined, page: undefined })} className={status === "lost" ? "btn" : "btn-ghost"}>Lost <b>{summary.lost}</b></Link>
+        </div>
+        <div className="flex flex-wrap gap-2 border-t pt-3 text-sm" style={{ borderColor: "var(--border)" }}>
+          <Link href={q({ hot: "1", status: "open", page: undefined })} className="btn-ghost">Hot <b className={summary.hot ? "err" : ""}>{summary.hot}</b></Link>
+          <Link href={q({ followUp: "overdue", status: "open", page: undefined })} className="btn-ghost">Follow-up overdue <b className={summary.overdue ? "err" : ""}>{summary.overdue}</b></Link>
+          <Link href={q({ assigned: "unassigned", status: "open", page: undefined })} className="btn-ghost">Unassigned <b>{summary.unassigned}</b></Link>
+          <Link href={q({ never: "1", status: "open", page: undefined })} className="btn-ghost">Never contacted <b>{summary.neverContacted}</b></Link>
+          <Link href={q({ pool: "1", status: "open", page: undefined })} className="btn-ghost">In a pool <b>{summary.inPool}</b></Link>
+        </div>
       </div>
       <form className="card flex flex-col gap-3 p-3" action="/leads">
         {sp.view && <input type="hidden" name="view" value={sp.view} />}{filters.sort !== "newest" && <input type="hidden" name="sort" value={filters.sort} />}

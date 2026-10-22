@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 /** Overview | List (| Board) switcher shared by the Leads and Listings pages. */
-export function ViewTabs({ base, active, extra = [] }: { base: string; active: "overview" | "list" | "board"; extra?: { key: "board"; label: string; href: string }[] }) {
+export function ViewTabs({ base, active, extra = [] }: { base: string; active: "overview" | "list" | "board" | "map"; extra?: { key: "board" | "map"; label: string; href: string }[] }) {
   const tabs = [{ key: "overview", label: "Overview", href: `${base}/overview` }, { key: "list", label: "List", href: base }, ...extra];
   return (
     <nav className="inline-flex rounded-lg border p-0.5 text-sm" style={{ borderColor: "var(--border)" }} aria-label="View">

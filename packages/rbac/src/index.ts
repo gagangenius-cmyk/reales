@@ -4,6 +4,12 @@ import type { Grant, RequestContext, ScopeType } from "@reales/database";
 /** Explicit permission catalogue. Application code checks permissions, never role names. */
 export const PERMISSIONS = {
   "tenant.manage": "Manage tenant settings, plan, quotas",
+  "hr.read": "View the employee directory, attendance board and HR notices",
+  "hr.manage": "Manage employees, leave types, shifts, holidays, documents, announcements and occasions",
+  "hr.salary": "View and change salaries",
+  "hr.leave.approve": "Approve or reject any employee's leave",
+  "hr.attendance.manage": "Correct attendance records",
+  "hr.letters": "Generate and e-mail HR letters",
   "user.read": "View users",
   "user.create": "Invite/create users",
   "user.update": "Update users, disable/enable",
@@ -86,6 +92,10 @@ const ALL_TENANT: Array<[PermissionKey, ScopeType]> = (Object.keys(PERMISSIONS) 
 
 export const ROLE_TEMPLATES: RoleTemplate[] = [
   { key: "tenant_admin", name: "Tenant Administrator", requiresMfa: true, grants: ALL_TENANT },
+  {
+    key: "hr_manager", name: "HR Manager", requiresMfa: true,
+    grants: [["user.read", "tenant"], ["org.read", "tenant"], ["hr.read", "tenant"], ["hr.manage", "tenant"], ["hr.salary", "tenant"], ["hr.leave.approve", "tenant"], ["hr.attendance.manage", "tenant"], ["hr.letters", "tenant"], ["notice.manage", "tenant"], ["audit.read", "tenant"]],
+  },
   {
     key: "branch_manager", name: "Branch Manager", requiresMfa: true,
     grants: [

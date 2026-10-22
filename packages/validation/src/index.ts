@@ -63,3 +63,4 @@ export * from "./hardening";
 export * from "./extras";
 export * from "./onboarding";
 export * from "./workspace";
+export * from "./hr";

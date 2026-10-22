@@ -1,3 +1,4 @@
+import { getSetting } from "./config";
 import { randomBytes, randomUUID } from "node:crypto";
 import { Op, Sequelize, WhereOptions } from "sequelize";
 import { mysqlDate, RequestContext } from "@reales/database";
@@ -201,10 +202,11 @@ export async function publishListing(sq: Sequelize, ctx: RequestContext, id: str
   return withUow(sq, ctx, async (u) => {
     const l = await scopedListing(u, ctx, id);
     authorize(ctx, "listing.publish", ref(l));
+    if (["closed", "archived"].includes(l.get("status"))) throw new ConflictError(`This listing is ${l.get("status")}. Reopen it before publishing.`);
     const evaluation = await evaluateListing(u, l);
     if (!evaluation.publishable) throw new ListingNotPublishableError(evaluation); // hard gate, before any adapter runs
     const action = l.get("status") === "published" ? "update" : "publish";
-    await u.repo("Listing").updateById(id, { status: "published", publishedAt: l.get("publishedAt") ?? new Date(), ...(l.get("shareToken") ? {} : { shareToken: randomBytes(24).toString("base64url") }), ...(l.get("expiresOn") ? {} : { expiresOn: new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10) }), lastRefreshedAt: new Date() }, { transaction: u.tx });
+    await u.repo("Listing").updateById(id, { status: "published", publishedAt: l.get("publishedAt") ?? new Date(), ...(l.get("shareToken") ? {} : { shareToken: randomBytes(24).toString("base64url") }), ...(l.get("expiresOn") && String(l.get("expiresOn")) >= new Date().toISOString().slice(0, 10) ? {} : { expiresOn: new Date(Date.now() + (await getSetting<number>(u.sq, ctx.tenantId, "listings.expiry_days")) * 86_400_000).toISOString().slice(0, 10) }), lastRefreshedAt: new Date() }, { transaction: u.tx });
     const snapshot = await buildCanonicalListing(u, await u.repo("Listing").findById(id, { transaction: u.tx }));
     const portals = await publishToPortals(u, ctx, l, snapshot, action);
     await u.audit({ action: "listing.published", entityType: "listing", entityId: id, after: { ruleVersion: evaluation.ruleVersion, portals: portals.length } });
@@ -213,9 +215,9 @@ export async function publishListing(sq: Sequelize, ctx: RequestContext, id: str
   });
 }
 
-export async function unpublishListingInUow(u: Uow, ctx: RequestContext, l: any, reason: string) {
+export async function unpublishListingInUow(u: Uow, ctx: RequestContext, l: any, reason: string, to: "unpublished" | "expired" | "closed" = "unpublished", extra: Record<string, unknown> = {}) {
   if (l.get("status") !== "published") return [];
-  await u.repo("Listing").updateById(l.get("id"), { status: "unpublished" }, { transaction: u.tx });
+  await u.repo("Listing").updateById(l.get("id"), { status: to, ...extra }, { transaction: u.tx });
   const snapshot = await buildCanonicalListing(u, l);
   const portals = await publishToPortals(u, ctx, l, snapshot, "unpublish");
   await u.audit({ action: "listing.unpublished", entityType: "listing", entityId: l.get("id"), reason });

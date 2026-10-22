@@ -7,7 +7,7 @@ export const notificationQuery = z.object({ unreadOnly: z.enum(["true", "false"]
 export const matchStatusSchema = z.object({ status: z.enum(["shared", "dismissed"]) }).strict();
 export const criteriaSchema = z.object({
   purpose: z.enum(["sale", "rent"]).optional(), minPrice: z.number().nonnegative().optional(), maxPrice: z.number().nonnegative().optional(), bedrooms: z.number().int().min(0).max(20).optional(),
-  communities: z.array(z.string().min(1).max(80)).max(10).optional(), types: z.array(z.enum(["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land"])).max(7).optional(),
+  communities: z.array(z.string().min(1).max(80)).max(10).optional(), types: z.array(z.enum(["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land", "duplex", "hotel_apartment", "studio", "compound", "full_floor", "half_floor", "whole_building", "bulk_units", "warehouse", "showroom", "labour_camp", "factory", "farm", "staff_accommodation"])).max(21).optional(),
 }).strict();
 export const savedSearchSchema = z.object({ name: z.string().min(1).max(160), criteria: criteriaSchema, contactId: uuid.optional(), leadId: uuid.optional(), notify: z.boolean().optional() }).strict();
 export const searchStatusSchema = z.object({ status: z.enum(["active", "paused"]) }).strict();

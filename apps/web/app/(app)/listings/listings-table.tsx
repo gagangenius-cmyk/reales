@@ -54,6 +54,10 @@ export function ListingsTable({ rows, canBulk, canPdf, agents, defaults, head }:
               <button className="btn-ghost" disabled={busy} onClick={() => bulk({ type: "publish" }, "Published")}>Publish</button>
               <button className="btn-ghost" disabled={busy} onClick={() => bulk({ type: "unpublish" }, "Unpublished")}>Unpublish</button>
               <button className="btn-ghost" disabled={busy} onClick={() => bulk({ type: "refresh" }, "Refreshed")}>Refresh</button>
+              <button className="btn-ghost" disabled={busy} onClick={() => bulk({ type: "archive" }, "Archived")}>Archive</button>
+              <select className="input w-auto py-1" disabled={busy} defaultValue="" aria-label="Close selected as" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v) void bulk({ type: "close", outcome: v }, `Closed as ${v}`); }}>
+                <option value="">Close as...</option><option value="sold">Sold</option><option value="rented">Rented</option><option value="withdrawn">Withdrawn</option>
+              </select>
               <button className="btn-ghost" disabled={busy} onClick={() => bulk({ type: "feature", value: true }, "Featured")}>Feature</button>
               <button className="btn-ghost" disabled={busy} onClick={() => bulk({ type: "feature", value: false }, "Unfeatured")}>Unfeature</button>
               <select className="input w-auto py-1" disabled={busy} defaultValue="" aria-label="Reassign selected to" onChange={(e) => { if (e.target.value) { void bulk({ type: "assign", userId: e.target.value }, "Reassigned"); e.target.value = ""; } }}>

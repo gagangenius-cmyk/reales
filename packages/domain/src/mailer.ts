@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import { logger } from "@reales/observability";
 
-export interface Mail { to: string; subject: string; text: string; html?: string }
+export interface Mail { to: string; subject: string; text: string; html?: string; attachments?: { filename: string; content: Buffer; contentType?: string }[] }
 export interface Mailer { code: string; send(m: Mail): Promise<void> }
 
 /** Test/dev mailer: keeps messages in memory. It never delivers anything. */
@@ -24,7 +24,7 @@ export function smtpMailer(url: string, from: string): Mailer {
   return {
     code: "smtp",
     async send(m) {
-      await transport.sendMail({ from, to: m.to, subject: m.subject, text: m.text, ...(m.html ? { html: m.html } : {}) });
+      await transport.sendMail({ from, to: m.to, subject: m.subject, text: m.text, ...(m.html ? { html: m.html } : {}), ...(m.attachments?.length ? { attachments: m.attachments } : {}) });
     },
   };
 }

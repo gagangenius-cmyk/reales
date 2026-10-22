@@ -25,12 +25,15 @@ export async function buildCanonicalListing(u: Uow, listing: any): Promise<Canon
   const permits = await u.repo("ListingPermit").findAll({ where: { listingId: listing.get("id"), status: "valid" }, order: [["expiresAt", "DESC"]], transaction: u.tx });
   const media = await u.repo("ListingMedia").findAll({ where: { listingId: listing.get("id") }, order: [["position", "ASC"]], transaction: u.tx });
   const permit: any = permits[0];
+  const loc: any = building.get("locationId") ? await u.repo("Location").findById(building.get("locationId"), { transaction: u.tx }) : null;
+  const area = unit.get("areaSqft") != null ? Number(unit.get("areaSqft")) : null;
+  const lat = listing.get("latitude") ?? building.get("latitude") ?? loc?.get("latitude") ?? null, lng = listing.get("longitude") ?? building.get("longitude") ?? loc?.get("longitude") ?? null;
   return {
     listingId: listing.get("id"), reference: listing.get("reference") ?? `L-${String(listing.get("id")).slice(0, 8).toUpperCase()}`, purpose: listing.get("purpose"),
     title: listing.get("title") ?? "", description: listing.get("description") ?? "", price: Number(listing.get("price")), currency: listing.get("currency"),
     jurisdiction: listing.get("jurisdictionCode"),
     property: { type: unit.get("type"), bedrooms: unit.get("bedrooms"), bathrooms: unit.get("bathrooms"), areaSqft: unit.get("areaSqft") != null ? Number(unit.get("areaSqft")) : null, unitNumber: unit.get("unitNumber"), floor: unit.get("floor"), view: unit.get("view") },
-    location: { building: building.get("name"), community: building.get("community"), city: building.get("city"), project: project.get("name"), offPlan: project.get("kind") === "off_plan", projectRegistrationNo: project.get("registrationNo") },
+    location: { building: building.get("name"), community: building.get("community"), subCommunity: building.get("subCommunity") ?? null, city: building.get("city"), country: building.get("country") ?? "AE", bayutLocationId: loc?.get("bayutId") ?? null, pfLocationId: loc?.get("pfId") ?? null, project: project.get("name"), offPlan: project.get("kind") === "off_plan", projectRegistrationNo: project.get("registrationNo") },
     agent: { name: profile ? [profile.get("firstName"), profile.get("lastName")].filter(Boolean).join(" ") || null : null, email: agent?.get("email") ?? null, licenceNo: (agentLicences[0] as any)?.get("licenceNo") ?? null },
     brokerage: { name: licence?.get("holderName") ?? null, licenceNo: licence?.get("licenceNo") ?? null },
     permit: permit ? { number: permit.get("permitNo"), authority: permit.get("authority"), expiresAt: String(permit.get("expiresAt")) } : null,
@@ -39,8 +42,8 @@ export async function buildCanonicalListing(u: Uow, listing: any): Promise<Canon
       features: Array.isArray(listing.get("features")) ? listing.get("features") : [], furnishing: listing.get("furnishing") ?? null, parkingSpaces: listing.get("parkingSpaces") ?? null, rentFrequency: listing.get("rentFrequency") ?? null,
       cheques: listing.get("cheques") ?? null, securityDeposit: listing.get("securityDeposit") != null ? Number(listing.get("securityDeposit")) : null, serviceCharge: listing.get("serviceCharge") != null ? Number(listing.get("serviceCharge")) : null,
       videoUrl: listing.get("videoUrl") ?? null, virtualTourUrl: listing.get("virtualTourUrl") ?? null, titleAr: listing.get("titleAr") ?? null, descriptionAr: listing.get("descriptionAr") ?? null,
-      latitude: listing.get("latitude") != null ? Number(listing.get("latitude")) : null, longitude: listing.get("longitude") != null ? Number(listing.get("longitude")) : null,
-      completionStatus: project.get("kind") === "off_plan" ? "off_plan" : "ready", agentPhone: null, agentPhotoUrl: null, exclusivity: listing.get("exclusivity") ?? "none", featured: !!listing.get("featured"),
+      latitude: lat != null ? Number(lat) : null, longitude: lng != null ? Number(lng) : null, ownership: listing.get("ownership") ?? null, yearBuilt: listing.get("yearBuilt") ?? null, availableFrom: listing.get("availableFrom") ? String(listing.get("availableFrom")).slice(0, 10) : null, utilitiesIncluded: listing.get("utilitiesIncluded") ?? null, plotAreaSqft: unit.get("plotAreaSqft") != null ? Number(unit.get("plotAreaSqft")) : null, pricePerSqft: area && Number(listing.get("price")) ? Math.round(Number(listing.get("price")) / area) : null,
+      completionStatus: listing.get("completionStatus") ?? (project.get("kind") === "off_plan" ? "off_plan" : "ready"), agentPhone: null, agentPhotoUrl: null, exclusivity: listing.get("exclusivity") ?? "none", featured: !!listing.get("featured"),
     },
     capturedAt: new Date().toISOString(),
   };

@@ -53,7 +53,9 @@ export const TENANT_OWNED_TABLES = [
   // lead pools, repool rules, call logs
   "lead_pools", "repool_rules", "call_logs", "lead_ingest_sources", "lead_ingest_events",
   // payouts, noticeboard, support
-  "listing_enquiries", "listing_channels", "site_settings", "payout_requests", "payout_request_items", "notice_posts", "notice_reads", "support_tickets", "support_comments",
+  "listing_enquiries", "listing_channels", "site_settings", "payout_requests", "payout_request_items", "notice_posts", "notice_reads", "support_tickets", "support_comments", "email_queue", "locations",
+  // human resources
+  "hr_shifts", "hr_employees", "hr_salaries", "hr_leave_types", "hr_leave_balances", "hr_leave_requests", "hr_holidays", "hr_attendance", "hr_breaks", "hr_letter_templates", "hr_letters", "hr_documents", "hr_announcements", "hr_occasions",
 ] as const;
 
 /** Tables whose rows are soft-deleted (see migration 058 for what is deliberately excluded). Must stay in step with that migration. */
@@ -84,7 +86,7 @@ export interface Models {
   Viewing: M; ViewingFeedback: M; Offer: M; OfferRevision: M; Reservation: M; Deal: M; DealStageEvent: M; DealParty: M; DealMilestone: M;
   Document: M; DocumentVersion: M; DocumentLink: M; SignatureEnvelope: M; SignatureSigner: M; SignatureEvent: M;
   Counter: M; Invoice: M; InvoiceLine: M; Payment: M; PaymentAllocation: M; Receipt: M; WebhookEvent: M;
-  CommissionPlan: M; CommissionCalculation: M; CommissionSplit: M; AgentProfile: M; AgentAvailability: M; AgentTimeOff: M; LeadPool: M; RepoolRule: M; CallLog: M; LeadIngestSource: M; LeadIngestEvent: M; ListingEnquiry: M; ListingChannel: M; SiteSetting: M; PayoutRequest: M; PayoutRequestItem: M; NoticePost: M; NoticeRead: M; SupportTicket: M; SupportComment: M; SalesTarget: M; DealChecklistTemplate: M; DealChecklistTemplateItem: M; DealChecklistItem: M;
+  CommissionPlan: M; CommissionCalculation: M; CommissionSplit: M; AgentProfile: M; AgentAvailability: M; AgentTimeOff: M; LeadPool: M; RepoolRule: M; CallLog: M; LeadIngestSource: M; LeadIngestEvent: M; ListingEnquiry: M; ListingChannel: M; SiteSetting: M; PayoutRequest: M; PayoutRequestItem: M; NoticePost: M; NoticeRead: M; SupportTicket: M; SupportComment: M; EmailQueue: M; Location: M; HrShift: M; HrEmployee: M; HrSalary: M; HrLeaveType: M; HrLeaveBalance: M; HrLeaveRequest: M; HrHoliday: M; HrAttendance: M; HrBreak: M; HrLetterTemplate: M; HrLetter: M; HrDocument: M; HrAnnouncement: M; HrOccasion: M; SalesTarget: M; DealChecklistTemplate: M; DealChecklistTemplateItem: M; DealChecklistItem: M;
   ChannelAccount: M; Conversation: M; Message: M; MessageEvent: M; Template: M; TemplateVersion: M;
   Segment: M; Campaign: M; CampaignRecipient: M; CampaignEvent: M;
   Workflow: M; WorkflowVersion: M; WorkflowRun: M; WorkflowStep: M; WorkflowWait: M;
@@ -248,18 +250,18 @@ export function initModels(sq: Sequelize): Models {
       id: pk(), tenantId: tid(), developerId: uuid(), crmProjectId: uuid(), name: s(180, false), jurisdictionCode: s(40, false), kind: T.ENUM("ready", "off_plan"),
       registrationNo: s(80), escrowAccountRef: s(120), handoverDate: T.DATEONLY, status: T.ENUM("planning", "selling", "completed", "archived"),
     }),
-    Building: d("Building", "buildings", { id: pk(), tenantId: tid(), reProjectId: tid(), name: s(180, false), community: s(120), city: s(80), floorsCount: T.INTEGER }),
+    Building: d("Building", "buildings", { id: pk(), tenantId: tid(), reProjectId: tid(), name: s(180, false), community: s(120), subCommunity: s(120), city: s(80), country: s(2, false), locationId: uuid(), latitude: T.DECIMAL(10, 7), longitude: T.DECIMAL(10, 7), floorsCount: T.INTEGER }),
     Unit: d("Unit", "units", {
       id: pk(), tenantId: tid(), buildingId: tid(), unitNumber: s(40, false), floor: T.INTEGER,
-      type: T.ENUM("apartment", "villa", "townhouse", "penthouse", "office", "retail", "land"), bedrooms: T.INTEGER, bathrooms: T.INTEGER,
-      areaSqft: T.DECIMAL(12, 2), view: s(80), status: T.ENUM("available", "reserved", "sold", "rented", "blocked"), listPrice: money(), currency: s(3, false), ownerContactId: uuid(),
+      type: T.ENUM("apartment", "villa", "townhouse", "penthouse", "office", "retail", "land", "duplex", "hotel_apartment", "studio", "compound", "full_floor", "half_floor", "whole_building", "bulk_units", "warehouse", "showroom", "labour_camp", "factory", "farm", "staff_accommodation"), bedrooms: T.INTEGER, bathrooms: T.INTEGER,
+      areaSqft: T.DECIMAL(12, 2), plotAreaSqft: T.DECIMAL(12, 2), view: s(80), status: T.ENUM("available", "reserved", "sold", "rented", "blocked"), listPrice: money(), currency: s(3, false), ownerContactId: uuid(),
     }),
     BrokerLicence: d("BrokerLicence", "broker_licences", {
       id: pk(), tenantId: tid(), holderType: T.ENUM("company", "agent"), holderName: s(180, false), userId: uuid(), licenceNo: s(80, false), authority: s(60, false),
       issuedAt: T.DATEONLY, expiresAt: { type: T.DATEONLY, allowNull: false }, validationStatus: T.ENUM("unverified", "valid", "revoked"), verifiedAt: T.DATE(3), verifiedBy: s(64),
     }),
     Listing: d("Listing", "listings", {
-      id: pk(), tenantId: tid(), unitId: tid(), purpose: T.ENUM("sale", "rent"), status: T.ENUM("draft", "published", "unpublished"), title: s(255),
+      id: pk(), tenantId: tid(), unitId: tid(), purpose: T.ENUM("sale", "rent"), status: T.ENUM("draft", "published", "unpublished", "expired", "closed", "archived"), completionStatus: T.ENUM("ready", "off_plan"), ownership: T.ENUM("freehold", "leasehold", "usufruct", "musataha"), yearBuilt: T.INTEGER, availableFrom: T.DATEONLY, utilitiesIncluded: T.BOOLEAN, closedAt: T.DATE(3), closedOutcome: T.ENUM("sold", "rented", "withdrawn"), closedNote: s(300), closedDealId: uuid(), archivedAt: T.DATE(3), statusBeforeArchive: s(20), title: s(255),
       description: T.TEXT, price: money(), currency: s(3, false), agentUserId: uuid(), branchId: uuid(), projectId: uuid(), jurisdictionCode: s(40, false),
       brokerLicenceId: uuid(), publishedAt: T.DATE(3),
       reference: s(30), features: T.JSON, furnishing: T.ENUM("unfurnished", "semi_furnished", "furnished"), parkingSpaces: T.INTEGER, rentFrequency: T.ENUM("yearly", "quarterly", "monthly"), cheques: T.INTEGER,
@@ -527,6 +529,27 @@ export function initModels(sq: Sequelize): Models {
       id: pk(), tenantId: tid(), kind: T.ENUM("contacts", "leads", "units"), filename: s(255, false), createdBy: tid(), status: T.ENUM("validated", "committed", "failed", "cancelled"),
       totalRows: T.INTEGER, validRows: T.INTEGER, errorRows: T.INTEGER, committedRows: T.INTEGER, skippedRows: T.INTEGER, payload: T.JSON, errors: T.JSON, options: T.JSON,
     }),
+    Location: d("Location", "locations", { id: pk(), tenantId: tid(), emirate: s(40, false), community: s(120, false), subCommunity: s(120), pathKey: s(300, false), latitude: T.DECIMAL(10, 7), longitude: T.DECIMAL(10, 7), bayutId: s(60), pfId: s(60), active: T.BOOLEAN }),
+    EmailQueue: d("EmailQueue", "email_queue", { id: pk(), tenantId: tid(), userId: uuid(), toEmail: s(254, false), kind: s(60, false), subject: s(300, false), body: { type: T.TEXT, allowNull: false }, dedupeKey: s(160), status: T.ENUM("queued", "sent", "failed"), attempts: T.INTEGER, lastError: s(300), sendAfter: { type: T.DATE(3), allowNull: false }, sentAt: T.DATE(3) }),
+    HrShift: d("HrShift", "hr_shifts", { id: pk(), tenantId: tid(), name: s(80, false), startTime: s(5, false), endTime: s(5, false), breakMinutes: T.INTEGER, graceMinutes: T.INTEGER, halfDayMinutes: T.INTEGER, weeklyOff: T.JSON, active: T.BOOLEAN }),
+    HrEmployee: d("HrEmployee", "hr_employees", {
+      id: pk(), tenantId: tid(), userId: uuid(), employeeNo: s(30, false), fullName: s(160, false), email: s(254), phone: s(40), designation: s(120), department: s(120), branchId: uuid(), managerEmployeeId: uuid(),
+      employmentType: T.ENUM("full_time", "part_time", "contract", "intern"), status: T.ENUM("active", "on_notice", "exited"), joinedOn: { type: T.DATEONLY, allowNull: false }, probationEndsOn: T.DATEONLY, exitOn: T.DATEONLY, exitReason: s(300),
+      dateOfBirth: T.DATEONLY, gender: T.ENUM("male", "female", "other"), nationality: s(60), workLocation: s(120), shiftId: uuid(), passportExpiresOn: T.DATEONLY, visaExpiresOn: T.DATEONLY, emiratesIdExpiresOn: T.DATEONLY,
+      labourCardNo: s(40), notes: s(500), deletedAt: T.DATE(3), deletedBy: uuid(),
+    }),
+    HrSalary: d("HrSalary", "hr_salaries", { id: pk(), tenantId: tid(), employeeId: tid(), effectiveFrom: { type: T.DATEONLY, allowNull: false }, currency: s(3, false), basic: money(false), housing: money(false), transport: money(false), otherAllowance: money(false), components: T.JSON, gross: money(false), paymentMethod: T.ENUM("bank_transfer", "cash", "cheque"), ibanEnc: T.TEXT, reason: s(200), createdBy: uuid(), createdAt: dt3() }, { timestamps: true, updatedAt: false }),
+    HrLeaveType: d("HrLeaveType", "hr_leave_types", { id: pk(), tenantId: tid(), code: s(30, false), name: s(80, false), annualDays: T.DECIMAL(6, 1), accrual: T.ENUM("upfront", "monthly"), carryForwardMax: T.DECIMAL(6, 1), paid: T.BOOLEAN, requiresDocumentAfterDays: T.INTEGER, maxConsecutiveDays: T.INTEGER, minNoticeDays: T.INTEGER, gender: T.ENUM("any", "male", "female"), countsWeekends: T.BOOLEAN, minServiceMonths: T.INTEGER, active: T.BOOLEAN, color: s(9) }),
+    HrLeaveBalance: d("HrLeaveBalance", "hr_leave_balances", { id: pk(), tenantId: tid(), employeeId: tid(), leaveTypeId: tid(), year: T.INTEGER, entitled: T.DECIMAL(6, 1), carried: T.DECIMAL(6, 1), adjusted: T.DECIMAL(6, 1), note: s(200) }),
+    HrLeaveRequest: d("HrLeaveRequest", "hr_leave_requests", { id: pk(), tenantId: tid(), employeeId: tid(), leaveTypeId: tid(), fromDate: { type: T.DATEONLY, allowNull: false }, toDate: { type: T.DATEONLY, allowNull: false }, halfDay: T.ENUM("none", "first", "second"), days: T.DECIMAL(6, 1), reason: s(500), status: T.ENUM("pending", "approved", "rejected", "cancelled"), approverUserId: uuid(), decidedAt: T.DATE(3), decisionNote: s(300), attachmentKey: s(300) }),
+    HrHoliday: d("HrHoliday", "hr_holidays", { id: pk(), tenantId: tid(), onDate: { type: T.DATEONLY, allowNull: false }, name: s(120, false) }),
+    HrAttendance: d("HrAttendance", "hr_attendance", { id: pk(), tenantId: tid(), employeeId: tid(), workDate: { type: T.DATEONLY, allowNull: false }, checkInAt: T.DATE(3), checkOutAt: T.DATE(3), status: T.ENUM("present", "late", "half_day", "absent", "on_leave", "holiday", "weekly_off"), workedMinutes: T.INTEGER, breakMinutes: T.INTEGER, lateMinutes: T.INTEGER, source: T.ENUM("web", "mobile", "manual"), ip: s(64), note: s(300), editedBy: uuid() }),
+    HrBreak: d("HrBreak", "hr_breaks", { id: pk(), tenantId: tid(), attendanceId: tid(), kind: T.ENUM("lunch", "tea", "prayer", "other"), startedAt: { type: T.DATE(3), allowNull: false }, endedAt: T.DATE(3) }),
+    HrLetterTemplate: d("HrLetterTemplate", "hr_letter_templates", { id: pk(), tenantId: tid(), kind: s(30, false), name: s(120, false), subject: s(200, false), body: { type: T.TEXT, allowNull: false }, active: T.BOOLEAN }),
+    HrLetter: d("HrLetter", "hr_letters", { id: pk(), tenantId: tid(), number: s(20, false), employeeId: tid(), templateId: uuid(), kind: s(30, false), subject: s(200, false), body: { type: T.TEXT, allowNull: false }, status: T.ENUM("draft", "issued", "emailed"), issuedBy: uuid(), issuedAt: T.DATE(3), emailedAt: T.DATE(3), emailedTo: s(254), emailError: s(300) }),
+    HrDocument: d("HrDocument", "hr_documents", { id: pk(), tenantId: tid(), employeeId: uuid(), title: s(160, false), category: s(40, false), storageKey: s(300, false), fileName: s(200, false), mime: s(100, false), sizeBytes: T.BIGINT, expiresOn: T.DATEONLY, visibility: T.ENUM("hr_only", "employee", "company"), uploadedBy: uuid() }),
+    HrAnnouncement: d("HrAnnouncement", "hr_announcements", { id: pk(), tenantId: tid(), title: s(200, false), body: { type: T.TEXT, allowNull: false }, pinned: T.BOOLEAN, publishAt: { type: T.DATE(3), allowNull: false }, expiresAt: T.DATE(3), createdBy: uuid() }),
+    HrOccasion: d("HrOccasion", "hr_occasions", { id: pk(), tenantId: tid(), title: s(160, false), onDate: { type: T.DATEONLY, allowNull: false }, kind: T.ENUM("celebration", "event", "holiday_notice", "other"), message: s(500), yearly: T.BOOLEAN, createdBy: uuid() }),
     PortalLink: d("PortalLink", "portal_links", { id: pk(), tenantId: tid(), userId: tid(), contactId: tid(), kind: T.ENUM("owner", "tenant"), status: T.ENUM("active", "revoked") }),
   });
   cache.set(sq, m);

@@ -3,6 +3,7 @@ import { Op, QueryTypes, Sequelize } from "sequelize";
 import { mysqlDate, systemContext, type RequestContext } from "@reales/database";
 import { authorize, ForbiddenError, hasPermission } from "@reales/rbac";
 import { cleanAmenities } from "./amenities";
+import { getSetting } from "./config";
 import { nextCounter } from "./finance";
 import { ingestLead } from "./leads";
 import { LISTING_SCOPE, evaluateListing, publishListing, unpublishListingInUow } from "./listings";
@@ -72,6 +73,7 @@ export async function getListingDetail(sq: Sequelize, ctx: RequestContext, id: s
       l.get("agentUserId") ? u.repo("User").findById(l.get("agentUserId"), { transaction: u.tx }) : Promise.resolve(null),
     ]);
     const building: any = unit ? await u.repo("Building").findById((unit as any).get("buildingId"), { transaction: u.tx }) : null;
+    const locRow: any = building?.get("locationId") ? await u.repo("Location").findById(building.get("locationId"), { transaction: u.tx }) : null;
     const contacts = (enquiries as any[]).length ? ((await u.repo("Contact").findAll({ where: { id: { [Op.in]: (enquiries as any[]).map((e) => e.get("contactId")).filter(Boolean).concat(["-"]) } }, transaction: u.tx })) as any[]) : [];
     const name = new Map(contacts.map((c) => [c.get("id"), [c.get("firstName"), c.get("lastName")].filter(Boolean).join(" ") || c.get("email") || "Contact"]));
     const mediaRows = (media as any[]).map(plain);
@@ -79,7 +81,7 @@ export async function getListingDetail(sq: Sequelize, ctx: RequestContext, id: s
     const evaluation = await evaluateListing(u, l);
     const days = Math.floor((Date.now() - new Date(l.get("publishedAt") ?? l.get("createdAt")).getTime()) / 86_400_000);
     return {
-      ...plain(l), reference, unit: unit ? plain(unit) : null, building: building ? plain(building) : null, agentEmail: (agent as any)?.get("email") ?? null,
+      ...plain(l), reference, unit: unit ? plain(unit) : null, building: building ? { ...plain(building), locationLat: locRow?.get("latitude") ?? null, locationLng: locRow?.get("longitude") ?? null } : null, agentEmail: (agent as any)?.get("email") ?? null,
       media: mediaRows, permits: (permits as any[]).map(plain), priceHistory: (prices as any[]).map(plain), publications: (pubs as any[]).map(plain),
       enquiries: (enquiries as any[]).map((e) => ({ ...plain(e), contactName: name.get(e.get("contactId")) ?? "Contact" })), viewings: (viewings as any[]).map(plain),
       quality, evaluation, daysOnMarket: days,
@@ -92,7 +94,7 @@ export interface DetailsPatch {
   title?: string | null; description?: string | null; price?: number | null; features?: string[]; furnishing?: "unfurnished" | "semi_furnished" | "furnished" | null; parkingSpaces?: number | null;
   rentFrequency?: "yearly" | "quarterly" | "monthly" | null; cheques?: number | null; securityDeposit?: number | null; serviceCharge?: number | null; videoUrl?: string | null; virtualTourUrl?: string | null;
   titleAr?: string | null; descriptionAr?: string | null; exclusivity?: "none" | "exclusive" | "non_exclusive"; agreementStartsOn?: string | null; agreementExpiresOn?: string | null;
-  ownerPrice?: number | null; commissionPct?: number | null; featured?: boolean; expiresOn?: string | null; latitude?: number | null; longitude?: number | null;
+  ownerPrice?: number | null; commissionPct?: number | null; featured?: boolean; completionStatus?: "ready" | "off_plan" | null; ownership?: "freehold" | "leasehold" | "usufruct" | "musataha" | null; yearBuilt?: number | null; availableFrom?: string | null; utilitiesIncluded?: boolean | null; expiresOn?: string | null; latitude?: number | null; longitude?: number | null;
 }
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const num = (v: unknown, label: string, min = 0, max = 1e12) => { if (v === null || v === undefined) return null; const n = Number(v); if (!Number.isFinite(n) || n < min || n > max) throw new ConflictError(`${label} is out of range`); return n; };
@@ -120,6 +122,11 @@ export async function updateListingDetails(sq: Sequelize, ctx: RequestContext, i
       if ((lat == null) !== (lng == null)) throw new ConflictError("Give both latitude and longitude, or neither");
       set("latitude", lat); set("longitude", lng);
     }
+    if (p.completionStatus !== undefined) { if (p.completionStatus && !["ready", "off_plan"].includes(p.completionStatus)) throw new ConflictError("Unknown completion status"); set("completionStatus", p.completionStatus); }
+    if (p.ownership !== undefined) { if (p.ownership && !["freehold", "leasehold", "usufruct", "musataha"].includes(p.ownership)) throw new ConflictError("Unknown ownership type"); set("ownership", p.ownership); }
+    if (p.yearBuilt !== undefined) set("yearBuilt", p.yearBuilt === null ? null : Math.round(num(p.yearBuilt, "Year built", 1900, 2100)!));
+    if (p.availableFrom !== undefined) { if (p.availableFrom !== null && !DATE.test(p.availableFrom)) throw new ConflictError("Dates must look like 2026-12-31"); set("availableFrom", p.availableFrom); }
+    if (p.utilitiesIncluded !== undefined) set("utilitiesIncluded", p.utilitiesIncluded);
     if (p.features !== undefined) set("features", cleanAmenities(p.features));
     if (p.furnishing !== undefined) { if (p.furnishing && !["unfurnished", "semi_furnished", "furnished"].includes(p.furnishing)) throw new ConflictError("Unknown furnishing"); set("furnishing", p.furnishing); }
     if (p.rentFrequency !== undefined) { if (p.rentFrequency && !["yearly", "quarterly", "monthly"].includes(p.rentFrequency)) throw new ConflictError("Unknown rent frequency"); set("rentFrequency", p.rentFrequency); }
@@ -232,6 +239,7 @@ export async function setListingShare(sq: Sequelize, ctx: RequestContext, id: st
 
 export interface PublicListing {
   token: string; reference: string; title: string; description: string | null; titleAr: string | null; descriptionAr: string | null; purpose: string; price: number | null; currency: string; rentFrequency: string | null;
+  subCommunity?: string | null; plotAreaSqft?: number | null; floor?: number | null; completionStatus?: string | null; ownership?: string | null; yearBuilt?: number | null; availableFrom?: string | null; utilitiesIncluded?: boolean | null; exactLocation?: boolean;
   bedrooms: number | null; bathrooms: number | null; areaSqft: number | null; type: string | null; view: string | null; building: string | null; community: string | null; city: string | null;
   furnishing: string | null; parkingSpaces: number | null; features: string[]; videoUrl: string | null; virtualTourUrl: string | null; latitude: number | null; longitude: number | null;
   photos: { id: string; caption: string | null; kind: string }[]; cover: string | null; agency: string | null; permitNo: string | null;
@@ -252,11 +260,14 @@ export async function getPublicListing(sq: Sequelize, token: string, countView =
     const [tenant] = await u.sq.query<{ name: string }>("SELECT name FROM tenants WHERE id=:t", { replacements: { t: row.tenant_id }, transaction: u.tx, type: QueryTypes.SELECT });
     if (countView) await u.sq.query("UPDATE listings SET view_count = view_count + 1 WHERE id=:id AND tenant_id=:t", { replacements: { id: row.id, t: row.tenant_id }, transaction: u.tx });
     const n = (v: unknown) => (v == null ? null : Number(v));
+    const loc: any = b?.get("locationId") ? await u.repo("Location").findById(b.get("locationId"), { transaction: u.tx }) : null;
+    const exact = l.get("latitude") != null || b?.get("latitude") != null;
     return {
+      subCommunity: b?.get("subCommunity") ?? null, plotAreaSqft: n(unit?.get("plotAreaSqft")), floor: unit?.get("floor") ?? null, completionStatus: l.get("completionStatus") ?? null, ownership: l.get("ownership") ?? null, yearBuilt: l.get("yearBuilt") ?? null, availableFrom: l.get("availableFrom") ? String(l.get("availableFrom")).slice(0, 10) : null, utilitiesIncluded: l.get("utilitiesIncluded") ?? null, exactLocation: exact,
       token, reference: l.get("reference") ?? "", title: l.get("title") ?? "Property for " + l.get("purpose"), description: l.get("description"), titleAr: l.get("titleAr"), descriptionAr: l.get("descriptionAr"), purpose: l.get("purpose"),
       price: n(l.get("price")), currency: l.get("currency"), rentFrequency: l.get("rentFrequency"), bedrooms: unit?.get("bedrooms") ?? null, bathrooms: unit?.get("bathrooms") ?? null, areaSqft: n(unit?.get("areaSqft")), type: unit?.get("type") ?? null,
       view: unit?.get("view") ?? null, building: b?.get("name") ?? null, community: b?.get("community") ?? null, city: b?.get("city") ?? null, furnishing: l.get("furnishing"), parkingSpaces: l.get("parkingSpaces"),
-      features: Array.isArray(l.get("features")) ? l.get("features") : [], videoUrl: l.get("videoUrl"), virtualTourUrl: l.get("virtualTourUrl"), latitude: n(l.get("latitude")), longitude: n(l.get("longitude")),
+      features: Array.isArray(l.get("features")) ? l.get("features") : [], videoUrl: l.get("videoUrl"), virtualTourUrl: l.get("virtualTourUrl"), latitude: n(l.get("latitude") ?? b?.get("latitude") ?? loc?.get("latitude")), longitude: n(l.get("longitude") ?? b?.get("longitude") ?? loc?.get("longitude")),
       photos: media.filter((m) => m.get("mime")).map((m) => ({ id: m.get("id"), caption: m.get("caption"), kind: m.get("kind") })), cover: l.get("coverMediaId"), agency: tenant?.name ?? null, permitNo: permit?.get("permitNo") ?? null,
     };
   });
@@ -299,12 +310,14 @@ export async function submitListingEnquiry(sq: Sequelize, token: string, i: Enqu
 
 // ------------------------------------------------------------------ lifecycle
 /** Keep a listing fresh: stamps the refresh time and pushes the expiry out (default 30 days). Published listings are re-sent to the portals. */
-export async function refreshListing(sq: Sequelize, ctx: RequestContext, id: string, days = 30) {
+export async function refreshListing(sq: Sequelize, ctx: RequestContext, id: string, daysOverride?: number) {
   return withUow(sq, ctx, async (u) => {
     const l = await scoped(u, ctx, id);
     authorize(ctx, "listing.manage", ref(l));
+    if (!["draft", "published", "unpublished", "expired"].includes(l.get("status"))) throw new ConflictError("Reopen this listing before refreshing it");
+    const days = daysOverride ?? (await getSetting<number>(u.sq, ctx.tenantId, "listings.expiry_days"));
     const expiresOn = new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
-    await u.repo("Listing").updateById(id, { lastRefreshedAt: new Date(), expiresOn }, { transaction: u.tx });
+    await u.repo("Listing").updateById(id, { lastRefreshedAt: new Date(), expiresOn, ...(l.get("status") === "expired" ? { status: "unpublished" } : {}) }, { transaction: u.tx });
     await u.audit({ action: "listing.refreshed", entityType: "listing", entityId: id, after: { expiresOn } });
     return plain(await u.repo("Listing").findById(id, { transaction: u.tx }));
   });
@@ -335,26 +348,92 @@ export async function duplicateListing(sq: Sequelize, ctx: RequestContext, id: s
  * exclusivity agreement ends. Idempotent (notifications carry dedupe keys, unpublishing only acts on published listings).
  */
 export async function listingLifecycleSweep(sq: Sequelize, ctx: RequestContext, now = new Date()) {
-  const out = { expired: 0, expiringSoon: 0, agreementsEnding: 0 };
+  const out = { expired: 0, expiringSoon: 0, agreementsEnding: 0, archived: 0 };
   await withUow(sq, ctx, async (u) => {
+    const autoExpire = await getSetting<boolean>(u.sq, ctx.tenantId, "listings.auto_expire");
+    const archiveDays = await getSetting<number>(u.sq, ctx.tenantId, "listings.archive_after_days");
     const day = now.toISOString().slice(0, 10), in7 = new Date(now.getTime() + 7 * 86_400_000).toISOString().slice(0, 10), in14 = new Date(now.getTime() + 14 * 86_400_000).toISOString().slice(0, 10);
-    for (const l of (await u.repo("Listing").findAll({ where: { status: "published", expiresOn: { [Op.ne]: null, [Op.lt]: day } }, transaction: u.tx })) as any[]) {
-      await unpublishListingInUow(u, ctx, l, "expired: not refreshed in time");
-      if (l.get("agentUserId")) await notifyInUow(u, { userId: l.get("agentUserId"), kind: "listing.expired", title: `${l.get("reference") ?? "A listing"} expired and was taken down`, body: "Refresh it and publish again.", entityType: "listing", entityId: l.get("id"), dedupeKey: `listing-expired:${l.get("id")}:${l.get("expiresOn")}` });
-      out.expired++;
-    }
-    for (const l of (await u.repo("Listing").findAll({ where: { status: "published", expiresOn: { [Op.gte]: day, [Op.lte]: in7 } }, transaction: u.tx })) as any[]) {
-      if (l.get("agentUserId") && await notifyInUow(u, { userId: l.get("agentUserId"), kind: "listing.expiring", title: `${l.get("reference") ?? "A listing"} expires on ${l.get("expiresOn")}`, body: "Refresh it to keep it live.", entityType: "listing", entityId: l.get("id"), dedupeKey: `listing-expiring:${l.get("id")}:${l.get("expiresOn")}` })) out.expiringSoon++;
+    if (autoExpire) {
+      for (const l of (await u.repo("Listing").findAll({ where: { status: "published", expiresOn: { [Op.ne]: null, [Op.lt]: day } }, transaction: u.tx })) as any[]) {
+        await unpublishListingInUow(u, ctx, l, "expired: not refreshed in time", "expired");
+        if (l.get("agentUserId")) await notifyInUow(u, { userId: l.get("agentUserId"), kind: "listing.expired", title: `${l.get("reference") ?? "A listing"} expired and was taken down`, body: "Refresh it and publish again.", entityType: "listing", entityId: l.get("id"), dedupeKey: `listing.expired:${l.get("id")}:${l.get("expiresOn")}` });
+        out.expired++;
+      }
+      for (const l of (await u.repo("Listing").findAll({ where: { status: "published", expiresOn: { [Op.gte]: day, [Op.lte]: in7 } }, transaction: u.tx })) as any[]) {
+        if (l.get("agentUserId") && await notifyInUow(u, { userId: l.get("agentUserId"), kind: "listing.expiring", title: `${l.get("reference") ?? "A listing"} expires on ${l.get("expiresOn")}`, body: "Refresh it to keep it live.", entityType: "listing", entityId: l.get("id"), dedupeKey: `listing.expiring:${l.get("id")}:${l.get("expiresOn")}` })) out.expiringSoon++;
+      }
     }
     for (const l of (await u.repo("Listing").findAll({ where: { status: { [Op.in]: ["draft", "published"] }, exclusivity: { [Op.ne]: "none" }, agreementExpiresOn: { [Op.gte]: day, [Op.lte]: in14 } }, transaction: u.tx })) as any[]) {
-      if (l.get("agentUserId") && await notifyInUow(u, { userId: l.get("agentUserId"), kind: "listing.agreement_ending", title: `Agreement for ${l.get("reference") ?? "a listing"} ends on ${l.get("agreementExpiresOn")}`, body: "Renew it with the owner or the listing may be taken by another broker.", entityType: "listing", entityId: l.get("id"), dedupeKey: `listing-agreement:${l.get("id")}:${l.get("agreementExpiresOn")}` })) out.agreementsEnding++;
+      if (l.get("agentUserId") && await notifyInUow(u, { userId: l.get("agentUserId"), kind: "listing.agreement_ending", title: `Agreement for ${l.get("reference") ?? "a listing"} ends on ${l.get("agreementExpiresOn")}`, body: "Renew it with the owner or the listing will lose its exclusivity.", entityType: "listing", entityId: l.get("id"), dedupeKey: `listing.agreement:${l.get("id")}:${l.get("agreementExpiresOn")}` })) out.agreementsEnding++;
+    }
+    if (archiveDays > 0) {
+      const cutoff = new Date(now.getTime() - archiveDays * 86_400_000);
+      const stale = (await u.repo("Listing").findAll({ where: { status: { [Op.in]: ["closed", "expired"] }, updatedAt: { [Op.lt]: cutoff } }, transaction: u.tx })) as any[];
+      for (const l of stale) {
+        await u.repo("Listing").updateById(l.get("id"), { status: "archived", archivedAt: now, statusBeforeArchive: l.get("status") }, { transaction: u.tx });
+        await u.audit({ action: "listing.archived", entityType: "listing", entityId: l.get("id"), reason: `automatic: ${archiveDays} days after ${l.get("status")}` });
+        out.archived++;
+      }
     }
   });
   return out;
 }
 
+// ------------------------------------------------------------------ close, archive, reopen
+/**
+ * Closes a listing because the property was sold or let (or the owner withdrew it). A published listing is taken off the website and the portals first.
+ * The deal, when given, must be for the same unit.
+ */
+export async function closeListing(sq: Sequelize, ctx: RequestContext, id: string, o: { outcome: "sold" | "rented" | "withdrawn"; dealId?: string; note?: string }) {
+  return withUow(sq, ctx, async (u) => {
+    const l = await scoped(u, ctx, id);
+    authorize(ctx, "listing.publish", ref(l));
+    if (!["draft", "published", "unpublished", "expired"].includes(l.get("status"))) throw new ConflictError(`A ${l.get("status")} listing cannot be closed`);
+    if (o.outcome === "sold" && l.get("purpose") !== "sale") throw new ConflictError("Only a sale listing can be marked sold");
+    if (o.outcome === "rented" && l.get("purpose") !== "rent") throw new ConflictError("Only a rental listing can be marked rented");
+    if (o.dealId) {
+      const deal: any = await u.repo("Deal").findById(o.dealId, { transaction: u.tx });
+      if (!deal) throw new NotFoundError("Deal");
+      if (deal.get("unitId") !== l.get("unitId")) throw new ConflictError("That deal is for a different unit");
+    }
+    const extra = { closedAt: new Date(), closedOutcome: o.outcome, closedNote: o.note?.trim().slice(0, 300) || null, closedDealId: o.dealId ?? null, shareEnabled: false };
+    if (l.get("status") === "published") await unpublishListingInUow(u, ctx, l, `closed: ${o.outcome}`, "closed", extra);
+    else await u.repo("Listing").updateById(id, { status: "closed", ...extra }, { transaction: u.tx });
+    await u.audit({ action: "listing.closed", entityType: "listing", entityId: id, after: { outcome: o.outcome, dealId: o.dealId ?? null, note: o.note ?? null } });
+    await u.emit({ type: "listing.closed", aggregateType: "listing", aggregateId: id, projectId: l.get("projectId"), payload: { outcome: o.outcome, dealId: o.dealId ?? null } });
+    return plain(await u.repo("Listing").findById(id, { transaction: u.tx }));
+  });
+}
+
+/** Moves a finished listing out of the working list. Live listings must be unpublished or closed first. */
+export async function archiveListing(sq: Sequelize, ctx: RequestContext, id: string) {
+  return withUow(sq, ctx, async (u) => {
+    const l = await scoped(u, ctx, id);
+    authorize(ctx, "listing.manage", ref(l));
+    if (l.get("status") === "published") throw new ConflictError("Unpublish or close this listing before archiving it");
+    if (l.get("status") === "archived") return plain(l);
+    await u.repo("Listing").updateById(id, { status: "archived", archivedAt: new Date(), statusBeforeArchive: l.get("status"), shareEnabled: false }, { transaction: u.tx });
+    await u.audit({ action: "listing.archived", entityType: "listing", entityId: id, after: { from: l.get("status") } });
+    return plain(await u.repo("Listing").findById(id, { transaction: u.tx }));
+  });
+}
+
+/** Brings a closed, expired or archived listing back as an unpublished listing (it must be published again, which re-checks compliance). */
+export async function reopenListing(sq: Sequelize, ctx: RequestContext, id: string) {
+  return withUow(sq, ctx, async (u) => {
+    const l = await scoped(u, ctx, id);
+    authorize(ctx, "listing.manage", ref(l));
+    if (!["closed", "expired", "archived"].includes(l.get("status"))) throw new ConflictError("Only a closed, expired or archived listing can be reopened");
+    const clash: any = await u.repo("Listing").findOne({ where: { unitId: l.get("unitId"), purpose: l.get("purpose"), status: { [Op.in]: ["draft", "published"] }, id: { [Op.ne]: id } }, transaction: u.tx });
+    if (clash) throw new ConflictError(`A live ${l.get("purpose")} listing already exists for this unit${clash.get("reference") ? ` (${clash.get("reference")})` : ""}`);
+    await u.repo("Listing").updateById(id, { status: "unpublished", closedAt: null, closedOutcome: null, closedNote: null, closedDealId: null, archivedAt: null, statusBeforeArchive: null, expiresOn: null }, { transaction: u.tx });
+    await u.audit({ action: "listing.reopened", entityType: "listing", entityId: id, after: { from: l.get("status") } });
+    return plain(await u.repo("Listing").findById(id, { transaction: u.tx }));
+  });
+}
+
 // ------------------------------------------------------------------ bulk
-export type BulkListingAction = { type: "publish" } | { type: "unpublish"; reason?: string } | { type: "refresh" } | { type: "assign"; userId: string } | { type: "feature"; value: boolean };
+export type BulkListingAction = { type: "publish" } | { type: "unpublish"; reason?: string } | { type: "refresh" } | { type: "assign"; userId: string } | { type: "feature"; value: boolean } | { type: "archive" } | { type: "close"; outcome: "sold" | "rented" | "withdrawn" };
 
 /** One action for many listings. Each goes through the single-listing rules (permissions, compliance gate); failures are reported per listing and never stop the rest. */
 export async function bulkListingAction(sq: Sequelize, ctx: RequestContext, ids: string[], a: BulkListingAction) {
@@ -364,6 +443,8 @@ export async function bulkListingAction(sq: Sequelize, ctx: RequestContext, ids:
       if (a.type === "publish") await publishListing(sq, ctx, id);
       else if (a.type === "unpublish") await (await import("./listings")).unpublishListing(sq, ctx, id, a.reason ?? "bulk");
       else if (a.type === "refresh") await refreshListing(sq, ctx, id);
+      else if (a.type === "archive") await archiveListing(sq, ctx, id);
+      else if (a.type === "close") await closeListing(sq, ctx, id, { outcome: a.outcome });
       else if (a.type === "feature") await updateListingDetails(sq, ctx, id, { featured: a.value });
       else await (await import("./listings")).updateListing(sq, ctx, id, { agentUserId: a.userId });
       out.done++;

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getSequelize } from "@reales/database";
 import { amenityLabel, getSiteListing, resolveSite } from "@reales/domain";
+import { LazyMap } from "@/components/map-lazy";
 import { Gallery } from "@/components/site/gallery";
 import { Reveal } from "@/components/site/reveal";
 import { SiteShell } from "@/components/site/site-shell";
@@ -39,7 +40,7 @@ export default async function SiteListing({ params, searchParams }: { params: Pr
   const base = `/p/${slug}`;
   const s = site.settings, wa = s.whatsapp?.replace(/[^\d]/g, "");
   const nf = (n: number | null | undefined) => (n == null ? "-" : n.toLocaleString(lang === "ar" ? "ar-AE" : "en-US"));
-  const rows: [string, string][] = [[st(lang, "type"), stDyn(lang, l.type ?? "-")], [st(lang, "furnishing"), l.furnishing ? stDyn(lang, l.furnishing) : "-"], [st(lang, "parking"), l.parkingSpaces != null ? String(l.parkingSpaces) : "-"], [st(lang, "reference"), l.reference], ...(l.permitNo ? [[st(lang, "permit"), l.permitNo] as [string, string]] : [])];
+  const rows: [string, string][] = [[st(lang, "type"), stDyn(lang, l.type ?? "-")], [st(lang, "furnishing"), l.furnishing ? stDyn(lang, l.furnishing) : "-"], ...(l.subCommunity ? [[st(lang, "subLocation"), l.subCommunity] as [string, string]] : []), ...(l.floor != null ? [[st(lang, "floorNo"), String(l.floor)] as [string, string]] : []), ...(l.plotAreaSqft ? [[st(lang, "plot"), area(l.plotAreaSqft, s.areaUnit, lang)] as [string, string]] : []), ...(l.completionStatus ? [[st(lang, "completion"), l.completionStatus === "off_plan" ? st(lang, "offPlan") : st(lang, "ready")] as [string, string]] : []), ...(l.ownership ? [[st(lang, "ownership"), stDyn(lang, l.ownership)] as [string, string]] : []), ...(l.yearBuilt ? [[st(lang, "yearBuilt"), String(l.yearBuilt)] as [string, string]] : []), ...(l.availableFrom ? [[st(lang, "availableFrom"), l.availableFrom] as [string, string]] : []), ...(l.utilitiesIncluded != null ? [[st(lang, "utilities"), l.utilitiesIncluded ? st(lang, "included") : st(lang, "notIncluded")] as [string, string]] : []), ...(l.price && l.areaSqft ? [[st(lang, "pricePerSqft"), `${l.currency} ${Math.round(l.price / l.areaSqft).toLocaleString(lang === "ar" ? "ar-AE" : "en-US")}`] as [string, string]] : []), [st(lang, "parking"), l.parkingSpaces != null ? String(l.parkingSpaces) : "-"], [st(lang, "reference"), l.reference], ...(l.permitNo ? [[st(lang, "permit"), l.permitNo] as [string, string]] : [])];
   const jsonLd = { "@context": "https://schema.org", "@type": "RealEstateListing", name: title, description: description ?? undefined, url: `/p/${slug}/${l.reference}`, image: hero ? `/media/${l.token}/${hero.id}` : undefined,
     offers: l.price != null ? { "@type": "Offer", price: l.price, priceCurrency: l.currency, availability: "https://schema.org/InStock" } : undefined,
     about: { "@type": l.type === "villa" ? "House" : "Apartment", numberOfRooms: l.bedrooms ?? undefined, numberOfBathroomsTotal: l.bathrooms ?? undefined, floorSize: l.areaSqft ? { "@type": "QuantitativeValue", value: Math.round(l.areaSqft), unitCode: "FTK" } : undefined, address: { "@type": "PostalAddress", addressLocality: l.community ?? l.city ?? undefined, addressCountry: "AE" }, geo: l.latitude != null && l.longitude != null ? { "@type": "GeoCoordinates", latitude: l.latitude, longitude: l.longitude } : undefined } };
@@ -66,6 +67,12 @@ export default async function SiteListing({ params, searchParams }: { params: Pr
             {description && <Reveal><div className="pf-panel"><h2>{st(lang, "description")}</h2><p style={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{description}</p></div></Reveal>}
             <Reveal><div className="pf-panel"><h2>{st(lang, "details")}</h2><dl className="pf-dl">{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></div></Reveal>
             {l.features.length > 0 && <Reveal><div className="pf-panel"><h2>{st(lang, "amenities")}</h2><ul className="pf-am">{l.features.map((f) => <li key={f}>{amenityLabel(f, lang)}</li>)}</ul></div></Reveal>}
+            {l.latitude != null && l.longitude != null && (
+              <Reveal><div className="pf-panel"><h2>{st(lang, "locationTitle")}</h2>
+                <LazyMap height={320} zoomOnSingle={l.exactLocation ? 15 : 13} pins={[{ id: l.reference, lat: l.latitude, lng: l.longitude, title: title, subtitle: [l.building, l.community, l.city].filter(Boolean).join(", "), precise: !!l.exactLocation, label: "" }]} />
+                {!l.exactLocation && <p className="pf-mute" style={{ fontSize: ".8rem", marginTop: 6 }}>{st(lang, "approxLocation")}</p>}
+              </div></Reveal>
+            )}
             {plans.length > 0 && <Reveal><div className="pf-panel"><h2>{st(lang, "floorplan")}</h2><div className="pf-plans">{plans.map((p) => <a key={p.id} href={`/media/${l.token}/${p.id}`} target="_blank" rel="noopener noreferrer"><img src={`/media/${l.token}/${p.id}`} alt={st(lang, "floorplan")} loading="lazy" /></a>)}</div></div></Reveal>}
             <Reveal>
               <div className="pf-panel" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>

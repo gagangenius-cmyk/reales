@@ -15,7 +15,7 @@ export interface CanonicalListing {
   currency: string;
   jurisdiction: string;
   property: { type: string; bedrooms: number | null; bathrooms: number | null; areaSqft: number | null; unitNumber: string; floor: number | null; view: string | null };
-  location: { building: string; community: string | null; city: string | null; project: string; offPlan: boolean; projectRegistrationNo: string | null };
+  location: { building: string; community: string | null; subCommunity?: string | null; city: string | null; country?: string; project: string; offPlan: boolean; projectRegistrationNo: string | null; bayutLocationId?: string | null; pfLocationId?: string | null };
   agent: { name: string | null; email: string | null; licenceNo: string | null };
   brokerage: { name: string | null; licenceNo: string | null };
   permit: { number: string; authority: string; expiresAt: string } | null;
@@ -24,7 +24,7 @@ export interface CanonicalListing {
   details?: {
     features: string[]; furnishing: string | null; parkingSpaces: number | null; rentFrequency: string | null; cheques: number | null; securityDeposit: number | null; serviceCharge: number | null;
     videoUrl: string | null; virtualTourUrl: string | null; titleAr: string | null; descriptionAr: string | null; latitude: number | null; longitude: number | null;
-    completionStatus: "ready" | "off_plan"; agentPhone: string | null; agentPhotoUrl: string | null; exclusivity: string; featured: boolean;
+    completionStatus: "ready" | "off_plan"; ownership?: string | null; yearBuilt?: number | null; availableFrom?: string | null; utilitiesIncluded?: boolean | null; plotAreaSqft?: number | null; pricePerSqft?: number | null; agentPhone: string | null; agentPhotoUrl: string | null; exclusivity: string; featured: boolean;
   };
   capturedAt: string;
 }
@@ -53,7 +53,9 @@ const xml = (v: unknown) => String(v ?? "").replace(/[<>&'"]/g, (c) => ({ "<": "
 const yn = (v: boolean) => (v ? "Yes" : "No");
 const photos = (s: CanonicalListing) => s.media.filter((m) => m.kind === "image").sort((a, b) => a.position - b.position).filter((m) => m.url);
 const plans = (s: CanonicalListing) => s.media.filter((m) => m.kind === "floorplan" && m.url);
-const PROPERTY_TYPE_PF: Record<string, string> = { apartment: "AP", villa: "VH", townhouse: "TH", penthouse: "PH", office: "OF", retail: "RE", land: "LP" };
+const PROPERTY_TYPE_PF: Record<string, string> = { apartment: "AP", studio: "AP", villa: "VH", townhouse: "TH", penthouse: "PH", duplex: "DX", hotel_apartment: "HA", compound: "CD", full_floor: "FF", half_floor: "HF", whole_building: "WB", bulk_units: "BU", office: "OF", retail: "RE", showroom: "SH", warehouse: "WH", factory: "FA", farm: "FM", labour_camp: "LC", staff_accommodation: "SA", land: "LP" };
+/** Readable property type for feeds that take names (Bayut style): "hotel_apartment" -> "Hotel Apartment". */
+const typeName = (t: string) => ({ bulk_units: "Bulk Sale Unit", labour_camp: "Labour Camp" } as Record<string, string>)[t] ?? t.split("_").map((w) => w[0]!.toUpperCase() + w.slice(1)).join(" ");
 const FURNISHED_PF: Record<string, string> = { furnished: "Yes", semi_furnished: "Partly", unfurnished: "No" };
 const RENT_PERIOD: Record<string, string> = { yearly: "Y", quarterly: "Q", monthly: "M" };
 
@@ -72,7 +74,7 @@ export const bayutProvider: ListingPortalProvider = {
   <Property_Ref_No>${xml(s.reference)}</Property_Ref_No>
   <Property_Status>${status}</Property_Status>
   <Property_purpose>${s.purpose === "sale" ? "Buy" : "Rent"}</Property_purpose>
-  <Property_Type>${xml(s.property.type)}</Property_Type>
+  <Property_Type>${xml(typeName(s.property.type))}</Property_Type>
   <Property_Title>${xml(s.title)}</Property_Title>
   <Property_Title_AR>${xml(d?.titleAr)}</Property_Title_AR>
   <Property_Description>${xml(s.description)}</Property_Description>
@@ -84,10 +86,20 @@ export const bayutProvider: ListingPortalProvider = {
   <Bathrooms>${s.property.bathrooms ?? ""}</Bathrooms>
   <Property_Size>${s.property.areaSqft ?? ""}</Property_Size>
   <Property_Size_Unit>SQFT</Property_Size_Unit>
+  <Plot_Size>${d?.plotAreaSqft ?? ""}</Plot_Size>
+  <Price_Per_Sqft>${d?.pricePerSqft ?? ""}</Price_Per_Sqft>
+  <Completion_Status>${xml(d?.completionStatus)}</Completion_Status>
+  <Ownership>${xml(d?.ownership)}</Ownership>
+  <Year_Built>${d?.yearBuilt ?? ""}</Year_Built>
+  <Available_From>${xml(d?.availableFrom)}</Available_From>
+  <Utilities_Included>${d?.utilitiesIncluded == null ? "" : yn(d.utilitiesIncluded)}</Utilities_Included>
   <Furnished>${xml(d?.furnishing ? FURNISHED_PF[d.furnishing] : "")}</Furnished>
   <Parking>${d?.parkingSpaces ?? ""}</Parking>
+  <Country>${xml(s.location.country ?? "AE")}</Country>
   <City>${xml(s.location.city)}</City>
   <Locality>${xml(s.location.community)}</Locality>
+  <Sub_Locality>${xml(s.location.subCommunity)}</Sub_Locality>
+  <Location_Id>${xml(s.location.pfLocationId)}</Location_Id>
   <Building>${xml(s.location.building)}</Building>
   <Latitude>${d?.latitude ?? ""}</Latitude>
   <Longitude>${d?.longitude ?? ""}</Longitude>
@@ -135,11 +147,20 @@ export const propertyFinderProvider: ListingPortalProvider = {
   <description_ar>${xml(d?.descriptionAr)}</description_ar>
   <city>${xml(s.location.city)}</city>
   <community>${xml(s.location.community)}</community>
+  <sub_community>${xml(s.location.subCommunity)}</sub_community>
+  <location_id>${xml(s.location.pfLocationId)}</location_id>
+  <country>${xml(s.location.country ?? "AE")}</country>
+  <plot_size>${d?.plotAreaSqft ?? ""}</plot_size>
+  <price_per_sqft>${d?.pricePerSqft ?? ""}</price_per_sqft>
+  <ownership>${xml(d?.ownership)}</ownership>
+  <build_year>${d?.yearBuilt ?? ""}</build_year>
+  <available_from>${xml(d?.availableFrom)}</available_from>
+  <utilities_included>${d?.utilitiesIncluded == null ? "" : d.utilitiesIncluded ? "Yes" : "No"}</utilities_included>
   <property_name>${xml(s.location.building)}</property_name>
   <furnished>${xml(d?.furnishing ? FURNISHED_PF[d.furnishing] : "")}</furnished>
   <parking>${d?.parkingSpaces ?? ""}</parking>
   <geopoints>${d?.latitude != null && d?.longitude != null ? `${d.latitude},${d.longitude}` : ""}</geopoints>
-  <completion_status>${s.location.offPlan ? "off_plan" : "completed"}</completion_status>
+  <completion_status>${(d?.completionStatus ?? (s.location.offPlan ? "off_plan" : "ready")) === "off_plan" ? "off_plan" : "completed"}</completion_status>
   <private_amenities>${pfCodes}</private_amenities>
   <video_tour_url>${xml(d?.videoUrl)}</video_tour_url>
   <view360>${xml(d?.virtualTourUrl)}</view360>

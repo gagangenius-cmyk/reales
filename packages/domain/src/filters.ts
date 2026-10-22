@@ -149,3 +149,26 @@ export async function searchListingsAdvanced(sq: Sequelize, ctx: RequestContext,
     };
   });
 }
+
+/**
+ * The broad picture of lead status for the strip above the Leads list: how many open leads sit in each pipeline stage, how many were won or lost, and the
+ * counts that need action (hot, follow-up overdue, unassigned, never contacted, waiting in a pool). Counts follow the caller's visibility.
+ */
+export async function leadStatusSummary(sq: Sequelize, ctx: RequestContext) {
+  return withUow(sq, ctx, async (u) => {
+    const scope = await scopeWhere(u, ctx, "lead.read", LEAD_SCOPE);
+    const now = new Date(), c = (extra: WhereOptions) => u.repo("Lead").count({ where: { [Op.and]: [scope, extra] }, transaction: u.tx });
+    const [stages, byStage, won, lost, hot, overdue, unassigned, never, pooled, today] = await Promise.all([
+      u.repo("PipelineStage").findAll({ order: [["position", "ASC"]], transaction: u.tx }),
+      u.repo("Lead").findAll({ where: { [Op.and]: [scope, { status: "open" }] }, attributes: ["stageId", [literal("COUNT(*)"), "n"]], group: ["stageId"], raw: true, transaction: u.tx }) as unknown as Promise<{ stageId: string; n: number | string }[]>,
+      c({ status: "won" }), c({ status: "lost" }), c({ status: "open", isHot: true }), c({ status: "open", nextFollowUpAt: { [Op.ne]: null, [Op.lt]: now } }),
+      c({ status: "open", assignedUserId: null, poolId: null }), c({ status: "open", lastContactedAt: null, firstResponseAt: null }), c({ status: "open", assignedUserId: null, poolId: { [Op.ne]: null } }),
+      c({ createdAt: { [Op.gte]: new Date(`${new Date(Date.now() + 4 * 3_600_000).toISOString().slice(0, 10)}T00:00:00+04:00`) } }),
+    ]);
+    const counts = new Map(byStage.map((r) => [r.stageId, Number(r.n)]));
+    const seen = new Set<string>();
+    const list = (stages as any[]).filter((s) => s.get("kind") === "open").map((s) => ({ id: s.get("id") as string, name: s.get("name") as string, count: counts.get(s.get("id")) ?? 0 }))
+      .filter((s) => (seen.has(s.name) ? false : (seen.add(s.name), true)));
+    return { stages: list, open: list.reduce((a, s) => a + s.count, 0), won, lost, hot, overdue, unassigned, neverContacted: never, inPool: pooled, today };
+  });
+}

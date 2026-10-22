@@ -17,6 +17,9 @@ import { taskReminderSweep } from "./calendar";
 import { repoolSweep } from "./pools";
 import { listingLifecycleSweep } from "./listing-details";
 import { deliverQueuedPublications } from "./syndication";
+import { attendanceCloseSweep } from "./hr-attendance";
+import { hrExpirySweep } from "./hr-people";
+import { dailyDigestSweep, deliverQueuedEmails, followUpOverdueSweep } from "./notify";
 
 export interface SweepResult { tenantId: string; offersExpired: number; reservationsExpired: number; listingsUnpublished: number; workflowsResumed: number; campaignBatches: number; leaseNotices: number; slaBreaches: number; kycExpired: number; dsrOverdue: number; leadsScored: number; matchAlerts: number; referralsSettled: number; taskReminders: number; leadsRepooled: number; listingsExpired: number; error?: string }
 
@@ -47,6 +50,11 @@ export async function runSweeps(sq: Sequelize, o: { tenantIds?: string[] } = {})
       const repooled = await repoolSweep(sq, ctx);
       const lifecycle = await listingLifecycleSweep(sq, ctx);
       await deliverQueuedPublications(sq, ctx);
+      await followUpOverdueSweep(sq, ctx);
+      await dailyDigestSweep(sq, ctx);
+      await deliverQueuedEmails(sq, ctx);
+      await attendanceCloseSweep(sq, ctx);
+      await hrExpirySweep(sq, ctx);
       out.push({ tenantId: t.id, offersExpired: offers.length, reservationsExpired: reservations.length, listingsUnpublished: listings.length, workflowsResumed: waits.resumed + waits.timedOut, campaignBatches: campaigns.length, leaseNotices: leases.ended + leases.overdueMarked + leases.expiringNotices, slaBreaches, kycExpired, dsrOverdue, leadsScored, matchAlerts: matches.leadAlerts + matches.searchAlerts, referralsSettled, taskReminders, leadsRepooled: repooled.reassigned + repooled.pooled, listingsExpired: lifecycle.expired });
     } catch (e) {
       logger.error({ err: e, tenantId: t.id }, "sweep failed for tenant");

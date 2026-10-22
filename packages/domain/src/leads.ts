@@ -1,3 +1,5 @@
+import { getSetting } from "./config";
+import { notifyUser } from "./notify";
 import { randomUUID } from "node:crypto";
 import { Op, Sequelize, WhereOptions, literal } from "sequelize";
 import { mysqlDate, RequestContext, systemContext } from "@reales/database";
@@ -99,8 +101,11 @@ export async function createLeadCore(u: Uow, ctx: RequestContext, input: LeadInp
   await u.repo("LeadStageEvent").create({ id: randomUUID(), leadId: id, fromStageId: null, toStageId: first.get("id"), actorId: actorOf(ctx), reason: "created", createdAt: mysqlDate(new Date()) }, { transaction: u.tx });
 
   // 3. Route to an agent.
+  const autoAssign = input.assignedUserId ? true : await getSetting<boolean>(u.sq, ctx.tenantId, "leads.auto_assign");
   const decision = input.assignedUserId
     ? { userId: input.assignedUserId, ruleId: null as string | null, method: "manual" as const, reason: "Chosen when the lead was created" }
+    : !autoAssign
+    ? { userId: null as string | null, ruleId: null as string | null, method: "manual" as const, reason: "Automatic assignment is switched off" }
     : await routeLead(u, ctx, {
     purpose: input.purpose, projectId: input.projectId ?? null, language, budgetMin: input.budgetMin ?? null, budgetMax: input.budgetMax ?? null,
     sourceKind: source?.get("kind") ?? null, sourceCode: source?.get("code") ?? null,
@@ -117,6 +122,7 @@ export async function createLeadCore(u: Uow, ctx: RequestContext, input: LeadInp
   }, { transaction: u.tx });
 
   await u.emit({ type: "lead.created", aggregateType: "lead", aggregateId: id, projectId: input.projectId ?? null, payload: { contactId: contact.get("id"), purpose: input.purpose, source: source?.get("code") ?? null } });
+  if (decision.userId && decision.userId !== ctx.userId) await notifyUser(u, { userId: decision.userId, kind: "lead.assigned", title: "A new lead was assigned to you", body: `${input.purpose} lead${source?.get("name") ? ` from ${source.get("name")}` : ""}`, entityType: "lead", entityId: id, dedupeKey: `lead.assigned:${id}:${decision.userId}`, path: `/leads/${id}`, email: "notifications.email.lead_assigned" });
   if (decision.userId) await u.emit({ type: "lead.assigned", aggregateType: "lead", aggregateId: id, projectId: input.projectId ?? null, payload: { userId: decision.userId, method: decision.method } });
   const lead = await u.repo("Lead").findById(id, { transaction: u.tx });
   return { lead: plain(lead), duplicate: false, contactReused, assignedUserId: decision.userId };
@@ -238,6 +244,7 @@ export async function assignLead(sq: Sequelize, ctx: RequestContext, id: string,
     await u.repo("Lead").updateById(id, { assignedUserId: input.userId, branchId }, { transaction: u.tx });
     await u.repo("LeadAssignment").create({ id: randomUUID(), leadId: id, assignedUserId: input.userId, previousUserId: previous, ruleId: null, method: "manual", reason: input.reason ?? null, actorId: ctx.userId, createdAt: mysqlDate(new Date()) }, { transaction: u.tx });
     await u.audit({ action: "lead.reassigned", entityType: "lead", entityId: id, before: { userId: previous }, after: { userId: input.userId }, reason: input.reason });
+    if (input.userId && input.userId !== ctx.userId) await notifyUser(u, { userId: input.userId, kind: "lead.assigned", title: "A lead was assigned to you", body: input.reason ?? undefined, entityType: "lead", entityId: id, dedupeKey: `lead.assigned:${id}:${input.userId}:${Date.now()}`, path: `/leads/${id}`, email: "notifications.email.lead_assigned" });
     await u.emit({ type: "lead.assigned", aggregateType: "lead", aggregateId: id, projectId: lead.get("projectId"), payload: { userId: input.userId, previous, method: "manual" } });
     return plain(await u.repo("Lead").findById(id, { transaction: u.tx }));
   });

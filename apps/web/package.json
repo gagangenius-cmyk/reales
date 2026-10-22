@@ -25,6 +25,7 @@
     "argon2": "^0.41.1",
     "dotenv": "^16.4.5",
     "ioredis": "^5.4.1",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.468.0",
     "mysql2": "^3.24.5",
     "next": "^16.3.0",
@@ -37,5 +38,8 @@
     "tailwindcss": "^4.1.0",
     "typescript": "~5.9.0",
     "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.12"
   }
 }

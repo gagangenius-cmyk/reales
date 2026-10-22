@@ -17,6 +17,15 @@ const T = {
   furnished: { en: "Furnished", ar: "مفروش" }, semi_furnished: { en: "Semi-furnished", ar: "نصف مفروش" }, unfurnished: { en: "Unfurnished", ar: "غير مفروش" },
   apartment: { en: "Apartment", ar: "شقة" }, villa: { en: "Villa", ar: "فيلا" }, townhouse: { en: "Townhouse", ar: "تاون هاوس" }, penthouse: { en: "Penthouse", ar: "بنتهاوس" }, office: { en: "Office", ar: "مكتب" }, retail: { en: "Retail", ar: "تجاري" }, land: { en: "Land", ar: "أرض" },
   moreFilters: { en: "More filters", ar: "المزيد من التصفية" }, noPhotos: { en: "Photos coming soon", ar: "الصور قريباً" },
+  viewList: { en: "List", ar: "قائمة" }, viewMap: { en: "Map", ar: "خريطة" }, category: { en: "Category", ar: "الفئة" }, allCategories: { en: "All categories", ar: "كل الفئات" },
+  cat_residential: { en: "Residential", ar: "سكني" }, cat_commercial: { en: "Commercial", ar: "تجاري" }, cat_land: { en: "Land", ar: "أراضي" },
+  subLocation: { en: "Sub location", ar: "المنطقة الفرعية" }, plot: { en: "Plot area", ar: "مساحة الأرض" }, floorNo: { en: "Floor", ar: "الطابق" }, completion: { en: "Completion", ar: "حالة الإنجاز" }, ready: { en: "Ready", ar: "جاهز" },
+  ownership: { en: "Ownership", ar: "نوع الملكية" }, freehold: { en: "Freehold", ar: "تملك حر" }, leasehold: { en: "Leasehold", ar: "حق انتفاع" }, usufruct: { en: "Usufruct", ar: "حق منفعة" }, musataha: { en: "Musataha", ar: "مساطحة" },
+  yearBuilt: { en: "Year built", ar: "سنة البناء" }, availableFrom: { en: "Available from", ar: "متاح من" }, pricePerSqft: { en: "Price per sqft", ar: "السعر لكل قدم مربع" }, locationTitle: { en: "Location", ar: "الموقع" },
+  approxLocation: { en: "Approximate location (community centre)", ar: "موقع تقريبي (وسط المنطقة)" }, utilities: { en: "Utilities", ar: "المرافق" }, included: { en: "Included", ar: "مشمولة" }, notIncluded: { en: "Not included", ar: "غير مشمولة" },
+  duplex: { en: "Duplex", ar: "دوبلكس" }, hotel_apartment: { en: "Hotel apartment", ar: "شقة فندقية" }, compound: { en: "Compound", ar: "مجمع" }, full_floor: { en: "Full floor", ar: "طابق كامل" },
+  half_floor: { en: "Half floor", ar: "نصف طابق" }, whole_building: { en: "Whole building", ar: "مبنى كامل" }, bulk_units: { en: "Bulk units", ar: "وحدات بالجملة" }, warehouse: { en: "Warehouse", ar: "مستودع" }, showroom: { en: "Showroom", ar: "صالة عرض" },
+  labour_camp: { en: "Labour camp", ar: "سكن عمال" }, factory: { en: "Factory", ar: "مصنع" }, farm: { en: "Farm", ar: "مزرعة" }, staff_accommodation: { en: "Staff accommodation", ar: "سكن موظفين" },
   required: { en: "Please give your name and a phone number or email.", ar: "يرجى إدخال الاسم ورقم الهاتف أو البريد الإلكتروني." }, failed: { en: "Something went wrong. Please try again.", ar: "حدث خطأ. يرجى المحاولة مرة أخرى." },
 } as const;
 

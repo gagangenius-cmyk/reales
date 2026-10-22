@@ -161,6 +161,7 @@ export const listingDetailsSchema = z.object({
   videoUrl: z.string().max(300).nullable().optional(), virtualTourUrl: z.string().max(300).nullable().optional(),
   exclusivity: z.enum(["none", "exclusive", "non_exclusive"]).optional(), agreementStartsOn: dateStr.nullable().optional(), agreementExpiresOn: dateStr.nullable().optional(), expiresOn: dateStr.nullable().optional(),
   featured: z.boolean().optional(), latitude: z.number().min(-90).max(90).nullable().optional(), longitude: z.number().min(-180).max(180).nullable().optional(),
+  completionStatus: z.enum(["ready", "off_plan"]).nullable().optional(), ownership: z.enum(["freehold", "leasehold", "usufruct", "musataha"]).nullable().optional(), yearBuilt: z.number().int().min(1900).max(2100).nullable().optional(), availableFrom: dateStr.nullable().optional(), utilitiesIncluded: z.boolean().nullable().optional(),
 }).strict();
 export const mediaOrderSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(100) }).strict();
 export const mediaPatchSchema = z.object({ caption: z.string().max(200).nullable().optional(), cover: z.boolean().optional() }).strict();
@@ -171,6 +172,7 @@ export const bulkListingSchema = z.object({
   action: z.discriminatedUnion("type", [
     z.object({ type: z.literal("publish") }).strict(), z.object({ type: z.literal("unpublish"), reason: z.string().max(200).optional() }).strict(), z.object({ type: z.literal("refresh") }).strict(),
     z.object({ type: z.literal("assign"), userId: z.string().uuid() }).strict(), z.object({ type: z.literal("feature"), value: z.boolean() }).strict(),
+    z.object({ type: z.literal("archive") }).strict(), z.object({ type: z.literal("close"), outcome: z.enum(["sold", "rented", "withdrawn"]) }).strict(),
   ]),
 }).strict();
 export const credentialsSchema = z.object({
@@ -197,3 +199,20 @@ const trashRef = z.object({ entity: z.string().min(1).max(40), id: z.string().uu
 export const trashDeleteSchema = trashRef.extend({ reason: z.string().trim().max(300).optional() }).strict();
 export const trashActionSchema = trashRef.strict();
 export const trashListQuery = z.object({ entity: z.string().max(40).optional(), q: z.string().max(100).optional(), limit: z.coerce.number().int().min(1).max(200).optional(), offset: z.coerce.number().int().min(0).optional() });
+
+export const configModulesSchema = z.object({ modules: z.record(z.string().max(40), z.boolean()).refine((m) => Object.keys(m).length <= 60) }).strict();
+export const configSettingsSchema = z.object({ settings: z.record(z.string().max(80), z.union([z.boolean(), z.number(), z.string().max(40)])).refine((m) => Object.keys(m).length <= 60) }).strict();
+
+export const closeListingSchema = z.object({ outcome: z.enum(["sold", "rented", "withdrawn"]), dealId: z.string().uuid().optional(), note: z.string().trim().max(300).optional() }).strict();
+
+const ptype = z.enum(["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land", "duplex", "hotel_apartment", "studio", "compound", "full_floor", "half_floor", "whole_building", "bulk_units", "warehouse", "showroom", "labour_camp", "factory", "farm", "staff_accommodation"]);
+export const newPropertyListingSchema = z.object({
+  emirate: z.string().min(2).max(40), community: z.string().trim().min(1).max(120), subCommunity: z.string().trim().max(120).nullable().optional(), buildingName: z.string().trim().min(1).max(180), unitNumber: z.string().trim().min(1).max(40),
+  type: ptype, purpose: z.enum(["sale", "rent"]), price: z.number().positive(), bedrooms: z.number().int().min(0).max(30).nullable().optional(), bathrooms: z.number().int().min(0).max(30).nullable().optional(),
+  builtUpAreaSqft: z.number().positive().max(10_000_000), plotAreaSqft: z.number().positive().max(100_000_000).nullable().optional(), floor: z.number().int().min(-5).max(200).nullable().optional(), view: z.string().trim().max(80).nullable().optional(),
+  currency: z.string().length(3).optional(), title: z.string().max(255).optional(), description: z.string().max(10000).optional(), agentUserId: z.string().uuid().optional(),
+  completionStatus: z.enum(["ready", "off_plan"]).optional(), ownership: z.enum(["freehold", "leasehold", "usufruct", "musataha"]).nullable().optional(), yearBuilt: z.number().int().min(1900).max(2100).nullable().optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(), longitude: z.number().min(-180).max(180).nullable().optional(),
+}).strict();
+export const locationSchema = z.object({ id: z.string().uuid().optional(), emirate: z.string().min(2).max(40), community: z.string().trim().min(1).max(120), subCommunity: z.string().trim().max(120).nullable().optional(), latitude: z.number().nullable().optional(), longitude: z.number().nullable().optional(), bayutId: z.string().trim().max(60).nullable().optional(), pfId: z.string().trim().max(60).nullable().optional(), active: z.boolean().optional() }).strict();
+export const locationQuery = z.object({ emirate: z.string().max(40).optional(), q: z.string().max(80).optional(), all: z.enum(["1"]).optional() });

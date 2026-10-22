@@ -1,3 +1,4 @@
+import { PROPERTY_TYPES } from "./locations";
 import { QueryTypes, Sequelize } from "sequelize";
 import { systemContext, type RequestContext } from "@reales/database";
 import { authorize } from "@reales/rbac";
@@ -59,26 +60,28 @@ export async function resolveSite(sq: Sequelize, slug: string): Promise<PublicSi
   };
 }
 
-export interface SiteFilters { purpose?: "sale" | "rent"; type?: string; beds?: number; minPrice?: number; maxPrice?: number; community?: string; q?: string; sort?: "newest" | "price_asc" | "price_desc"; page?: number }
-export interface SiteCard { reference: string; token: string; title: string; purpose: string; price: number | null; currency: string; rentFrequency: string | null; bedrooms: number | null; bathrooms: number | null; areaSqft: number | null; type: string | null; community: string | null; building: string | null; cover: string | null; featured: boolean; offPlan: boolean; furnishing: string | null }
+export interface SiteFilters { purpose?: "sale" | "rent"; type?: string; beds?: number; minPrice?: number; maxPrice?: number; community?: string; category?: string; q?: string; sort?: "newest" | "price_asc" | "price_desc"; page?: number; mapAll?: boolean }
+export interface SiteCard { reference: string; token: string; title: string; purpose: string; price: number | null; currency: string; rentFrequency: string | null; bedrooms: number | null; bathrooms: number | null; areaSqft: number | null; type: string | null; community: string | null; building: string | null; cover: string | null; featured: boolean; offPlan: boolean; furnishing: string | null; lat: number | null; lng: number | null; exact: boolean; pricePerSqft: number | null; subCommunity: string | null }
 const PER_PAGE = 12;
 
 /** Browse the site: only published listings whose public page is on. Filters are applied in SQL with bound parameters; sorting puts featured listings first. */
 export async function searchSiteListings(sq: Sequelize, site: PublicSite, f: SiteFilters) {
-  const page = Math.max(1, Math.floor(f.page ?? 1));
+  const page = f.mapAll ? 1 : Math.max(1, Math.floor(f.page ?? 1));
+  const perPage = f.mapAll ? 300 : PER_PAGE;
   const where: string[] = ["l.tenant_id = :t", "l.status = 'published'", "l.share_enabled = 1", "l.share_token IS NOT NULL"];
-  const rep: Record<string, unknown> = { t: site.tenantId, limit: PER_PAGE, offset: (page - 1) * PER_PAGE };
+  const rep: Record<string, unknown> = { t: site.tenantId, limit: perPage, offset: (page - 1) * perPage };
   if (f.purpose === "sale" || f.purpose === "rent") { where.push("l.purpose = :purpose"); rep.purpose = f.purpose; }
   if (f.type && /^[a-z_]{2,20}$/.test(f.type)) { where.push("un.type = :type"); rep.type = f.type; }
+  if (f.category && ["residential", "commercial", "land"].includes(f.category)) { const list = PROPERTY_TYPES.filter((t) => t.category === f.category).map((t) => t.value); where.push("un.type IN (:cattypes)"); rep.cattypes = list; }
   if (f.beds !== undefined && Number.isInteger(f.beds) && f.beds >= 0) { where.push(f.beds >= 5 ? "un.bedrooms >= 5" : "un.bedrooms = :beds"); rep.beds = f.beds; }
   if (f.minPrice !== undefined && f.minPrice >= 0) { where.push("l.price >= :minp"); rep.minp = f.minPrice; }
   if (f.maxPrice !== undefined && f.maxPrice > 0) { where.push("l.price <= :maxp"); rep.maxp = f.maxPrice; }
   if (f.community?.trim()) { where.push("b.community = :community"); rep.community = f.community.trim().slice(0, 120); }
   if (f.q?.trim()) { where.push("(l.title LIKE :q OR l.reference LIKE :q OR b.name LIKE :q OR b.community LIKE :q)"); rep.q = `%${f.q.trim().replace(/[\\%_]/g, (m) => "\\" + m).slice(0, 80)}%`; }
   const order = f.sort === "price_asc" ? "l.price ASC" : f.sort === "price_desc" ? "l.price DESC" : "l.published_at DESC";
-  const from = `FROM listings l JOIN units un ON un.id = l.unit_id AND un.tenant_id = l.tenant_id JOIN buildings b ON b.id = un.building_id AND b.tenant_id = l.tenant_id JOIN real_estate_projects p ON p.id = b.re_project_id AND p.tenant_id = l.tenant_id WHERE l.deleted_at IS NULL AND un.deleted_at IS NULL AND ${where.join(" AND ")}`;
+  const from = `FROM listings l JOIN units un ON un.id = l.unit_id AND un.tenant_id = l.tenant_id JOIN buildings b ON b.id = un.building_id AND b.tenant_id = l.tenant_id JOIN real_estate_projects p ON p.id = b.re_project_id AND p.tenant_id = l.tenant_id LEFT JOIN locations loc ON loc.id = b.location_id AND loc.tenant_id = b.tenant_id WHERE l.deleted_at IS NULL AND un.deleted_at IS NULL AND ${where.join(" AND ")}`;
   const [rows, [count], communities, types] = await Promise.all([
-    sq.query<any>(`SELECT l.reference, l.share_token AS token, l.title, l.purpose, l.price, l.currency, l.rent_frequency, l.featured, l.cover_media_id, l.furnishing, un.bedrooms, un.bathrooms, un.area_sqft, un.type, b.community, b.name AS building, p.kind AS project_kind ${from} ORDER BY l.featured DESC, ${order} LIMIT :limit OFFSET :offset`, { replacements: rep, type: QueryTypes.SELECT }),
+    sq.query<any>(`SELECT l.reference, l.share_token AS token, l.title, l.purpose, l.price, l.currency, l.rent_frequency, l.featured, l.cover_media_id, l.furnishing, un.bedrooms, un.bathrooms, un.area_sqft, un.type, b.community, b.name AS building, b.sub_community, p.kind AS project_kind, COALESCE(l.latitude, b.latitude, loc.latitude) AS lat, COALESCE(l.longitude, b.longitude, loc.longitude) AS lng, (l.latitude IS NOT NULL OR b.latitude IS NOT NULL) AS exact ${from} ORDER BY l.featured DESC, ${order} LIMIT :limit OFFSET :offset`, { replacements: rep, type: QueryTypes.SELECT }),
     sq.query<{ n: number }>(`SELECT COUNT(*) AS n ${from}`, { replacements: rep, type: QueryTypes.SELECT }),
     sq.query<{ community: string }>("SELECT DISTINCT b.community FROM listings l JOIN units un ON un.id=l.unit_id AND un.tenant_id=l.tenant_id JOIN buildings b ON b.id=un.building_id AND b.tenant_id=l.tenant_id WHERE l.tenant_id=:t AND l.deleted_at IS NULL AND l.status='published' AND l.share_enabled=1 AND b.community IS NOT NULL ORDER BY b.community LIMIT 100", { replacements: { t: site.tenantId }, type: QueryTypes.SELECT }),
     sq.query<{ type: string }>("SELECT DISTINCT un.type FROM listings l JOIN units un ON un.id=l.unit_id AND un.tenant_id=l.tenant_id WHERE l.tenant_id=:t AND l.deleted_at IS NULL AND l.status='published' AND l.share_enabled=1", { replacements: { t: site.tenantId }, type: QueryTypes.SELECT }),
@@ -87,8 +90,9 @@ export async function searchSiteListings(sq: Sequelize, site: PublicSite, f: Sit
   const cards: SiteCard[] = rows.map((r) => ({
     reference: r.reference ?? "", token: r.token, title: r.title ?? `${r.type ?? "Property"} for ${r.purpose}`, purpose: r.purpose, price: site.settings.showPrices && r.price != null ? Number(r.price) : null, currency: r.currency, rentFrequency: r.rent_frequency,
     bedrooms: r.bedrooms, bathrooms: r.bathrooms, areaSqft: r.area_sqft != null ? Number(r.area_sqft) : null, type: r.type, community: r.community, building: r.building, cover: r.cover_media_id, featured: !!r.featured, offPlan: r.project_kind === "off_plan", furnishing: r.furnishing,
+    lat: r.lat != null ? Number(r.lat) : null, lng: r.lng != null ? Number(r.lng) : null, exact: !!Number(r.exact), subCommunity: r.sub_community ?? null, pricePerSqft: site.settings.showPrices && r.price != null && Number(r.area_sqft) > 0 ? Math.round(Number(r.price) / Number(r.area_sqft)) : null,
   }));
-  return { cards, total, page, pages: Math.max(1, Math.ceil(total / PER_PAGE)), communities: communities.map((c) => c.community), types: types.map((t) => t.type) };
+  return { cards, total, page, pages: Math.max(1, Math.ceil(total / perPage)), communities: communities.map((c) => c.community), types: types.map((t) => t.type) };
 }
 
 /** One listing on the site, found by its reference (RLS-000123). Hides the price when the site is set not to show prices. */

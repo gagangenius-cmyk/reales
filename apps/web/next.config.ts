@@ -18,7 +18,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "img-src 'self' data: blob:",
+      `img-src 'self' data: blob: https://*.tile.openstreetmap.org${process.env.NEXT_PUBLIC_MAP_TILES ? ` ${new URL(process.env.NEXT_PUBLIC_MAP_TILES.replace(/\{[a-z]\}/g, "x")).origin}` : ""}`,
       "style-src 'self' 'unsafe-inline'",
       // Next.js inline bootstrap scripts; tighten with nonces once the UI surface grows.
       `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,

@@ -2,12 +2,13 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LocationTab } from "./location-tab";
 import { DeleteButton } from "@/components/delete-button";
 import { errMsg, postJson } from "@/lib/client";
 
 type L = any;
 interface Props { l: L; channels: any[]; amenities: { code: string; label: string; group: string }[]; groups: { key: string; label: string }[]; canManage: boolean; canPublish: boolean; site: { slug: string; enabled: boolean } | null }
-const TABS = ["Overview", "Photos and plans", "Amenities", "Distribution", "Price and compliance", "Activity"] as const;
+const TABS = ["Overview", "Location and map", "Photos and plans", "Amenities", "Distribution", "Price and compliance", "Activity"] as const;
 const money = (v: unknown, c = "AED") => (v == null || v === "" ? "-" : `${c} ${Number(v).toLocaleString("en-US")}`);
 const dt = (v: unknown) => (v ? new Date(v as string).toLocaleString("en-GB", { timeZone: "Asia/Dubai", dateStyle: "medium", timeStyle: "short" }) : "-");
 const lab = "flex flex-col gap-1.5 text-sm";
@@ -83,13 +84,20 @@ export function ListingWorkspace({ l, channels, amenities, groups, canManage, ca
           <p className="muted text-xs">{l.reference} &middot; {l.purpose === "sale" ? "For sale" : "For rent"} &middot; {l.jurisdictionCode}</p>
           <h1 className="text-xl font-semibold">{l.title || "(untitled)"}</h1>
           <p className="muted text-sm">{[u.unitNumber && `Unit ${u.unitNumber}`, b.name, b.community, b.city].filter(Boolean).join(", ")}</p>
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm"><b>{money(l.price, l.currency)}</b><span className={`badge ${l.status === "published" ? "badge-ok" : l.status === "draft" ? "badge-warn" : "badge-gray"}`}>{l.status}</span>{l.featured && <span className="badge">featured</span>}<span className="muted">{l.viewCount} views &middot; {l.enquiryCount} enquiries &middot; {l.daysOnMarket} days on market</span></p>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm"><b>{money(l.price, l.currency)}</b><span className={`badge ${l.status === "published" ? "badge-ok" : l.status === "draft" || l.status === "expired" ? "badge-warn" : "badge-gray"}`}>{l.status}</span>{l.featured && <span className="badge">featured</span>}<span className="muted">{l.viewCount} views &middot; {l.enquiryCount} enquiries &middot; {l.daysOnMarket} days on market</span></p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="text-center" title="Listing quality: how complete and competitive this listing is"><div className="grid h-14 w-14 place-items-center rounded-full border-4 text-lg font-bold" style={{ borderColor: q.score >= 85 ? "var(--ok)" : q.score >= 65 ? "var(--accent)" : q.score >= 45 ? "var(--warn)" : "var(--danger)" }}>{q.score}</div><p className="muted text-xs">Quality {q.grade}</p></div>
-          {canPublish && l.status !== "published" && <button className="btn" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/publish`), "Published.")}>Publish</button>}
+          {canPublish && ["draft", "unpublished", "expired"].includes(l.status) && <button className="btn" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/publish`), "Published.")}>Publish</button>}
           {canPublish && l.status === "published" && <button className="btn-ghost" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/unpublish`, {}), "Unpublished.")}>Unpublish</button>}
-          {canManage && <button className="btn-ghost" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/refresh`), "Refreshed: expiry pushed out 30 days.")}>Refresh</button>}
+          {canPublish && ["draft", "published", "unpublished", "expired"].includes(l.status) && (
+            <select className="input w-auto py-1.5 text-sm" disabled={busy} defaultValue="" aria-label="Close this listing" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v) void act(postJson(`/api/v1/listings/${l.id}/close`, { outcome: v }), v === "withdrawn" ? "Closed: withdrawn." : `Closed: ${v}.`); }}>
+              <option value="">Close...</option>{l.purpose === "sale" && <option value="sold">Sold</option>}{l.purpose === "rent" && <option value="rented">Rented</option>}<option value="withdrawn">Withdrawn by owner</option>
+            </select>
+          )}
+          {canManage && ["closed", "expired", "archived"].includes(l.status) && <button className="btn-ghost" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/reopen`), "Reopened as unpublished.")}>Reopen</button>}
+          {canManage && ["draft", "unpublished", "expired", "closed"].includes(l.status) && <button className="btn-ghost" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/archive`), "Archived.")}>Archive</button>}
+          {canManage && !["closed", "archived"].includes(l.status) && <button className="btn-ghost" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/refresh`), "Refreshed: expiry date pushed out.")}>Refresh</button>}
           <a className="btn-ghost" href={`/api/v1/listings/${l.id}/brochure`}>Brochure PDF</a>
           {canManage && l.status !== "published" && <DeleteButton entity="listing" id={l.id} name={l.title ?? l.reference ?? "this listing"} redirectTo="/listings" small={false} />}
           {canManage && <button className="btn-ghost" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/duplicate`, {}), "Copied as a new draft.", (d) => router.push(`/listings/${d.id}`))}>Duplicate</button>}
@@ -148,6 +156,7 @@ export function ListingWorkspace({ l, channels, amenities, groups, canManage, ca
         </form>
       )}
 
+      {tab === "Location and map" && <LocationTab l={l} canManage={canManage} />}
       {tab === "Photos and plans" && (
         <div className="flex flex-col gap-5">
           <section className="card p-5">

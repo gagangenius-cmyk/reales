@@ -1,8 +1,10 @@
 import { TableTools } from "@/components/table-tools";
+import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { QueryTypes } from "sequelize";
 import { getSequelize } from "@reales/database";
-import { countMyUnread } from "@reales/domain";
+import { countMyUnread, moduleForPage, moduleStates, MODULES } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { LogoutButton } from "./logout-button";
@@ -18,6 +20,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (ctx.grants.length > 0 && ctx.grants.every((g) => g.permission === "portal.access")) redirect("/portal");
   const [t] = await getSequelize().query<{ name: string; jurisdiction: string }>("SELECT name, jurisdiction FROM tenants WHERE id=:t", { replacements: { t: ctx.tenantId }, type: QueryTypes.SELECT });
   const unread = await countMyUnread(getSequelize(), ctx).catch(() => 0);
+  const states = await moduleStates(getSequelize(), ctx.tenantId).catch(() => ({}) as Record<string, boolean>);
+  const modOn = (href: string) => { const m = moduleForPage(href); return !m || states[m] !== false; };
+  const here = (await headers()).get("x-pathname") ?? "";
+  const hereModule = moduleForPage(here);
+  const disabled = hereModule && states[hereModule] === false ? MODULES.find((m) => m.key === hereModule) : undefined;
   const flat = [
     { href: "/notifications", label: unread ? `Notifications (${unread})` : "Notifications", show: true },
     { href: "/dashboard", label: "Dashboard", show: true },
@@ -28,6 +35,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/contacts", label: "Contacts", show: hasPermission(ctx, "contact.read") },
     { href: "/inventory", label: "Inventory", show: hasPermission(ctx, "inventory.read") || hasPermission(ctx, "inventory.manage") },
     { href: "/listings", label: "Listings", show: hasPermission(ctx, "listing.read") },
+    { href: "/hr", label: "HR", show: true },
     { href: "/trash", label: "Trash", show: ["contact.update", "lead.assign", "listing.manage", "inventory.manage", "org.manage", "project.manage", "campaign.manage", "template.manage"].some((p) => hasPermission(ctx, p)) },
     { href: "/distribution", label: "Portals and feeds", show: hasPermission(ctx, "portal.manage") },
     { href: "/website", label: "Public website", show: hasPermission(ctx, "site.manage") },
@@ -65,10 +73,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/targets", label: "Targets", show: hasPermission(ctx, "target.read") },
     { href: "/checklists", label: "Deal checklists", show: hasPermission(ctx, "deal.checklist.manage") },
     { href: "/settings", label: "Settings", show: hasPermission(ctx, "sso.manage") || hasPermission(ctx, "dataprocessing.manage") || hasPermission(ctx, "usage.read") },
+    { href: "/settings/modules", label: "Modules and automation", show: hasPermission(ctx, "tenant.manage") },
     { href: "/audit", label: "Audit log", show: hasPermission(ctx, "audit.read") },
-  ].filter((n) => n.show);
+  ].filter((n) => n.show && modOn(n.href));
   const byHref = new Map(flat.map((n) => [n.href, n]));
-  const groupDefs: Record<string, string[]> = {"Overview": ["/dashboard", "/insights", "/noticeboard", "/support", "/notifications", "/calendar", "/tasks"], "Sales": ["/leads", "/pools", "/calls", "/contacts", "/viewings", "/availability", "/deals", "/targets", "/checklists", "/searches", "/referrals", "/valuation"], "Inventory": ["/inventory", "/listings", "/distribution", "/website", "/projects"], "Marketing": ["/inbox", "/lead-sources", "/templates", "/campaigns", "/bots", "/automation"], "Property management": ["/portfolios", "/leases", "/maintenance", "/inspections"], "Finance": ["/finance", "/commissions", "/payouts", "/agents"], "Compliance": ["/compliance"], "Administration": ["/organization", "/users", "/roles", "/portal-access", "/imports", "/settings", "/trash", "/audit"]};
+  const groupDefs: Record<string, string[]> = {"Overview": ["/dashboard", "/insights", "/noticeboard", "/support", "/notifications", "/calendar", "/tasks"], "Sales": ["/leads", "/pools", "/calls", "/contacts", "/viewings", "/availability", "/deals", "/targets", "/checklists", "/searches", "/referrals", "/valuation"], "Inventory": ["/inventory", "/listings", "/distribution", "/website", "/projects"], "Marketing": ["/inbox", "/lead-sources", "/templates", "/campaigns", "/bots", "/automation"], "People": ["/hr"], "Property management": ["/portfolios", "/leases", "/maintenance", "/inspections"], "Finance": ["/finance", "/commissions", "/payouts", "/agents"], "Compliance": ["/compliance"], "Administration": ["/organization", "/users", "/roles", "/portal-access", "/imports", "/settings", "/settings/modules", "/trash", "/audit"]};
   const groups = Object.entries(groupDefs).map(([title, hrefs]) => ({
     title: translate(lang, title),
     items: hrefs.map((h) => byHref.get(h)).filter((n): n is NonNullable<typeof n> => !!n).map((n) => ({ href: n.href, label: translate(lang, n.href === "/notifications" ? "Notifications" : n.label), count: n.href === "/notifications" ? unread : undefined })),
@@ -87,7 +96,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <CommandPalette pages={flat.map((n) => ({ href: n.href, label: translate(lang, n.label) }))} />
           <div className="flex items-center gap-2"><LanguageSwitch lang={lang} /><LogoutButton /></div>
         </header>
-        <main className="content">{children}<TableTools /></main>
+        <main className="content">
+          {disabled ? (
+            <section className="card mx-auto mt-10 max-w-xl p-8 text-center">
+              <h1 className="text-xl font-semibold">{disabled.label} is turned off</h1>
+              <p className="muted mt-2 text-sm">Your company has switched this part of the CRM off. {hasPermission(ctx, "tenant.manage") ? "You can turn it back on under Modules and automation." : "Ask an administrator if you need it."}</p>
+              {hasPermission(ctx, "tenant.manage") && <Link className="btn mt-4 inline-block" href="/settings/modules">Open Modules and automation</Link>}
+            </section>
+          ) : children}
+          <TableTools />
+        </main>
       </div>
     </div>
   );

@@ -48,7 +48,7 @@ export async function createBuilding(sq: Sequelize, ctx: RequestContext, i: { re
 }
 
 export interface UnitInput {
-  buildingId: string; unitNumber: string; floor?: number; type: "apartment" | "villa" | "townhouse" | "penthouse" | "office" | "retail" | "land";
+  buildingId: string; unitNumber: string; floor?: number; type: "apartment" | "villa" | "townhouse" | "penthouse" | "office" | "retail" | "land" | "duplex" | "hotel_apartment" | "studio" | "compound" | "full_floor" | "half_floor" | "whole_building" | "bulk_units" | "warehouse" | "showroom" | "labour_camp" | "factory" | "farm" | "staff_accommodation";
   bedrooms?: number; bathrooms?: number; areaSqft?: number; view?: string; listPrice?: number; currency?: string; ownerContactId?: string;
 }
 

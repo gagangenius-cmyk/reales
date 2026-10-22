@@ -4,7 +4,7 @@ import type { Sequelize } from "sequelize";
 import { ZodError, ZodTypeAny, z } from "zod";
 import { AuthError, resolveRequestContext } from "@reales/auth";
 import { getSequelize, RequestContext, TenantViolationError } from "@reales/database";
-import { BotInvalidError, ConflictError, TokenError, ProviderNotAllowedError, SsoError, DealBlockedError, DocumentIntegrityError, DuplicateContactError, IdempotencyError, LeaseNotActivatableError, ListingNotPublishableError, NotFoundError, MissingVariableError, QuotaExceededError, TemplateInvalidError, UploadRejectedError, WorkflowInvalidError, withIdempotency } from "@reales/domain";
+import { isModuleOn, moduleForApi, BotInvalidError, ConflictError, TokenError, ProviderNotAllowedError, SsoError, DealBlockedError, DocumentIntegrityError, DuplicateContactError, IdempotencyError, LeaseNotActivatableError, ListingNotPublishableError, NotFoundError, MissingVariableError, QuotaExceededError, TemplateInvalidError, UploadRejectedError, WorkflowInvalidError, withIdempotency } from "@reales/domain";
 import { logger, runWithCorrelation } from "@reales/observability";
 import { ForbiddenError } from "@reales/rbac";
 import { rateLimit } from "./rate-limit";
@@ -124,6 +124,9 @@ export function api<P = Record<string, string>, B extends ZodTypeAny | undefined
           ctx = await resolveRequestContext(sq, req.cookies.get(SESSION_COOKIE)?.value, {
             correlationId, ip, userAgent: req.headers.get("user-agent"), allowPendingMfa: opts.auth === "pending-mfa",
           });
+          // A module the company switched off in Settings is closed to the API as well as hidden from the menu.
+          const mod = moduleForApi(req.nextUrl.pathname);
+          if (mod && !(await isModuleOn(sq, ctx.tenantId, mod))) throw new ForbiddenError("This part of the CRM is turned off for your company. An administrator can turn it on under Settings, Modules.");
           // Tenant-aware rate limiting for authenticated traffic.
           const tr = await rateLimit(`tenant:${ctx.tenantId}`, 1200, 60);
           if (!tr.allowed) {

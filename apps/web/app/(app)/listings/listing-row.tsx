@@ -44,11 +44,11 @@ export function ListingRow({ listing, canPublish, edit, selected, onToggle }: { 
   return (
     <tr className={selected ? "bg-[var(--accent-soft)]" : ""}>
       {onToggle && <td><input type="checkbox" aria-label={`Select ${listing.title}`} checked={!!selected} onChange={onToggle} /></td>}
-      <td className="font-medium"><Link href={`/listings/${listing.id}`}>{listing.title}</Link><div className="muted text-xs font-normal">{listing.reference}{listing.featured && " - featured"}{listing.web && " - on website"}</div></td><td>{listing.unit ?? "-"}</td><td><span className="badge badge-gray">{listing.purpose}</span></td><td>{listing.price}</td><td className="text-xs">{listing.photos === 0 ? <span className="err">No photos</span> : `${listing.photos} photos`}<div className="muted">{listing.views} views - {listing.enquiries} enquiries</div></td><td><span className={`badge ${listing.status === "published" ? "badge-ok" : listing.status === "draft" ? "badge-warn" : "badge-gray"}`}>{listing.status}</span></td>
+      <td className="font-medium"><Link href={`/listings/${listing.id}`}>{listing.title}</Link><div className="muted text-xs font-normal">{listing.reference}{listing.featured && " - featured"}{listing.web && " - on website"}</div></td><td>{listing.unit ?? "-"}</td><td><span className="badge badge-gray">{listing.purpose}</span></td><td>{listing.price}</td><td className="text-xs">{listing.photos === 0 ? <span className="err">No photos</span> : `${listing.photos} photos`}<div className="muted">{listing.views} views - {listing.enquiries} enquiries</div></td><td><span className={`badge ${listing.status === "published" ? "badge-ok" : listing.status === "draft" || listing.status === "expired" ? "badge-warn" : "badge-gray"}`}>{listing.status}</span></td>
       <td>
         <div className="flex flex-wrap gap-2">
           <button className="btn-ghost text-xs" onClick={validate} disabled={busy}>Check</button>
-          {canPublish && listing.status !== "published" && <button className="btn text-xs" onClick={publish} disabled={busy}>Publish</button>}
+          {canPublish && ["draft", "unpublished", "expired"].includes(listing.status) && <button className="btn text-xs" onClick={publish} disabled={busy}>Publish</button>}
           {canPublish && listing.status === "published" && <button className="btn-ghost text-xs" onClick={unpublish} disabled={busy}>Unpublish</button>}
         </div>
         {ok === true && <p role="status" className="muted mt-1 text-xs">Meets all publication requirements.</p>}

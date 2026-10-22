@@ -129,7 +129,7 @@ export const reProjectSchema = z.object({
 export const buildingSchema = z.object({ reProjectId: uuid, name: z.string().min(1).max(180), community: z.string().max(120).optional(), city: z.string().max(80).optional(), floorsCount: z.number().int().min(1).max(300).optional() }).strict();
 export const unitSchema = z.object({
   buildingId: uuid, unitNumber: z.string().min(1).max(40), floor: z.number().int().optional(),
-  type: z.enum(["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land"]),
+  type: z.enum(["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land", "duplex", "hotel_apartment", "studio", "compound", "full_floor", "half_floor", "whole_building", "bulk_units", "warehouse", "showroom", "labour_camp", "factory", "farm", "staff_accommodation"]),
   bedrooms: z.number().int().min(0).max(20).optional(), bathrooms: z.number().int().min(0).max(20).optional(),
   areaSqft: z.number().positive().optional(), view: z.string().max(80).optional(), listPrice: z.number().positive().optional(),
   currency: z.string().length(3).optional(), ownerContactId: uuid.optional(),
@@ -138,7 +138,7 @@ export const unitStatusSchema = z.object({ status: z.enum(["available", "reserve
 export const unitListQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50), offset: z.coerce.number().int().min(0).default(0),
   status: z.enum(["available", "reserved", "sold", "rented", "blocked"]).optional(),
-  type: z.enum(["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land"]).optional(),
+  type: z.enum(["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land", "duplex", "hotel_apartment", "studio", "compound", "full_floor", "half_floor", "whole_building", "bulk_units", "warehouse", "showroom", "labour_camp", "factory", "farm", "staff_accommodation"]).optional(),
   bedrooms: z.coerce.number().int().min(0).optional(), minPrice: z.coerce.number().nonnegative().optional(), maxPrice: z.coerce.number().nonnegative().optional(),
   buildingId: uuid.optional(), reProjectId: uuid.optional(),
 });
@@ -155,7 +155,7 @@ export const updateListingSchema = z.object({
 }).strict();
 export const listingListQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50), offset: z.coerce.number().int().min(0).default(0),
-  status: z.enum(["draft", "published", "unpublished"]).optional(),
+  status: z.enum(["draft", "published", "unpublished", "expired", "closed", "archived"]).optional(),
   purpose: z.enum(["sale", "rent"]).optional(), q: z.string().max(100).optional(),
 });
 export const mediaSchema = z.object({ kind: z.enum(["image", "video", "floorplan"]), storageKey: z.string().min(1).max(500), position: z.number().int().min(0).optional() }).strict();
