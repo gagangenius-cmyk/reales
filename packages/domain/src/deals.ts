@@ -37,6 +37,11 @@ export type DealGate = (u: Uow, deal: any, to: DealStage) => Promise<string[]>;
 const extraGates: DealGate[] = [];
 export const registerDealGate = (g: DealGate) => void extraGates.push(g);
 
+/** Modules (e.g. checklists) that need to react when a deal is created, inside the same transaction. */
+export type DealCreatedHook = (u: Uow, deal: any) => Promise<void>;
+const createdHooks: DealCreatedHook[] = [];
+export const registerDealCreatedHook = (h: DealCreatedHook) => void createdHooks.push(h);
+
 async function stageBlockers(u: Uow, deal: any, to: DealStage): Promise<string[]> {
   const ms = (await u.repo("DealMilestone").findAll({ where: { dealId: deal.get("id") }, transaction: u.tx })) as any[];
   const byKey = new Map(ms.map((m) => [m.get("key"), m]));
@@ -104,6 +109,7 @@ export async function createDeal(sq: Sequelize, ctx: RequestContext, i: CreateDe
       }, { transaction: u.tx });
     }
     await u.repo("Reservation").updateById(res.get("id"), { status: "converted", dealId: id }, { transaction: u.tx });
+    { const created = await u.repo("Deal").findById(id, { transaction: u.tx }); for (const h of createdHooks) await h(u, created); }
     await stageEvent(u, ctx, id, null, "reserved", "deal created");
     await u.audit({ action: "deal.created", entityType: "deal", entityId: id, after: { unitId: res.get("unitId"), amount, type } });
     await u.emit({ type: "deal.reserved", aggregateType: "deal", aggregateId: id, projectId, payload: { unitId: res.get("unitId"), amount, dealType: type } });

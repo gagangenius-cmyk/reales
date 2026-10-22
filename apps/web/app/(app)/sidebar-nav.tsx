@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Bell, LayoutDashboard, CalendarDays, CheckSquare, Users, Contact, Building2, Home, Search, Calculator, Handshake, Eye, Inbox, FileText, Megaphone, Bot,
-  Workflow, FileSignature, Wallet, Briefcase, KeyRound, Wrench, ShieldCheck, ClipboardCheck, FolderKanban, Network, UserCog, Upload, Settings, ScrollText, type LucideIcon,
+  Workflow, FileSignature, Wallet, Briefcase, KeyRound, Wrench, ShieldCheck, ClipboardCheck, FolderKanban, Network, UserCog, Upload, Settings, ScrollText, BarChart3, Banknote, LifeBuoy, PlugZap, Phone, Target, ListChecks, type LucideIcon,
 } from "lucide-react";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -12,7 +12,7 @@ const ICONS: Record<string, LucideIcon> = {
   "/inventory": Building2, "/listings": Home, "/searches": Search, "/valuation": Calculator, "/referrals": Handshake, "/viewings": Eye, "/inbox": Inbox,
   "/templates": FileText, "/campaigns": Megaphone, "/broadcasts": Megaphone, "/bots": Bot, "/automation": Workflow, "/deals": FileSignature, "/finance": Wallet,
   "/portfolios": Briefcase, "/leases": KeyRound, "/maintenance": Wrench, "/compliance": ShieldCheck, "/inspections": ClipboardCheck, "/projects": FolderKanban,
-  "/organization": Network, "/portal-access": UserCog, "/imports": Upload, "/users": UserCog, "/settings": Settings, "/audit": ScrollText, "/availability": CalendarDays, "/roles": KeyRound, "/agents": UserCog, "/commissions": Wallet,
+  "/organization": Network, "/portal-access": UserCog, "/imports": Upload, "/users": UserCog, "/settings": Settings, "/audit": ScrollText, "/availability": CalendarDays, "/roles": KeyRound, "/insights": BarChart3, "/agents": UserCog, "/commissions": Wallet, "/targets": Target, "/pools": Inbox, "/payouts": Banknote, "/noticeboard": Megaphone, "/support": LifeBuoy, "/lead-sources": PlugZap, "/calls": Phone, "/checklists": ListChecks,
 };
 
 export type NavGroup = { title: string; items: { href: string; label: string; count?: number }[] };

@@ -47,7 +47,7 @@ export default async function Commissions({ searchParams }: { searchParams: Prom
                 <td><span className={`badge ${c.agentType === "external" ? "badge-warn" : ""}`}>{c.agentType ?? "internal"}</span></td>
                 <td>{money(c.grossAmount, c.currency)}</td><td>{money(c.commissionAmount, c.currency)}</td><td>{money(c.vatAmount ?? 0, c.currency)}</td>
                 <td><span className={`badge ${c.paidAt ? "badge-ok" : c.status === "approved" ? "" : c.status === "void" ? "badge-gray" : "badge-warn"}`}>{c.paidAt ? "paid" : c.status}</span>{c.paidReference && <span className="muted block text-xs">{c.paidReference}</span>}</td>
-                <td className="text-xs">{c.splits.map((s: any) => `${s.role} ${Number(s.pct)}% (${Number(s.amount).toLocaleString("en-US")})`).join(", ")}</td>
+                <td className="text-xs">{c.slabApplied && <span className="badge mr-1" title={`Year-to-date before this deal: AED ${Math.round(c.slabApplied.ytdBefore).toLocaleString("en-US")}`}>slab {Number(c.slabApplied.fromValue).toLocaleString("en-US")}+</span>}{c.splits.map((s: any) => `${s.role} ${Number(s.pct)}% (${Number(s.amount).toLocaleString("en-US")})`).join(", ")}</td>
                 <td className="text-right"><CommissionActions id={c.id} status={c.status} paid={!!c.paidAt} canApprove={canApprove} /></td>
               </tr>
             ))}
@@ -60,10 +60,10 @@ export default async function Commissions({ searchParams }: { searchParams: Prom
           <h2 className="text-lg font-semibold">Commission plans</h2>
           <div className="card overflow-x-auto">
             <table className="t">
-              <thead><tr><th>Plan</th><th>Deal type</th><th>Applies to</th><th>Rate</th><th>VAT</th><th>Splits</th></tr></thead>
+              <thead><tr><th>Plan</th><th>Deal type</th><th>Applies to</th><th>Rate</th><th>VAT</th><th>Splits</th><th>Slabs</th></tr></thead>
               <tbody>
-                {plans.map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.dealType}</td><td><span className="badge">{p.agentType ?? "any"}</span></td><td>{Number(p.ratePct)}%</td><td>{Number(p.vatPct ?? 5)}%</td><td>{(p.splits ?? []).map((s: any) => `${s.role} ${s.pct}%`).join(", ")}</td></tr>)}
-                {plans.length === 0 && <tr><td colSpan={6} className="muted">No plans. Without a plan no commission is calculated.</td></tr>}
+                {plans.map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.dealType}</td><td><span className="badge">{p.agentType ?? "any"}</span></td><td>{Number(p.ratePct)}%</td><td>{Number(p.vatPct ?? 5)}%</td><td>{(p.splits ?? []).map((s: any) => `${s.role} ${s.pct}%`).join(", ")}</td><td className="text-xs">{(p.slabs ?? []).map((s: any) => `${Number(s.fromValue).toLocaleString("en-US")}+: ${s.ratePct ? s.ratePct + "%" : "rate same"}${s.agentSharePct ? `, agent ${s.agentSharePct}%` : ""}`).join(" | ") || "-"}</td></tr>)}
+                {plans.length === 0 && <tr><td colSpan={7} className="muted">No plans. Without a plan no commission is calculated.</td></tr>}
               </tbody>
             </table>
           </div>

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { getDeal, STAGE_ORDER } from "@reales/domain";
+import { getDeal, getDealChecklist, listAssignableUsers, STAGE_ORDER } from "@reales/domain";
 import { can, hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../../no-access";
 import { DealActions } from "./deal-actions";
+import { DealChecklist } from "./deal-checklist";
 
 export const metadata = { title: "Deal | Reales CRM" };
 
@@ -17,6 +18,8 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
     return <section><h1 className="text-2xl font-semibold">Deal not found</h1><Link className="btn-ghost mt-3 inline-block" href="/deals">Back to deals</Link></section>;
   }
   const ref = { ownerUserId: deal.agentUserId, branchId: deal.branchId, projectId: deal.projectId };
+  const checklist: any = await getDealChecklist(getSequelize(), ctx, id).catch(() => ({ items: [] }));
+  const people = new Map<string, string>((await listAssignableUsers(getSequelize(), ctx).catch(() => [])).map((u: any) => [u.id, u.email]));
   const idx = STAGE_ORDER.indexOf(deal.stage);
   const next = deal.status === "open" ? STAGE_ORDER[idx + 1] : undefined;
   return (
@@ -31,6 +34,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
           <li key={s} className={`btn-ghost ${i === idx ? "font-semibold" : "muted"}`} aria-current={i === idx ? "step" : undefined}>{s}</li>
         ))}
       </ol>
+      <DealChecklist dealId={deal.id} open={deal.status === "open"} canUpdate={can(ctx, "deal.update", ref)} canWaive={can(ctx, "deal.close", ref)} items={checklist.items.map((i: any) => ({ id: i.id, title: i.title, guidance: i.guidance ?? null, required: !!i.required, gateStage: i.gateStage, status: i.status, dueAt: i.dueAt ? new Date(i.dueAt).toISOString() : null, assigneeEmail: i.assigneeUserId ? people.get(i.assigneeUserId) ?? null : null, waivedReason: i.waivedReason ?? null, note: i.note ?? null }))} />
       {deal.status === "open" && <DealActions dealId={deal.id} nextStage={next ?? null} canUpdate={can(ctx, "deal.update", ref)} canClose={can(ctx, "deal.close", ref)} />}
       <div className="card p-4">
         <h2 className="font-semibold">Milestones</h2>

@@ -48,6 +48,12 @@ export const TENANT_OWNED_TABLES = [
   "auth_tokens", "import_jobs", "portal_links",
   // agents, commissions by type, availability
   "agent_profiles", "agent_availability", "agent_time_off",
+  // teams, targets, deal checklists
+  "sales_targets", "deal_checklist_templates", "deal_checklist_template_items", "deal_checklist_items",
+  // lead pools, repool rules, call logs
+  "lead_pools", "repool_rules", "call_logs", "lead_ingest_sources", "lead_ingest_events",
+  // payouts, noticeboard, support
+  "payout_requests", "payout_request_items", "notice_posts", "notice_reads", "support_tickets", "support_comments",
 ] as const;
 
 /** Tables intentionally NOT tenant-owned (global catalogues / tenant root). */
@@ -71,7 +77,7 @@ export interface Models {
   Viewing: M; ViewingFeedback: M; Offer: M; OfferRevision: M; Reservation: M; Deal: M; DealStageEvent: M; DealParty: M; DealMilestone: M;
   Document: M; DocumentVersion: M; DocumentLink: M; SignatureEnvelope: M; SignatureSigner: M; SignatureEvent: M;
   Counter: M; Invoice: M; InvoiceLine: M; Payment: M; PaymentAllocation: M; Receipt: M; WebhookEvent: M;
-  CommissionPlan: M; CommissionCalculation: M; CommissionSplit: M; AgentProfile: M; AgentAvailability: M; AgentTimeOff: M;
+  CommissionPlan: M; CommissionCalculation: M; CommissionSplit: M; AgentProfile: M; AgentAvailability: M; AgentTimeOff: M; LeadPool: M; RepoolRule: M; CallLog: M; LeadIngestSource: M; LeadIngestEvent: M; PayoutRequest: M; PayoutRequestItem: M; NoticePost: M; NoticeRead: M; SupportTicket: M; SupportComment: M; SalesTarget: M; DealChecklistTemplate: M; DealChecklistTemplateItem: M; DealChecklistItem: M;
   ChannelAccount: M; Conversation: M; Message: M; MessageEvent: M; Template: M; TemplateVersion: M;
   Segment: M; Campaign: M; CampaignRecipient: M; CampaignEvent: M;
   Workflow: M; WorkflowVersion: M; WorkflowRun: M; WorkflowStep: M; WorkflowWait: M;
@@ -149,8 +155,8 @@ export function initModels(sq: Sequelize): Models {
 
     BusinessUnit: d("BusinessUnit", "business_units", { id: pk(), tenantId: tid(), name: s(180, false), type: T.ENUM("brokerage", "property_management", "developer") }),
     Branch: d("Branch", "branches", { id: pk(), tenantId: tid(), businessUnitId: tid(), name: s(180, false), city: s(80) }),
-    Team: d("Team", "teams", { id: pk(), tenantId: tid(), branchId: uuid(), name: s(180, false) }),
-    TeamMember: d("TeamMember", "team_members", { id: pk(), tenantId: tid(), teamId: tid(), userId: tid() }),
+    Team: d("Team", "teams", { id: pk(), tenantId: tid(), branchId: uuid(), name: s(180, false), leaderUserId: uuid(), parentTeamId: uuid(), description: s(255), status: T.ENUM("active", "archived") }),
+    TeamMember: d("TeamMember", "team_members", { id: pk(), tenantId: tid(), teamId: tid(), userId: tid(), role: T.ENUM("leader", "member"), joinedOn: T.DATEONLY }),
     Project: d("Project", "projects", {
       id: pk(), tenantId: tid(), businessUnitId: uuid(), kind: T.ENUM("project", "portfolio", "workspace"),
       code: s(40, false), name: s(180, false), status: T.ENUM("active", "archived"),
@@ -215,6 +221,7 @@ export function initModels(sq: Sequelize): Models {
       score: T.DECIMAL(6, 3), lostReason: s(255), firstResponseAt: T.DATE(3), isHot: T.BOOLEAN, campaign: s(160),
       financing: T.ENUM("cash", "mortgage", "undecided"), purchaseTimeline: T.ENUM("immediate", "one_to_three_months", "three_to_six_months", "over_six_months", "exploring"),
       propertyTypes: T.JSON, tags: T.JSON, notes: T.TEXT, nextFollowUpAt: T.DATE(3), lastContactedAt: T.DATE(3), expectedCloseDate: T.DATEONLY,
+      poolId: uuid(), pooledAt: T.DATE(3), repoolCount: T.INTEGER,
     }),
     LeadStageEvent: d("LeadStageEvent", "lead_stage_events", { id: pk(), tenantId: tid(), leadId: tid(), fromStageId: uuid(), toStageId: tid(), actorId: s(64), reason: s(255), createdAt: dt3() }, noTs2),
     LeadAssignment: d("LeadAssignment", "lead_assignments", {
@@ -326,14 +333,29 @@ export function initModels(sq: Sequelize): Models {
       id: pk(), tenantId: uuid(), provider: s(40, false), kind: s(20, false), eventId: s(160, false), rawBody: { type: T.TEXT("medium"), allowNull: false }, signatureValid: T.BOOLEAN,
       status: T.ENUM("received", "processed", "failed", "ignored"), error: T.TEXT, receivedAt: dt3(), processedAt: T.DATE(3),
     }, noTs2),
-    CommissionPlan: d("CommissionPlan", "commission_plans", { id: pk(), tenantId: tid(), name: s(120, false), dealType: T.ENUM("sale", "lease"), ratePct: T.DECIMAL(6, 3), splits: { type: T.JSON, allowNull: false }, active: T.BOOLEAN, agentType: T.ENUM("any", "internal", "external"), vatPct: T.DECIMAL(5, 2) }),
+    CommissionPlan: d("CommissionPlan", "commission_plans", { id: pk(), tenantId: tid(), name: s(120, false), dealType: T.ENUM("sale", "lease"), ratePct: T.DECIMAL(6, 3), splits: { type: T.JSON, allowNull: false }, active: T.BOOLEAN, agentType: T.ENUM("any", "internal", "external"), vatPct: T.DECIMAL(5, 2), slabs: T.JSON }),
+    LeadIngestSource: d("LeadIngestSource", "lead_ingest_sources", { id: pk(), tenantId: tid(), name: s(120, false), kind: T.ENUM("meta", "portal", "website", "generic"), publicId: s(40, false), secretEnc: { type: T.TEXT, allowNull: false }, sourceCode: s(60), projectId: uuid(), poolId: uuid(), routeMode: T.ENUM("rules", "pool"), defaultPurpose: T.ENUM("buy", "rent", "invest", "off_plan"), campaign: s(160), active: T.BOOLEAN, totalReceived: T.INTEGER, lastReceivedAt: T.DATE(3), createdBy: s(64) }),
+    LeadIngestEvent: d("LeadIngestEvent", "lead_ingest_events", { id: pk(), tenantId: tid(), sourceId: tid(), externalId: s(160, false), status: T.ENUM("created", "duplicate", "rejected"), leadId: uuid(), error: s(255), receivedAt: dt3() }),
+    PayoutRequest: d("PayoutRequest", "payout_requests", { id: pk(), tenantId: tid(), userId: tid(), status: T.ENUM("pending", "approved", "rejected", "paid", "cancelled"), netAmount: money(false), vatAmount: money(false), totalAmount: money(false), currency: s(3, false), invoiceRef: s(80), note: s(500), requestedAt: dt3(), decidedBy: s(64), decidedAt: T.DATE(3), decisionReason: s(255), paidBy: s(64), paidAt: T.DATE(3), paidReference: s(120) }),
+    PayoutRequestItem: d("PayoutRequestItem", "payout_request_items", { id: pk(), tenantId: tid(), requestId: tid(), calculationId: tid(), amount: money(false), vatAmount: money(false), active: T.BOOLEAN }),
+    NoticePost: d("NoticePost", "notice_posts", { id: pk(), tenantId: tid(), title: s(200, false), body: { type: T.TEXT, allowNull: false }, audience: T.ENUM("all", "branch"), branchId: uuid(), pinned: T.BOOLEAN, requiresAck: T.BOOLEAN, publishAt: dt3(), expiresAt: T.DATE(3), archived: T.BOOLEAN, createdBy: s(64) }),
+    NoticeRead: d("NoticeRead", "notice_reads", { id: pk(), tenantId: tid(), postId: tid(), userId: tid(), readAt: dt3(), ackedAt: T.DATE(3) }),
+    SupportTicket: d("SupportTicket", "support_tickets", { id: pk(), tenantId: tid(), number: T.INTEGER, subject: s(200, false), body: { type: T.TEXT, allowNull: false }, category: T.ENUM("bug", "access", "data", "question", "request", "other"), priority: T.ENUM("low", "normal", "high", "urgent"), status: T.ENUM("open", "in_progress", "waiting", "resolved", "closed"), requesterId: tid(), assigneeId: uuid(), dueAt: T.DATE(3), firstResponseAt: T.DATE(3), resolvedAt: T.DATE(3), pageUrl: s(300) }),
+    SupportComment: d("SupportComment", "support_comments", { id: pk(), tenantId: tid(), ticketId: tid(), authorId: tid(), body: { type: T.TEXT, allowNull: false }, internal: T.BOOLEAN }),
+    LeadPool: d("LeadPool", "lead_pools", { id: pk(), tenantId: tid(), name: s(120, false), description: s(255), branchId: uuid(), dailyClaimLimit: T.INTEGER, active: T.BOOLEAN }),
+    RepoolRule: d("RepoolRule", "repool_rules", { id: pk(), tenantId: tid(), name: s(120, false), triggerKind: T.ENUM("no_first_response", "no_activity"), afterMinutes: T.INTEGER, action: T.ENUM("reassign", "to_pool", "notify_manager"), poolId: uuid(), maxRepools: T.INTEGER, hotOnly: T.BOOLEAN, active: T.BOOLEAN }),
+    CallLog: d("CallLog", "call_logs", { id: pk(), tenantId: tid(), userId: tid(), leadId: uuid(), contactId: tid(), direction: T.ENUM("outbound", "inbound"), outcome: T.ENUM("answered", "no_answer", "busy", "voicemail", "wrong_number", "callback_requested", "not_interested"), startedAt: dt3(), durationSec: T.INTEGER, notes: T.TEXT, followUpAt: T.DATE(3), recordingUrl: s(500) }),
+    SalesTarget: d("SalesTarget", "sales_targets", { id: pk(), tenantId: tid(), scopeType: T.ENUM("user", "team", "branch", "tenant"), scopeId: uuid(), periodType: T.ENUM("month", "quarter", "year"), periodStart: { type: T.DATEONLY, allowNull: false }, metric: T.ENUM("closed_value", "closed_deals", "new_leads", "viewings_done"), targetValue: money(false), note: s(255), createdBy: s(64) }),
+    DealChecklistTemplate: d("DealChecklistTemplate", "deal_checklist_templates", { id: pk(), tenantId: tid(), name: s(160, false), dealType: T.ENUM("sale", "lease"), projectKind: T.ENUM("any", "ready", "off_plan"), active: T.BOOLEAN }),
+    DealChecklistTemplateItem: d("DealChecklistTemplateItem", "deal_checklist_template_items", { id: pk(), tenantId: tid(), templateId: tid(), position: T.INTEGER, title: s(200, false), guidance: s(500), required: T.BOOLEAN, gateStage: T.ENUM("none", "contract", "signed", "payment", "registration", "closed"), dueOffsetDays: T.INTEGER }),
+    DealChecklistItem: d("DealChecklistItem", "deal_checklist_items", { id: pk(), tenantId: tid(), dealId: tid(), templateItemId: uuid(), position: T.INTEGER, title: s(200, false), guidance: s(500), required: T.BOOLEAN, gateStage: T.ENUM("none", "contract", "signed", "payment", "registration", "closed"), status: T.ENUM("pending", "done", "waived"), dueAt: T.DATE(3), assigneeUserId: uuid(), completedBy: s(64), completedAt: T.DATE(3), waivedReason: s(255), documentId: uuid(), note: s(500) }),
     AgentAvailability: d("AgentAvailability", "agent_availability", { id: pk(), tenantId: tid(), userId: tid(), weekday: T.INTEGER, startTime: s(5, false), endTime: s(5, false) }),
     AgentTimeOff: d("AgentTimeOff", "agent_time_off", { id: pk(), tenantId: tid(), userId: tid(), startsAt: dt3(), endsAt: dt3(), reason: s(160), createdBy: s(64) }),
     AgentProfile: d("AgentProfile", "agent_profiles", { id: pk(), tenantId: tid(), userId: tid(), agentType: T.ENUM("internal", "external"), commissionPlanId: uuid(), brn: s(40), agencyName: s(160), agencyLicenceNo: s(60), payoutNote: s(255), status: T.ENUM("active", "inactive") }),
     CommissionCalculation: d("CommissionCalculation", "commission_calculations", {
       id: pk(), tenantId: tid(), dealId: tid(), planId: tid(), agentUserId: uuid(), branchId: uuid(), grossAmount: money(false), commissionAmount: money(false), currency: s(3, false),
       status: T.ENUM("calculated", "approved", "void"), approvedBy: s(64), approvedAt: T.DATE(3), calculatedAt: dt3(),
-      agentType: T.ENUM("internal", "external"), vatAmount: money(false), paidAt: T.DATE(3), paidBy: s(64), paidReference: s(120),
+      agentType: T.ENUM("internal", "external"), vatAmount: money(false), paidAt: T.DATE(3), paidBy: s(64), paidReference: s(120), slabApplied: T.JSON,
     }),
     CommissionSplit: d("CommissionSplit", "commission_splits", { id: pk(), tenantId: tid(), calculationId: tid(), role: s(40, false), userId: uuid(), pct: T.DECIMAL(6, 3), amount: money(false) }),
   });

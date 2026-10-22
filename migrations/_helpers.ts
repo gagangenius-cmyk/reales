@@ -33,3 +33,13 @@ export async function tenantFk(
     `ALTER TABLE \`${table}\` ADD CONSTRAINT \`fk_${table}_${col}\` FOREIGN KEY (tenant_id, \`${col}\`) REFERENCES \`${parent}\` (tenant_id, id) ON DELETE ${setNull ? "RESTRICT" : onDelete}`,
   );
 }
+
+/** MySQL DDL is not transactional: run a step and tolerate "already exists" so a half-applied migration can simply be run again. */
+const ALREADY_EXISTS = new Set([1050, 1060, 1061, 1826, 1022, 1068]);
+export async function step(fn: () => Promise<unknown>) {
+  try { await fn(); } catch (e) {
+    const x = e as { parent?: { errno?: number }; original?: { errno?: number } };
+    const errno = x.parent?.errno ?? x.original?.errno;
+    if (!errno || !ALREADY_EXISTS.has(errno)) throw e;
+  }
+}

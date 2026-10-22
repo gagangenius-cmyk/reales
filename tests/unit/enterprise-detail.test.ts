@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { holdsAtLeast, PERMISSIONS, ROLE_TEMPLATES } from "@reales/rbac";
-import { fromDubai, permissionCatalogue, toDubai, toMin } from "@reales/domain";
+import { applySlab, normalizeLeadPayload, fromDubai, periodBounds, permissionCatalogue, toDubai, toMin, validateSlabs } from "@reales/domain";
 import {
   agentProfileSchema, commissionPaySchema, commissionPlanSchema, createRoleSchema, leadSchema, setRoleGrantsSchema, timeOffSchema, updateContactSchema, updateLeadSchema, weeklyAvailabilitySchema,
 } from "@reales/validation";
@@ -86,5 +86,62 @@ describe("role escalation guard", () => {
     expect(holdsAtLeast(ctx(["lead.read", "own_records"]), "lead.read", "branch")).toBe(false);
     expect(holdsAtLeast(ctx(["lead.read", "project"]), "lead.read", "branch")).toBe(false);
     expect(holdsAtLeast(ctx(["lead.read", "tenant"]), "deal.read", "own_records")).toBe(false);
+  });
+});
+
+describe("commission slabs (pure)", () => {
+  const splits = [{ role: "agent", pct: 50 }, { role: "brokerage", pct: 30 }, { role: "introducer", pct: 20 }];
+  const slabs = [{ fromValue: 0, agentSharePct: 50 }, { fromValue: 1_000_000, agentSharePct: 60 }, { fromValue: 3_000_000, ratePct: 3, agentSharePct: 70 }];
+  it("picks the slab reached before the deal and keeps the split at exactly 100%", () => {
+    for (const [ytd, rate, agent] of [[0, 2, 50], [999_999, 2, 50], [1_000_000, 2, 60], [2_999_999, 2, 60], [3_000_000, 3, 70], [9e9, 3, 70]] as const) {
+      const r = applySlab(2, splits, slabs, ytd);
+      expect(r.ratePct).toBe(rate);
+      expect(r.splits.find((s) => s.role === "agent")!.pct).toBe(agent);
+      expect(Math.round(r.splits.reduce((a, s) => a + s.pct, 0) * 1000) / 1000).toBe(100);
+    }
+  });
+  it("scales the other recipients in proportion", () => {
+    const r = applySlab(2, splits, slabs, 1_500_000); // agent 60 -> others share 40 as 30:20
+    expect(r.splits.find((s) => s.role === "brokerage")!.pct).toBe(24);
+    expect(r.splits.find((s) => s.role === "introducer")!.pct).toBe(16);
+  });
+  it("adds a company line when the plan only had an agent, and is a no-op without slabs", () => {
+    const r = applySlab(2, [{ role: "agent", pct: 100 }], [{ fromValue: 0, agentSharePct: 80 }], 0);
+    expect(r.splits).toEqual([{ role: "agent", pct: 80 }, { role: "company", pct: 20 }]);
+    expect(applySlab(2.5, splits, [], 5e6)).toMatchObject({ ratePct: 2.5, slab: null });
+  });
+  it("validates slab definitions", () => {
+    expect(() => validateSlabs([{ fromValue: 10, ratePct: 3 }])).toThrow(/start at 0/);
+    expect(() => validateSlabs([{ fromValue: 0, ratePct: 3 }, { fromValue: 0, ratePct: 4 }])).toThrow(/same value/);
+    expect(() => validateSlabs([{ fromValue: 0 }])).toThrow(/rate, the agent/);
+    expect(() => validateSlabs([{ fromValue: 0, agentSharePct: 120 }])).toThrow(/between 0 and 100/);
+    expect(validateSlabs([{ fromValue: 5, ratePct: 3 }, { fromValue: 0, ratePct: 2 }]).map((s) => s.fromValue)).toEqual([0, 5]);
+  });
+});
+
+describe("target periods", () => {
+  it("finds the month, quarter and year containing a date", () => {
+    expect(periodBounds("month", "2026-10-19")).toEqual({ start: "2026-10-01", end: "2026-11-01" });
+    expect(periodBounds("quarter", "2026-11-30")).toEqual({ start: "2026-10-01", end: "2027-01-01" });
+    expect(periodBounds("year", "2026-02-02")).toEqual({ start: "2026-01-01", end: "2027-01-01" });
+    expect(periodBounds("month", "2026-12-31")).toEqual({ start: "2026-12-01", end: "2027-01-01" });
+  });
+});
+
+describe("inbound lead payloads", () => {
+  it("maps flat JSON, Meta field_data and batches, and keeps unknown fields in the notes", () => {
+    const [flat] = normalizeLeadPayload({ id: 7, name: "Sara Ali", Email: "x", email: "sara@example.com", mobile: "050 123 4567", looking_to: "Rent", budget: "AED 150,000", message: "2BR please", floor: "high" });
+    expect(flat).toMatchObject({ externalId: "7", firstName: "Sara", lastName: "Ali", email: "sara@example.com", phone: "050 123 4567", purpose: "rent", budgetMax: 150000 });
+    expect(flat!.notes).toContain("2BR please");
+    expect(flat!.notes).toContain("floor: high");
+    const meta = normalizeLeadPayload({ entry: [{ changes: [{ value: { leadgen_id: "A", field_data: [{ name: "full_name", values: ["Omar Khan"] }, { name: "phone_number", values: ["+971501234567"] }] } }] }] });
+    expect(meta).toHaveLength(1);
+    expect(meta[0]).toMatchObject({ externalId: "A", firstName: "Omar", lastName: "Khan", phone: "+971501234567" });
+    expect(normalizeLeadPayload({ leads: [{ email: "a@b.co" }, { email: "c@d.co" }] })).toHaveLength(2);
+    expect(normalizeLeadPayload("nonsense")).toEqual([]);
+    // without an id the dedupe key is stable for identical content and differs for different people
+    const a = normalizeLeadPayload({ email: "p@q.com", name: "P" })[0]!.externalId, b = normalizeLeadPayload({ email: "p@q.com", name: "P" })[0]!.externalId, c = normalizeLeadPayload({ email: "z@q.com", name: "Z" })[0]!.externalId;
+    expect(a).toBe(b);
+    expect(a).not.toBe(c);
   });
 });

@@ -277,3 +277,40 @@ Still open: browser/E2E and unit tests for everything above (local Docker was un
 Verified on local Docker MySQL 8 (DB env forced to 127.0.0.1:3307 so the live database is never touched): migrations 1-51 rebuild the schema from zero (154 tables) and the full suite ran 251 tests, 249 passing. The two failures were the tenant-isolation schema guard flagging three new tables missing from `TENANT_OWNED_TABLES`; fixed and the isolation suite re-run green (11/11). The new screens have still not been exercised in a browser.
 
 Runtime check against a local dev server and Docker MySQL 8 (local data only): all new pages render (HTTP 200, no error markers) and a scripted 36-step API walkthrough passed 36/36: lead with every new field, owner assignment, edit, call logging stamping "last contacted", contact field clearing, working hours / time off / free slots / double booking, external agent profile and plan, role copy / edit / assign / protect, listing create / edit / search, broadcast setup and audience preview. `tests/agents-availability-roles.test.ts` (4 tests) covers agent-type commission with VAT and payout, availability enforcement, role management, and owner-choice rules; it passes. Not done: a real-browser pass (the Chrome extension was not connected), so layout and interaction of the drawers are unverified.
+
+## Daily-use layer (kanban, search, bulk, insights)
+
+Real and exercised against a local dev server + Docker MySQL 8 (18/18 scripted checks, pages 200):
+- **Lead board** (`/leads?view=board`): drag cards between stages (optimistic with rollback, lost needs a reason), hot/overdue markers, per-column totals, filter box. List/board toggle, KPI strip (open, hot, overdue follow-ups, unassigned).
+- **Bulk actions** on the list: assign / unassign, move stage, mark hot, tag. Each lead goes through the single-lead function (same permission, scope, audit and history); failures are reported per lead.
+- **Global search + command palette** (Ctrl/Cmd+K): contacts (name, company, email, any phone format incl. second phone and WhatsApp), leads, units, listings, deals, and page jump; scope-aware.
+- **Insights** (`/insights`): funnel, weekly intake, sources with win rate, campaigns, response speed, loss reasons, deal stages, inventory donut, listing age, agent leaderboard (dependency-free SVG charts).
+
+Not yet built (from the senior review): documents centre UI, saved views and column chooser, duplicate review and merge, unified inbox with live updates, API keys and outbound webhooks, SAML/SCIM, PWA, off-plan payment-plan builder, rent-cheque tracker. Browser pass still pending (extension not connected).
+
+## Organisation, targets, deal checklists, commission slabs (migration 052)
+
+Research notes (UAE brokerage CRMs: PropSpace, Ruby, PropCRM; global: Follow Up Boss, Lone Wolf): the recurring expectations are lead repooling, duplicate handling across portals, transaction checklists with compliance, commission engines with tiers, cheque tracking for rent, renewal notices and owner statements. This pass covers the transaction, commission and organisation parts; lead repooling and the rent-cheque register are NOT built yet.
+
+- **Teams**: leader (one per team, enforced), members with roles, parent/child hierarchy with loop protection, branch link, archive; Organisation page manages them.
+- **Targets** (`/targets`): per person / team / branch / company, by month / quarter / year, for closed value, closed deals, new leads, viewings done. Progress is computed from real records; "behind" = more than 10 points under the share of the period elapsed. Visibility follows role (agent: own + own team; branch manager: own branch; admin: all). Branch managers can only set targets inside their branch.
+- **Deal checklists** (`/checklists`): templates per deal type and property kind (ready / off-plan), UAE starter sets (secondary sale, off-plan, residential lease: starting points, not legal advice), copied onto each new deal, stage gates (required item blocks that stage until done or waived), waiver needs a manager and a reason, due dates, extra items per deal, full audit.
+- **Commission slabs**: a plan can step the rate and/or the agent's share up as the agent's closed value this year (Dubai calendar) crosses thresholds; the slab reached before the deal applies to the whole deal; the other split lines rebalance proportionally and always total 100%; the applied slab and year-to-date are stored on the calculation.
+- New permissions: `deal.checklist.manage`, `target.read`, `target.manage`. Run `npm run db:sync-roles` after deploying so existing workspaces get them (custom roles are untouched).
+- Verified locally: 30/30 scripted API checks, 3 new database tests (checklist gating and waiver rules, slab application, teams and targets), 6 new pure tests.
+
+## Blueprint gap pass (Banke CRM blueprint mapped onto this CRM; migrations 053-055)
+
+The attached blueprint describes a different codebase (NestJS/Prisma/Postgres, separate Communications and AI services). Its **capabilities** were mapped onto this CRM and the ones that were missing here were built:
+
+- **Lead pools and repooling** (`/pools`): pools with a daily claim limit per agent, atomic claim (two agents cannot both win), release-to-pool with a reason; repool rules (no first response / no activity for N minutes, hot-only, max repools) that put the lead back in a pool, hand it to the next agent, or alert managers. The clock runs from the last assignment, so a fresh lead is never snatched back. Runs inside the existing `runSweeps`.
+- **Call log** (`/calls`, "Log call" on a lead): direction, outcome, duration, notes, follow-up; one write updates the lead timeline, last-contacted, first-response and follow-up; per-agent statistics (volume, answer rate, talk time, callbacks) scoped by role.
+- **Inbound lead sources** (`/lead-sources`, public `POST /api/v1/ingest/leads/{publicId}`): HMAC-SHA256 signed by a per-source secret (stored encrypted, shown once, rotatable), Meta-style `field_data` and batch support, Meta verification handshake, de-duplication by sender id and by contact, rejected deliveries recorded, optional routing to a pool. Meta lead ads need a connector (Zapier/Make) that posts the form fields; the Graph API fetch for bare `leadgen_id` events is not built.
+- **Commission payout requests** (`/payouts`): agent requests their share of approved commissions (VAT and tax-invoice number for external agents); finance approves (step-up) / rejects (reason) / pays (reference); nobody decides their own; a commission can sit in only one live request.
+- **Noticeboard** (`/noticeboard`): company or branch notices, pin, schedule, expiry, acknowledgement required, read receipts; branch managers may only post to and manage their own branch's notices.
+- **Support desk** (`/support`): anyone raises a ticket; requester sees only their own; desk replies, internal notes, assignment, status, priority, response-time target (urgent 2h, high 8h, normal 24h, low 72h), overdue flag.
+- Verified locally: 38/38 scripted checks over HTTP, 14 new database tests (pools, repool, calls, inbound leads, payouts, noticeboard, support), unit tests for payload mapping.
+- A real bug found and fixed on the way: dates passed to raw SQL as JS Dates are shifted by +4h by the driver in this setup; raw queries must pass `mysqlDate(...)` text. Earlier targets and slab queries had the same flaw and were corrected.
+- After deploying: run `npm run db:migrate` then `npm run db:sync-roles`. New permissions: `pool.claim`, `pool.manage`, `call.log`, `call.read`, `payout.request`, `notice.manage`, `support.manage`, `leadsource.manage`.
+
+Not built from the blueprint: the BIMA-style assistant with tool policy, Google Workspace (Gmail/Calendar) sync, WhatsApp conversation sync with a hosted provider, Odoo and portal feed sync, KYC document upload UI, the separate Communications/AI services (this CRM keeps them in-process behind provider interfaces), a mobile client.

@@ -28,15 +28,16 @@ export function CommissionActions({ id, status, paid, canApprove }: { id: string
 export function PlanForm() {
   const router = useRouter();
   const [f, setF] = useState({ name: "", dealType: "sale", agentType: "any", ratePct: "2", vatPct: "5", agentPct: "50", companyPct: "50" });
+  const [slabs, setSlabs] = useState<{ fromValue: string; ratePct: string; agentSharePct: string }[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
     const splits = [{ role: "agent", pct: Number(f.agentPct) }, { role: "company", pct: Number(f.companyPct) }].filter((s) => s.pct > 0);
-    const r = await postJson("/api/v1/commission-plans", { name: f.name, dealType: f.dealType, agentType: f.agentType, ratePct: Number(f.ratePct), vatPct: Number(f.vatPct), splits });
+    const r = await postJson("/api/v1/commission-plans", { name: f.name, dealType: f.dealType, agentType: f.agentType, ratePct: Number(f.ratePct), vatPct: Number(f.vatPct), splits, ...(slabs.length && { slabs: slabs.map((s) => ({ fromValue: Number(s.fromValue || 0), ...(s.ratePct && { ratePct: Number(s.ratePct) }), ...(s.agentSharePct && { agentSharePct: Number(s.agentSharePct) }) })) }) });
     if (!r.ok) return setMsg(errMsg(r));
-    setF({ ...f, name: "" });
+    setF({ ...f, name: "" }); setSlabs([]);
     router.refresh();
   }
   const lab = "flex flex-col gap-1.5 text-sm";
@@ -50,6 +51,17 @@ export function PlanForm() {
       <label className={lab}><span className={cap}>VAT % on commission</span><input className="input" type="number" step="0.01" min="0" max="30" value={f.vatPct} onChange={set("vatPct")} /></label>
       <label className={lab}><span className={cap}>Agent share %</span><input className="input" type="number" step="0.01" min="0" value={f.agentPct} onChange={set("agentPct")} /></label>
       <label className={lab}><span className={cap}>Company share %</span><input className="input" type="number" step="0.01" min="0" value={f.companyPct} onChange={set("companyPct")} /></label>
+      <div className="flex flex-col gap-2 sm:col-span-3 lg:col-span-4">
+        <div className="flex items-center justify-between"><span className={cap}>Slabs (optional): the rate or the agent&apos;s share steps up as the agent&apos;s closed value this year grows</span><button type="button" className="btn-ghost text-xs" onClick={() => setSlabs([...slabs, { fromValue: slabs.length ? "" : "0", ratePct: "", agentSharePct: "" }])}>+ Add slab</button></div>
+        {slabs.map((s, i) => (
+          <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
+            <label className={lab}><span className={cap}>From closed value (AED)</span><input className="input" type="number" min="0" value={s.fromValue} onChange={(e) => setSlabs(slabs.map((x, j) => (j === i ? { ...x, fromValue: e.target.value } : x)))} /></label>
+            <label className={lab}><span className={cap}>Commission rate %</span><input className="input" type="number" step="0.01" min="0" value={s.ratePct} placeholder="same" onChange={(e) => setSlabs(slabs.map((x, j) => (j === i ? { ...x, ratePct: e.target.value } : x)))} /></label>
+            <label className={lab}><span className={cap}>Agent share %</span><input className="input" type="number" step="0.01" min="0" max="100" value={s.agentSharePct} placeholder="same" onChange={(e) => setSlabs(slabs.map((x, j) => (j === i ? { ...x, agentSharePct: e.target.value } : x)))} /></label>
+            <button type="button" className="btn-ghost" aria-label="Remove slab" onClick={() => setSlabs(slabs.filter((_, j) => j !== i))}>&times;</button>
+          </div>
+        ))}
+      </div>
       <div className="flex items-end gap-3 sm:col-span-3 lg:col-span-4"><button className="btn">Add plan</button><p role="alert" className="err text-sm">{msg}</p></div>
     </form>
   );

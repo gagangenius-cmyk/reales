@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { getContact, getLead, listPipelines, matchesForLead } from "@reales/domain";
+import { getContact, getLead, listPipelines, listPools, matchesForLead } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../../no-access";
 import { LeadActions } from "./lead-actions";
 import { MatchPanel } from "./match-panel";
 import { EditLeadDrawer } from "./edit-lead-drawer";
+import { LogCallDrawer } from "../../calls/log-call-drawer";
+import { ReleaseButton } from "../../pools/pool-client";
 import { can } from "@reales/rbac";
 
 export const metadata = { title: "Lead | Reales CRM" };
@@ -36,6 +38,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     ["Areas", words(lead.preferredAreas)], ["Property types", words(lead.propertyTypes)], ["Financing", nice(lead.financing)], ["Looking to move", nice(lead.purchaseTimeline)],
     ["Next follow-up", fmtDt(lead.nextFollowUpAt)], ["Last contacted", fmtDt(lead.lastContactedAt)], ["Expected close", lead.expectedCloseDate ?? "-"], ["Tags", words(lead.tags)],
   ];
+  const pools: any[] = hasPermission(ctx, "pool.claim") || hasPermission(ctx, "pool.manage") ? await listPools(sq, ctx).catch(() => []) : [];
   const matches: any[] = hasPermission(ctx, "match.read") ? await matchesForLead(sq, ctx, lead.id).catch(() => []) : [];
   return (
     <section className="flex flex-col gap-4">
@@ -45,7 +48,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <h1 className="text-2xl font-semibold">Lead - {lead.purpose}</h1>
         <p className="muted text-sm">Status {lead.status} - stage {name.get(lead.stageId) ?? "-"}{lead.lostReason ? ` - lost: ${lead.lostReason}` : ""}</p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        {hasPermission(ctx, "call.log") && lead.status === "open" && <LogCallDrawer leadId={lead.id} contactLabel={contactName ?? undefined} label="Log call" />}
+        {lead.status === "open" && (lead.assignedUserId === ctx.userId || hasPermission(ctx, "lead.assign")) && <ReleaseButton leadId={lead.id} pools={pools.filter((p) => p.active).map((p) => ({ id: p.id, name: p.name }))} />}
         {can(ctx, "lead.update", { ownerUserId: lead.assignedUserId, branchId: lead.branchId, projectId: lead.projectId }) && <EditLeadDrawer leadId={lead.id} initial={{ purpose: lead.purpose, budgetMin: lead.budgetMin ? String(Number(lead.budgetMin)) : "", budgetMax: lead.budgetMax ? String(Number(lead.budgetMax)) : "", currency: lead.currency ?? "AED", bedrooms: lead.bedrooms != null ? String(lead.bedrooms) : "", preferredAreas: (lead.preferredAreas ?? []).join(", "), language: lead.language ?? "en", isHot: !!lead.isHot, campaign: lead.campaign ?? "", financing: lead.financing ?? "", purchaseTimeline: lead.purchaseTimeline ?? "", propertyTypes: lead.propertyTypes ?? [], tags: (lead.tags ?? []).join(", "), notes: lead.notes ?? "", nextFollowUpAt: lead.nextFollowUpAt ? new Date(new Date(lead.nextFollowUpAt).getTime() + 4 * 3600000).toISOString().slice(0, 16) : "", expectedCloseDate: lead.expectedCloseDate ?? "" }} />}
+        </div>
       </div>
       <LeadActions leadId={lead.id} stages={stages.map((s) => ({ key: s.key, name: s.name }))} currentStageId={lead.stageId} stageKeyById={Object.fromEntries(stages.map((s) => [s.id, s.key]))} />
       <div className="grid gap-4 lg:grid-cols-2">

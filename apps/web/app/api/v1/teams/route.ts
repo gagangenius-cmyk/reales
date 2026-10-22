@@ -1,5 +1,8 @@
-import { createTeam } from "@reales/domain";
-import { createTeamSchema } from "@reales/validation";
+import { createTeam, listTeamsDetailed } from "@reales/domain";
+import { z } from "@reales/validation";
 import { api } from "@/lib/api";
 
-export const POST = api({ body: createTeamSchema, idempotent: true }, async ({ ctx, sq, body }) => ({ status: 201, data: await createTeam(sq, ctx, body) }));
+const body = z.object({ name: z.string().trim().min(1).max(180), branchId: z.string().uuid().optional() }).strict();
+
+export const GET = api({}, async ({ ctx, sq }) => ({ teams: await listTeamsDetailed(sq, ctx) }));
+export const POST = api({ body, idempotent: true }, async ({ ctx, sq, body: b }) => ({ status: 201, data: await createTeam(sq, ctx, b) }));

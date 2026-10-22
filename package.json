@@ -14,6 +14,7 @@
     "db:rollback": "tsx scripts/migrate.ts down",
     "db:reset": "tsx scripts/migrate.ts reset",
     "db:seed": "tsx scripts/seed.ts",
+    "db:sync-roles": "tsx scripts/sync-roles.ts",
     "db:seed:admin": "tsx scripts/seed-admin.ts",
     "db:seed:roles": "tsx scripts/seed-roles.ts",
     "worker": "tsx apps/worker/src/index.ts",

@@ -311,3 +311,35 @@ export async function leadsForContact(sq: Sequelize, ctx: RequestContext, contac
     return (await u.repo("Lead").findAll({ where: { [Op.and]: [{ contactId }, scope] }, order: [["createdAt", "DESC"]], limit: 50, transaction: u.tx })).map(plain);
   });
 }
+
+export type BulkLeadAction =
+  | { type: "assign"; userId: string | null }
+  | { type: "stage"; stageKey: string; reason?: string }
+  | { type: "hot"; value: boolean }
+  | { type: "tag"; tag: string };
+export interface BulkResult { done: number; failed: { id: string; reason: string }[] }
+
+/**
+ * Apply one action to many leads. Each lead goes through the same single-lead function (and so the same permission, scope, audit and
+ * history rules as doing it by hand); one failure never blocks the rest, and every failure is reported with its reason.
+ */
+export async function bulkLeadAction(sq: Sequelize, ctx: RequestContext, ids: string[], action: BulkLeadAction): Promise<BulkResult> {
+  const unique = [...new Set(ids)].slice(0, 100);
+  const result: BulkResult = { done: 0, failed: [] };
+  for (const id of unique) {
+    try {
+      if (action.type === "assign") await assignLead(sq, ctx, id, { userId: action.userId, reason: "bulk reassignment" });
+      else if (action.type === "stage") await changeLeadStage(sq, ctx, id, { stageKey: action.stageKey, reason: action.reason });
+      else if (action.type === "hot") await updateLead(sq, ctx, id, { isHot: action.value });
+      else {
+        const lead: any = await getLead(sq, ctx, id);
+        const tags = [...new Set([...(Array.isArray(lead.tags) ? lead.tags : []), action.tag.trim()])].slice(0, 20);
+        await updateLead(sq, ctx, id, { tags });
+      }
+      result.done++;
+    } catch (e) {
+      result.failed.push({ id, reason: e instanceof Error ? e.message : "Failed" });
+    }
+  }
+  return result;
+}
