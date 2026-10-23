@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 import { mysqlDate, RequestContext, systemContext } from "@reales/database";
+import { encryptField } from "@reales/auth";
 import { authorize, hasPermission } from "@reales/rbac";
 import { CONTACT_SCOPE } from "./contacts";
 import { destinationFor, evaluateContactability, recordConsent } from "./consent";
@@ -19,7 +20,8 @@ export class MessagingError extends Error {
   }
 }
 
-export interface OutboundMessage { channel: Channel; to: string; subject?: string | null; body: string; idempotencyKey: string; from: string }
+export interface OutboundMessage { channel: Channel; to: string; subject?: string | null; body: string; idempotencyKey: string; from: string; /** The channel account sending this message (provider credentials live in its config). */ account?: { identity: string; config: Record<string, unknown> };
+  /** A Meta-approved WhatsApp template to send instead of free text: its name, language and the body values in order. */ template?: { name: string; language: string; params: string[] } }
 export interface DeliveryStatusEvent { eventId: string; providerMessageId: string; status: "sent" | "delivered" | "read" | "failed"; occurredAt: string; error?: string }
 export interface InboundEvent { eventId: string; channel: Channel; from: string; /** The receiving identity (our number or address): how a provider callback is routed to a tenant. */ to?: string; body: string; providerMessageId: string; occurredAt: string }
 
@@ -29,6 +31,8 @@ export interface MessagingProvider {
   send(m: OutboundMessage): Promise<{ providerMessageId: string }>;
   verifyWebhook(rawBody: string, headers: Record<string, string | null | undefined>): boolean;
   parseWebhook(rawBody: string): { kind: "status"; event: DeliveryStatusEvent } | { kind: "inbound"; event: InboundEvent };
+  /** Providers that batch several events into one delivery split it here; each part is then stored and processed on its own. */
+  splitWebhook?(rawBody: string): string[];
 }
 
 const registry = new Map<string, MessagingProvider>();
@@ -124,6 +128,7 @@ export async function sendMessage(sq: Sequelize, ctx: RequestContext, i: SendInp
     let body = i.body ?? "";
     let subject = i.subject ?? null;
     let versionId: string | null = null;
+    let waTemplate: { name: string; language: string; params: string[] } | undefined;
     if (i.templateVersionId) {
       const v: any = await u.repo("TemplateVersion").findById(i.templateVersionId, { transaction: u.tx });
       if (!v) throw new NotFoundError("Template version");
@@ -135,6 +140,8 @@ export async function sendMessage(sq: Sequelize, ctx: RequestContext, i: SendInp
       const html = i.channel === "email" && !!v.get("renderedHtml");
       const src = i.channel === "whatsapp" ? (v.get("structuredComponentsJson")?.body?.text ?? "") : html ? v.get("renderedHtml") : (v.get("textBody") ?? "");
       body = renderTemplate(src, i.values ?? {}, { html });
+      const meta = i.channel === "whatsapp" ? v.get("structuredComponentsJson")?.meta : null;
+      if (meta?.name) waTemplate = { name: String(meta.name), language: String(meta.language ?? "en"), params: [...String(src).matchAll(/\{\{\s*([a-z_]+\.[a-z_]+)\s*\}\}/g)].map((m) => renderTemplate(`{{ ${m[1]} }}`, i.values ?? {})) };
       subject = v.get("subject") ? renderTemplate(v.get("subject"), i.values ?? {}) : null;
     } else if (i.channel === "whatsapp") {
       const last = conv?.get("lastInboundAt") ? new Date(conv.get("lastInboundAt")).getTime() : 0;
@@ -166,7 +173,7 @@ export async function sendMessage(sq: Sequelize, ctx: RequestContext, i: SendInp
       }
     }
     await u.repo("Conversation").updateById(conv.get("id"), { lastMessageAt: now, status: "open" }, { transaction: u.tx });
-    return { messageId: msg.get("id") as string, body: msg.get("body") as string, subject: msg.get("subject") as string | null, provider: account.get("provider") as string, from: account.get("identity") as string };
+    return { messageId: msg.get("id") as string, body: msg.get("body") as string, subject: msg.get("subject") as string | null, provider: account.get("provider") as string, from: account.get("identity") as string, accountConfig: (account.get("config") ?? {}) as Record<string, unknown>, template: waTemplate };
   });
 
   // 6. provider call, outside any transaction
@@ -178,7 +185,7 @@ export async function sendMessage(sq: Sequelize, ctx: RequestContext, i: SendInp
     });
   if (!provider) { await settle("failed", { error: "unknown provider" }); return { messageId: prepared.messageId, status: "failed", retryable: false, error: "unknown provider" }; }
   try {
-    const r = await provider.send({ channel: i.channel, to: gate.destination!, subject: prepared.subject, body: prepared.body, idempotencyKey: i.idempotencyKey, from: prepared.from });
+    const r = await provider.send({ channel: i.channel, to: gate.destination!, subject: prepared.subject, body: prepared.body, idempotencyKey: i.idempotencyKey, from: prepared.from, account: { identity: prepared.from, config: prepared.accountConfig }, ...(prepared.template ? { template: prepared.template } : {}) });
     await settle("sent", { providerMessageId: r.providerMessageId, error: null });
     await meterUsage(sq, ctx.tenantId, "messages_sent", 1);
     return { messageId: prepared.messageId, status: "sent" };
@@ -313,11 +320,44 @@ export async function applyDeliveryStatus(sq: Sequelize, tenantId: string, ev: D
 export async function createChannelAccount(sq: Sequelize, ctx: RequestContext, i: { channel: Channel; provider: string; name: string; identity: string; config?: Record<string, unknown> }) {
   authorize(ctx, "channel.manage");
   if (!getMessagingProvider(i.provider)) throw new ConflictError("Unknown messaging provider");
+  let config: Record<string, unknown> = { ...(i.config ?? {}) };
+  if (i.provider === "whatsapp_cloud") {
+    // The access token is a credential: it is encrypted before it is stored and never returned.
+    const token = typeof config.accessToken === "string" ? config.accessToken.trim() : "";
+    if (!String(config.phoneNumberId ?? "").trim() || !token) throw new ConflictError("WhatsApp Cloud needs the phone number id and an access token from your Meta app");
+    config = { phoneNumberId: String(config.phoneNumberId).trim(), accessTokenEnc: encryptField(token), ...(config.wabaId ? { wabaId: String(config.wabaId) } : {}) };
+    if (!/^\+?\d{8,15}$/.test(i.identity.replace(/\s/g, ""))) throw new ConflictError("The identity must be the WhatsApp number in international format, for example +971501234567");
+    i = { ...i, identity: `+${i.identity.replace(/[^\d]/g, "")}` };
+  }
   return withUow(sq, ctx, async (u) => {
-    const a = await u.repo("ChannelAccount").create({ id: randomUUID(), ...i, config: i.config ?? {}, status: "active" }, { transaction: u.tx });
+    const a = await u.repo("ChannelAccount").create({ id: randomUUID(), ...i, config, status: "active" }, { transaction: u.tx });
     await u.audit({ action: "channel_account.created", entityType: "channel_account", entityId: (a as any).get("id"), after: { channel: i.channel, provider: i.provider } });
-    return plain(a);
+    const out: any = plain(a);
+    if (out.config) delete out.config.accessTokenEnc;
+    return out;
   });
 }
 
 void destinationFor;
+
+/** The company's messaging accounts (WhatsApp, SMS, e-mail senders) with credentials masked, plus what the deployment still needs for each provider. */
+export async function listChannelAccounts(sq: Sequelize, ctx: RequestContext) {
+  authorize(ctx, "channel.manage");
+  return withUow(sq, ctx, async (u) => {
+    const rows = (await u.repo("ChannelAccount").findAll({ order: [["createdAt", "ASC"]], transaction: u.tx })) as any[];
+    return {
+      accounts: rows.map((a) => { const c = (a.get("config") ?? {}) as Record<string, unknown>; return { id: a.get("id") as string, channel: a.get("channel") as string, provider: a.get("provider") as string, name: a.get("name") as string, identity: a.get("identity") as string, status: a.get("status") as string, phoneNumberId: (c.phoneNumberId as string) ?? null, hasToken: !!c.accessTokenEnc }; }),
+      providers: [...registry.keys()].filter((k) => k !== "mock" || process.env.NODE_ENV !== "production" || process.env.ALLOW_MOCK_PROVIDERS === "1"),
+      whatsappCloud: { appSecretSet: !!process.env.META_APP_SECRET, verifyTokenSet: !!process.env.META_VERIFY_TOKEN, webhookPath: "/api/webhooks/messaging/whatsapp_cloud" },
+    };
+  });
+}
+
+export async function setChannelAccountStatus(sq: Sequelize, ctx: RequestContext, id: string, status: "active" | "disabled") {
+  authorize(ctx, "channel.manage");
+  return withUow(sq, ctx, async (u) => {
+    if (!(await u.repo("ChannelAccount").updateById(id, { status }, { transaction: u.tx }))) throw new NotFoundError("Channel account");
+    await u.audit({ action: `channel_account.${status}`, entityType: "channel_account", entityId: id });
+    return { id, status };
+  });
+}

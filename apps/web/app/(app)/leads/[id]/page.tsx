@@ -1,7 +1,7 @@
 import { DeleteButton } from "@/components/delete-button";
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { getContact, getLead, listPipelines, listPools, matchesForLead } from "@reales/domain";
+import { getContact, getLead, listPipelines, listPools, matchesForLead, nextBestActions } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../../no-access";
@@ -40,6 +40,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     ["Next follow-up", fmtDt(lead.nextFollowUpAt)], ["Last contacted", fmtDt(lead.lastContactedAt)], ["Expected close", lead.expectedCloseDate ?? "-"], ["Tags", words(lead.tags)],
   ];
   const pools: any[] = hasPermission(ctx, "pool.claim") || hasPermission(ctx, "pool.manage") ? await listPools(sq, ctx).catch(() => []) : [];
+  const actions = await nextBestActions(sq, ctx, lead.id).catch(() => []);
   const matches: any[] = hasPermission(ctx, "match.read") ? await matchesForLead(sq, ctx, lead.id).catch(() => []) : [];
   return (
     <section className="flex flex-col gap-4">
@@ -56,6 +57,14 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         {can(ctx, "lead.update", { ownerUserId: lead.assignedUserId, branchId: lead.branchId, projectId: lead.projectId }) && <EditLeadDrawer leadId={lead.id} initial={{ purpose: lead.purpose, budgetMin: lead.budgetMin ? String(Number(lead.budgetMin)) : "", budgetMax: lead.budgetMax ? String(Number(lead.budgetMax)) : "", currency: lead.currency ?? "AED", bedrooms: lead.bedrooms != null ? String(lead.bedrooms) : "", preferredAreas: (lead.preferredAreas ?? []).join(", "), language: lead.language ?? "en", isHot: !!lead.isHot, campaign: lead.campaign ?? "", financing: lead.financing ?? "", purchaseTimeline: lead.purchaseTimeline ?? "", propertyTypes: lead.propertyTypes ?? [], tags: (lead.tags ?? []).join(", "), notes: lead.notes ?? "", nextFollowUpAt: lead.nextFollowUpAt ? new Date(new Date(lead.nextFollowUpAt).getTime() + 4 * 3600000).toISOString().slice(0, 16) : "", expectedCloseDate: lead.expectedCloseDate ?? "" }} />}
         </div>
       </div>
+      {actions.length > 0 && (
+        <div className="card p-4" aria-label="What to do next">
+          <h2 className="mb-2 font-semibold">What to do next</h2>
+          <ul className="flex flex-col gap-2 text-sm">
+            {actions.map((a) => <li key={a.key} className="flex gap-3"><span className={`badge ${a.severity === "urgent" ? "badge-warn" : "badge-gray"} h-fit`}>{a.severity === "urgent" ? "Now" : a.severity === "soon" ? "Soon" : "FYI"}</span><span><b>{a.title}</b><span className="muted block">{a.detail}</span></span></li>)}
+          </ul>
+        </div>
+      )}
       <LeadActions leadId={lead.id} stages={stages.map((s) => ({ key: s.key, name: s.name }))} currentStageId={lead.stageId} stageKeyById={Object.fromEntries(stages.map((s) => [s.id, s.key]))} />
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card p-4">

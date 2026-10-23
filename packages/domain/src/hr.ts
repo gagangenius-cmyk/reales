@@ -49,7 +49,7 @@ export async function usersWith(u: Uow, permission: string): Promise<string[]> {
 /* ---------------------------------------------------------------------------------------------- defaults */
 
 const DEFAULT_LEAVE_TYPES = [
-  { code: "ANNUAL", name: "Annual leave", annualDays: 30, accrual: "monthly", carryForwardMax: 5, paid: true, minNoticeDays: 3, color: "#4f46e5", countsWeekends: false },
+  { code: "ANNUAL", name: "Annual leave", annualDays: 30, accrual: "monthly", carryForwardMax: 5, paid: true, encashable: true, minNoticeDays: 3, color: "#4f46e5", countsWeekends: false },
   { code: "SICK", name: "Sick leave", annualDays: 15, accrual: "upfront", carryForwardMax: 0, paid: true, requiresDocumentAfterDays: 2, color: "#ef4444" },
   { code: "MEDICAL", name: "Medical leave (hospitalisation)", annualDays: 45, accrual: "upfront", carryForwardMax: 0, paid: true, requiresDocumentAfterDays: 1, color: "#f97316" },
   { code: "MATERNITY", name: "Maternity leave", annualDays: 60, accrual: "upfront", carryForwardMax: 0, paid: true, gender: "female", countsWeekends: true, requiresDocumentAfterDays: 1, color: "#ec4899" },
@@ -258,7 +258,7 @@ export async function listLeaveTypes(sq: Sequelize, ctx: RequestContext, all = f
     return (await u.repo("HrLeaveType").findAll({ where: all ? {} : { active: true }, order: [["name", "ASC"]], transaction: u.tx })).map((t: any) => ({ ...plain(t), annualDays: Number(t.get("annualDays")), carryForwardMax: Number(t.get("carryForwardMax")) }));
   });
 }
-export interface LeaveTypeInput { id?: string; code: string; name: string; annualDays: number; accrual: "upfront" | "monthly"; carryForwardMax: number; paid: boolean; requiresDocumentAfterDays: number; maxConsecutiveDays: number; minNoticeDays: number; gender: "any" | "male" | "female"; countsWeekends: boolean; minServiceMonths: number; active: boolean; color?: string | null }
+export interface LeaveTypeInput { id?: string; code: string; name: string; annualDays: number; accrual: "upfront" | "monthly"; carryForwardMax: number; paid: boolean; requiresDocumentAfterDays: number; maxConsecutiveDays: number; minNoticeDays: number; gender: "any" | "male" | "female"; countsWeekends: boolean; minServiceMonths: number; active: boolean; encashable?: boolean; color?: string | null }
 export async function saveLeaveType(sq: Sequelize, ctx: RequestContext, i: LeaveTypeInput) {
   authorize(ctx, "hr.manage");
   if (!/^[A-Z0-9_]{2,30}$/.test(i.code)) throw new ConflictError("Code is capitals, digits and underscores, for example ANNUAL");

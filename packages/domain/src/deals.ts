@@ -1,3 +1,4 @@
+import { notifyUser } from "./notify";
 import { randomUUID } from "node:crypto";
 import { Op, QueryTypes, Sequelize, WhereOptions } from "sequelize";
 import { mysqlDate, RequestContext } from "@reales/database";
@@ -228,6 +229,7 @@ export async function completeMilestone(sq: Sequelize, ctx: RequestContext, deal
     await u.repo("DealMilestone").updateById(m.get("id"), { status: i.waive ? "waived" : "done", completedAt: new Date(), completedBy: ctx.userId }, { transaction: u.tx });
     if (i.waive || evidenceDriven) await u.audit({ action: i.waive ? "milestone.waived" : "milestone.completed_manually", entityType: "deal_milestone", entityId: m.get("id"), reason: i.reason, after: { dealId, key } });
     await u.emit({ type: "deal.milestone_completed", aggregateType: "deal", aggregateId: dealId, projectId: d.get("projectId"), payload: { key, manual: true } });
+    if (d.get("agentUserId") && d.get("agentUserId") !== ctx.userId) await notifyUser(u, { userId: d.get("agentUserId"), kind: "deal.milestone", title: `Deal milestone ${i.waive ? "waived" : "completed"}: ${key.replace(/_/g, " ")}`, entityType: "deal", entityId: dealId, dedupeKey: `deal.milestone:${dealId}:${key}`, path: `/deals/${dealId}`, email: "notifications.email.deal_milestone" });
     return plain(await u.repo("DealMilestone").findById(m.get("id"), { transaction: u.tx }));
   });
 }
@@ -239,6 +241,7 @@ export async function completeMilestoneInUow(u: Uow, dealId: string, key: string
   await u.repo("DealMilestone").updateById(m.get("id"), { status: "done", completedAt: new Date(), completedBy: actor }, { transaction: u.tx });
   const deal: any = await u.repo("Deal").findById(dealId, { transaction: u.tx });
   await u.emit({ type: "deal.milestone_completed", aggregateType: "deal", aggregateId: dealId, projectId: deal?.get("projectId") ?? null, payload: { key, manual: false, ...meta } });
+  if (deal?.get("agentUserId")) await notifyUser(u, { userId: deal.get("agentUserId"), kind: "deal.milestone", title: `Deal milestone completed: ${key.replace(/_/g, " ")}`, entityType: "deal", entityId: dealId, dedupeKey: `deal.milestone:${dealId}:${key}`, path: `/deals/${dealId}`, email: "notifications.email.deal_milestone" });
   return true;
 }
 

@@ -8,6 +8,7 @@ import { nextCounter } from "./finance";
 import { ingestLead } from "./leads";
 import { LISTING_SCOPE, evaluateListing, publishListing, unpublishListingInUow } from "./listings";
 import { notifyInUow } from "./notifications";
+import { notifyUser } from "./notify";
 import { plain, scopeWhere } from "./scope";
 import { getStorage, scanUpload, storageKeyFor, validateUpload } from "./storage";
 import { ConflictError, NotFoundError, Uow, withUow } from "./uow";
@@ -303,7 +304,7 @@ export async function submitListingEnquiry(sq: Sequelize, token: string, i: Enqu
   await withUow(sq, ctx, async (u) => {
     await u.repo("ListingEnquiry").create({ id: randomUUID(), listingId: row.id, leadId: r.lead.id, contactId: r.lead.contactId, channel: "web", message: i.message?.trim() || null, duplicate: r.duplicate }, { transaction: u.tx });
     await u.sq.query("UPDATE listings SET enquiry_count = enquiry_count + 1 WHERE id=:id AND tenant_id=:t", { replacements: { id: row.id, t: row.tenant_id }, transaction: u.tx });
-    if (l.get("agentUserId")) await notifyInUow(u, { userId: l.get("agentUserId"), kind: "listing.enquiry", title: `New enquiry on ${l.get("reference") ?? "a listing"}`, body: `${i.name.trim()} asked about ${l.get("title") ?? "your listing"}.`, entityType: "lead", entityId: r.lead.id, dedupeKey: `enquiry:${r.lead.id}:${Date.now()}` });
+    if (l.get("agentUserId")) await notifyUser(u, { userId: l.get("agentUserId"), kind: "listing.enquiry", title: `New enquiry on ${l.get("reference") ?? "a listing"}`, body: `${i.name.trim()} asked about ${l.get("title") ?? "your listing"}.`, entityType: "lead", entityId: r.lead.id, dedupeKey: `enquiry:${r.lead.id}:${Date.now()}`, path: `/leads/${r.lead.id}`, email: "notifications.email.listing_enquiry" });
   });
   return { ok: true };
 }
@@ -360,7 +361,7 @@ export async function listingLifecycleSweep(sq: Sequelize, ctx: RequestContext, 
         out.expired++;
       }
       for (const l of (await u.repo("Listing").findAll({ where: { status: "published", expiresOn: { [Op.gte]: day, [Op.lte]: in7 } }, transaction: u.tx })) as any[]) {
-        if (l.get("agentUserId") && await notifyInUow(u, { userId: l.get("agentUserId"), kind: "listing.expiring", title: `${l.get("reference") ?? "A listing"} expires on ${l.get("expiresOn")}`, body: "Refresh it to keep it live.", entityType: "listing", entityId: l.get("id"), dedupeKey: `listing.expiring:${l.get("id")}:${l.get("expiresOn")}` })) out.expiringSoon++;
+        if (l.get("agentUserId") && await notifyUser(u, { userId: l.get("agentUserId"), kind: "listing.expiring", title: `${l.get("reference") ?? "A listing"} expires on ${l.get("expiresOn")}`, body: "Refresh it to keep it live.", entityType: "listing", entityId: l.get("id"), dedupeKey: `listing.expiring:${l.get("id")}:${l.get("expiresOn")}`, path: `/listings/${l.get("id")}`, email: "notifications.email.listing_expiring" })) out.expiringSoon++;
       }
     }
     for (const l of (await u.repo("Listing").findAll({ where: { status: { [Op.in]: ["draft", "published"] }, exclusivity: { [Op.ne]: "none" }, agreementExpiresOn: { [Op.gte]: day, [Op.lte]: in14 } }, transaction: u.tx })) as any[]) {

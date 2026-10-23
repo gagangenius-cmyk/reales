@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { getSequelize } from "@reales/database";
-import { ingestWebhook, processWebhookEvent, WebhookKind, WebhookSignatureError } from "@reales/domain";
+import { getMessagingProvider, ingestWebhook, processWebhookEvent, WebhookKind, WebhookSignatureError } from "@reales/domain";
 import { logger } from "@reales/observability";
 import { clientIp } from "./api";
 import { rateLimit } from "./rate-limit";
@@ -26,6 +26,18 @@ export function webhookHandler(kind: WebhookKind) {
       const headers: Record<string, string | null> = {};
       req.headers.forEach((v, k) => (headers[k.toLowerCase()] = v));
       const sq = getSequelize();
+      // A provider that batches events (WhatsApp Cloud) is verified once over the whole delivery, then each event is stored on its own.
+      const mp = kind === "messaging" ? getMessagingProvider(provider) : null;
+      if (mp?.splitWebhook) {
+        if (!mp.verifyWebhook(rawBody, headers)) throw new WebhookSignatureError();
+        const parts = mp.splitWebhook(rawBody);
+        let queued = 0;
+        for (const part of parts) {
+          const r = await ingestWebhook(sq, { kind, provider, rawBody: part, headers, verified: true });
+          if (r.status === "queued" && r.id) { queued++; if (process.env.WEBHOOK_PROCESS_INLINE === "1") await processWebhookEvent(sq, r.id); }
+        }
+        return NextResponse.json({ status: parts.length === 0 ? "ignored" : "queued", events: parts.length, queued }, { status: 200, headers: { "x-correlation-id": correlationId } });
+      }
       const r = await ingestWebhook(sq, { kind, provider, rawBody, headers });
       if (r.status === "queued" && r.id && process.env.WEBHOOK_PROCESS_INLINE === "1") await processWebhookEvent(sq, r.id);
       return NextResponse.json({ status: r.status }, { status: 200, headers: { "x-correlation-id": correlationId } });

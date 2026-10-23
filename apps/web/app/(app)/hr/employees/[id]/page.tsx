@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { getEmployee, getLeaveBalances, getSalaryHistory, listAssignableUsers, listEmployees, listHrDocuments, listLetters, listShifts } from "@reales/domain";
+import { getEmployee, getLeaveBalances, getSalaryHistory, listEncashments, listLeaveTypes, listAssignableUsers, listEmployees, listHrDocuments, listLetters, listShifts } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { EmployeeForm } from "../employee-form";
-import { BalanceAdjust, SalaryPanel } from "./employee-client";
+import { BalanceAdjust, EncashPanel, SalaryPanel } from "./employee-client";
 
 export const metadata = { title: "Employee | Reales CRM" };
 const d = (s: unknown) => (s ? String(s).slice(0, 10) : "-");
@@ -16,6 +16,8 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   let e: any;
   try { e = await getEmployee(sq, ctx, id); } catch { return <section><h1 className="text-2xl font-semibold">Employee not found</h1><Link className="btn-ghost mt-3 inline-block" href="/hr/employees">Back to employees</Link></section>; }
   const manage = hasPermission(ctx, "hr.manage");
+  const canPay = hasPermission(ctx, "hr.salary");
+  const [encs, encTypes] = await Promise.all([canPay ? listEncashments(sq, ctx, id) : Promise.resolve([]), canPay ? listLeaveTypes(sq, ctx) : Promise.resolve([])]);
   const [salary, balances, docs, letters, shifts, users, all] = await Promise.all([
     e.canSeeSalary ? getSalaryHistory(sq, ctx, id).catch(() => []) : Promise.resolve([]), getLeaveBalances(sq, ctx, id).catch(() => []),
     listHrDocuments(sq, ctx, { employeeId: id }), hasPermission(ctx, "hr.letters") ? listLetters(sq, ctx, { employeeId: id }) : Promise.resolve([]),
@@ -45,6 +47,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
           {manage && <BalanceAdjust employeeId={id} types={(balances as any[]).filter((b) => !b.unlimited).map((b) => ({ id: b.leaveTypeId, name: b.name }))} />}
         </div>
       </div>
+      {canPay && <EncashPanel employeeId={id} currency={(salary as any[])[0]?.currency ?? "AED"} items={encs as never} types={(encTypes as any[]).filter((t) => t.encashable).map((t) => ({ id: t.id, name: t.name, available: ((balances as any[]).find((b) => b.leaveTypeId === t.id)?.available ?? 0) }))} />}
       {e.canSeeSalary && <SalaryPanel employeeId={id} history={salary as any} canEdit={hasPermission(ctx, "hr.salary")} />}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card p-4"><div className="mb-2 flex items-baseline justify-between"><h2 className="font-semibold">Documents</h2><Link className="text-xs" href={`/hr/documents?employee=${id}`}>Manage</Link></div>

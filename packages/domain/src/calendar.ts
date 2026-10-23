@@ -147,3 +147,33 @@ export async function taskReminderSweep(sq: Sequelize, ctx: RequestContext, now 
 }
 
 void randomUUID;
+
+// ---------------------------------------------------------------- subscription feed (Google Calendar, Outlook, Apple Calendar)
+/**
+ * The caller's secret calendar subscription token (created on first use). Calendar apps poll `/api/v1/feeds/calendar/{token}`; the token is the only
+ * credential, so it can be rotated, and the feed only ever contains the owner's own agenda under the owner's own permissions.
+ */
+export async function myCalendarFeed(sq: Sequelize, ctx: RequestContext, rotate = false) {
+  return withUow(sq, ctx, async (u) => {
+    const row: any = await u.repo("CalendarFeed").findOne({ where: { userId: ctx.userId }, transaction: u.tx });
+    if (row && !rotate) return { token: row.get("token") as string };
+    const token = (await import("node:crypto")).randomBytes(24).toString("base64url");
+    if (row) await u.repo("CalendarFeed").updateById(row.get("id"), { token }, { transaction: u.tx });
+    else await u.repo("CalendarFeed").create({ id: randomUUID(), userId: ctx.userId, token }, { transaction: u.tx });
+    await u.audit({ action: rotate ? "calendar.feed_rotated" : "calendar.feed_created", entityType: "user", entityId: ctx.userId });
+    return { token };
+  });
+}
+
+/** iCalendar text for a subscription token: the owner's agenda from a week ago to 90 days ahead, or null when the token is unknown or the user is disabled. */
+export async function calendarFeedByToken(sq: Sequelize, token: string): Promise<string | null> {
+  if (!/^[A-Za-z0-9_-]{32,64}$/.test(token)) return null;
+  const [row] = (await sq.query("SELECT f.tenant_id, f.user_id, us.email FROM calendar_feeds f JOIN users us ON us.id=f.user_id AND us.tenant_id=f.tenant_id JOIN tenants t ON t.id=f.tenant_id WHERE f.token=:token AND us.status='active' AND t.status='active'", { replacements: { token }, type: "SELECT" as never })) as unknown as { tenant_id: string; user_id: string; email: string }[];
+  if (!row) return null;
+  const { loadAccess } = await import("@reales/rbac");
+  const access = await loadAccess(sq, row.tenant_id, row.user_id);
+  const ctx = { tenantId: row.tenant_id, userId: row.user_id, sessionId: "calendar-feed", correlationId: `corr_cal_${randomUUID()}`, grants: access.grants, membership: access.membership, stepUpValid: false } as RequestContext;
+  const from = new Date(Date.now() - 7 * 86_400_000), to = new Date(Date.now() + 90 * 86_400_000);
+  const events = await getCalendar(sq, ctx, { from: from.toISOString(), to: to.toISOString() });
+  return toIcs(events, new Date(), `Reales CRM (${row.email})`);
+}

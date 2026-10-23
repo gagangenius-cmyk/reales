@@ -216,3 +216,10 @@ export const newPropertyListingSchema = z.object({
 }).strict();
 export const locationSchema = z.object({ id: z.string().uuid().optional(), emirate: z.string().min(2).max(40), community: z.string().trim().min(1).max(120), subCommunity: z.string().trim().max(120).nullable().optional(), latitude: z.number().nullable().optional(), longitude: z.number().nullable().optional(), bayutId: z.string().trim().max(60).nullable().optional(), pfId: z.string().trim().max(60).nullable().optional(), active: z.boolean().optional() }).strict();
 export const locationQuery = z.object({ emirate: z.string().max(40).optional(), q: z.string().max(80).optional(), all: z.enum(["1"]).optional() });
+
+export const leadTransferSchema = z.object({ fromUserId: z.string().uuid(), toUserId: z.string().uuid(), scope: z.enum(["open", "hot", "all"]), reason: z.string().trim().max(300).optional(), dryRun: z.boolean().optional() }).strict();
+
+export const publicLeadFormSchema = z.object({
+  publicId: z.string().regex(/^[A-Za-z0-9_-]{6,40}$/), name: z.string().trim().min(1).max(120), phone: z.string().trim().max(40).optional(), email: z.string().trim().max(254).optional(), message: z.string().max(2000).optional(),
+  purpose: z.enum(["buy", "rent", "invest", "off_plan"]).optional(), budgetMax: z.number().positive().max(1e12).optional(), website: z.string().max(200).optional(),
+}).strict();

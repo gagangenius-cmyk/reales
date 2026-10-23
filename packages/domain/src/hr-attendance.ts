@@ -3,6 +3,7 @@ import { Op, QueryTypes, Sequelize } from "sequelize";
 import type { RequestContext } from "@reales/database";
 import { authorize, hasPermission } from "@reales/rbac";
 import { getSetting } from "./config";
+import { dayPlan, planRange } from "./hr-roster";
 import { dubaiDate, dubaiMinutes, ensureHrDefaults, selfEmployee } from "./hr";
 import { plain } from "./scope";
 import { ConflictError, NotFoundError, Uow, withUow } from "./uow";
@@ -41,7 +42,7 @@ export async function myAttendanceToday(sq: Sequelize, ctx: RequestContext) {
     const e = await selfEmployee(u, ctx);
     if (!e) return { linked: false as const };
     const { att, open, state } = await todayRow(u, e);
-    const sh = await shiftOf(u, e);
+    const sh = await dayPlan(u, e, dubaiDate());
     const now = new Date();
     return {
       linked: true as const, employee: { id: e.get("id") as string, name: e.get("fullName") as string }, state, allowed: await getSetting<boolean>(u.sq, ctx.tenantId, "hr.attendance.allow_web_checkin"),
@@ -66,8 +67,8 @@ export async function checkIn(sq: Sequelize, ctx: RequestContext, o: { note?: st
     const day = dubaiDate(), now = new Date();
     const existing: any = await u.repo("HrAttendance").findOne({ where: { employeeId: e.get("id"), workDate: day }, transaction: u.tx });
     if (existing?.get("checkInAt")) throw new ConflictError("You already checked in today");
-    const sh = await shiftOf(u, e);
-    const late = Math.max(0, dubaiMinutes(now) - (sh.start + sh.grace));
+    const sh = await dayPlan(u, e, day);
+    const late = sh.off ? 0 : Math.max(0, dubaiMinutes(now) - (sh.start + sh.grace)); // no lateness on a day off
     const vals = { checkInAt: now, status: late > 0 ? "late" : "present", lateMinutes: late, source: o.source ?? "web", ip: o.ip ?? null, note: o.note?.trim().slice(0, 300) || null, workedMinutes: 0, breakMinutes: 0 };
     let id = existing?.get("id") as string | undefined;
     if (existing) await u.repo("HrAttendance").updateById(existing.get("id"), vals, { transaction: u.tx });
@@ -113,7 +114,7 @@ export async function checkOut(sq: Sequelize, ctx: RequestContext, o: { note?: s
     if (open) await u.repo("HrBreak").updateById(open.get("id"), { endedAt: now }, { transaction: u.tx }); // a break left running ends with the day
     const br = await breakMinutes(u, att.get("id"), now);
     const worked = Math.max(0, Math.round((+now - +new Date(att.get("checkInAt"))) / MIN) - br);
-    const sh = await shiftOf(u, e);
+    const sh = await dayPlan(u, e, String(att.get("workDate")).slice(0, 10));
     await u.repo("HrAttendance").updateById(att.get("id"), { checkOutAt: now, workedMinutes: worked, breakMinutes: br, status: worked < sh.halfDay ? "half_day" : att.get("lateMinutes") > 0 ? "late" : "present", ...(o.note?.trim() ? { note: `${att.get("note") ? `${att.get("note")} | ` : ""}${o.note.trim().slice(0, 200)}` } : {}) }, { transaction: u.tx });
     await u.audit({ action: "hr.checked_out", entityType: "hr_attendance", entityId: att.get("id"), after: { workedMinutes: worked, breakMinutes: br } });
     return { state: "done" as const, workedMinutes: worked, breakMinutes: br };
@@ -130,12 +131,13 @@ export async function liveBoard(sq: Sequelize, ctx: RequestContext) {
               (SELECT b.kind FROM hr_breaks b WHERE b.attendance_id=a.id AND b.tenant_id=a.tenant_id AND b.ended_at IS NULL LIMIT 1) AS breakKind,
               (SELECT b.started_at FROM hr_breaks b WHERE b.attendance_id=a.id AND b.tenant_id=a.tenant_id AND b.ended_at IS NULL LIMIT 1) AS breakStarted,
               (SELECT COUNT(*) FROM hr_leave_requests r WHERE r.tenant_id=e.tenant_id AND r.employee_id=e.id AND r.status='approved' AND :day BETWEEN r.from_date AND r.to_date) AS onLeave,
-              (SELECT s.weekly_off FROM hr_shifts s WHERE s.id=e.shift_id AND s.tenant_id=e.tenant_id) AS weeklyOff
+              (SELECT s.weekly_off FROM hr_shifts s WHERE s.id=e.shift_id AND s.tenant_id=e.tenant_id) AS weeklyOff,
+              (SELECT ro.day_off FROM hr_roster ro WHERE ro.employee_id=e.id AND ro.tenant_id=e.tenant_id AND ro.work_date=:day LIMIT 1) AS rosterOff
          FROM hr_employees e LEFT JOIN hr_attendance a ON a.employee_id=e.id AND a.tenant_id=e.tenant_id AND a.work_date=:day
         WHERE e.tenant_id=:t AND e.status <> 'exited' ORDER BY e.full_name`, { replacements: { t: ctx.tenantId, day }, transaction: u.tx, type: QueryTypes.SELECT })) as any[];
     const holiday: any = await u.repo("HrHoliday").findOne({ where: { onDate: day }, transaction: u.tx });
     const people = rows.map((r) => {
-      const off = (typeof r.weeklyOff === "string" ? JSON.parse(r.weeklyOff) : r.weeklyOff ?? ["sat", "sun"]).includes(dow(day));
+      const off = r.rosterOff != null ? !!Number(r.rosterOff) : (typeof r.weeklyOff === "string" ? JSON.parse(r.weeklyOff) : r.weeklyOff ?? ["sat", "sun"]).includes(dow(day));
       const state: string = r.inAt ? (r.outAt ? "done" : r.breakKind ? "on_break" : "working") : Number(r.onLeave) ? "on_leave" : holiday ? "holiday" : off ? "weekly_off" : "not_in";
       return { id: r.id as string, name: r.name as string, no: r.no as string, designation: r.designation as string | null, department: r.department as string | null, state, checkInAt: r.inAt ? new Date(r.inAt).toISOString() : null, checkOutAt: r.outAt ? new Date(r.outAt).toISOString() : null, late: Number(r.late ?? 0), breakKind: r.breakKind as string | null, breakStartedAt: r.breakStarted ? new Date(r.breakStarted).toISOString() : null, workedMinutes: Number(r.worked ?? 0) };
     });
@@ -156,7 +158,7 @@ export async function timesheet(sq: Sequelize, ctx: RequestContext, employeeId: 
       const me = await selfEmployee(u, ctx);
       if (!me || e.get("managerEmployeeId") !== me.get("id")) throw new NotFoundError("Employee");
     }
-    const sh = await shiftOf(u, e);
+    const plan = await planRange(u, e, from, to);
     const att = new Map(((await u.repo("HrAttendance").findAll({ where: { employeeId, workDate: { [Op.between]: [from, to] } }, transaction: u.tx })) as any[]).map((a) => [String(a.get("workDate")), a]));
     const hol = new Map(((await u.repo("HrHoliday").findAll({ where: { onDate: { [Op.between]: [from, to] } }, transaction: u.tx })) as any[]).map((h) => [String(h.get("onDate")), h.get("name") as string]));
     const leaves = (await u.repo("HrLeaveRequest").findAll({ where: { employeeId, status: "approved", fromDate: { [Op.lte]: to }, toDate: { [Op.gte]: from } }, transaction: u.tx })) as any[];
@@ -165,7 +167,7 @@ export async function timesheet(sq: Sequelize, ctx: RequestContext, employeeId: 
     for (let d = from; d <= to; d = addDays(d, 1)) {
       const a = att.get(d);
       const onLeave = leaves.some((l) => String(l.get("fromDate")) <= d && String(l.get("toDate")) >= d);
-      const status = a?.get("checkInAt") ? (a.get("status") as string) : hol.has(d) ? "holiday" : sh.weeklyOff.includes(dow(d)) ? "weekly_off" : onLeave || a?.get("status") === "on_leave" ? "on_leave" : d > today ? "upcoming" : d === today ? "not_in" : "absent";
+      const status = a?.get("checkInAt") ? (a.get("status") as string) : hol.has(d) ? "holiday" : plan(d).off ? "weekly_off" : onLeave || a?.get("status") === "on_leave" ? "on_leave" : d > today ? "upcoming" : d === today ? "not_in" : "absent";
       days.push({ date: d, status, checkInAt: a?.get("checkInAt") ? new Date(a.get("checkInAt")).toISOString() : null, checkOutAt: a?.get("checkOutAt") ? new Date(a.get("checkOutAt")).toISOString() : null, workedMinutes: Number(a?.get("workedMinutes") ?? 0), breakMinutes: Number(a?.get("breakMinutes") ?? 0), lateMinutes: Number(a?.get("lateMinutes") ?? 0), note: a?.get("note") ?? hol.get(d) ?? null });
     }
     const n = (s: string) => days.filter((d) => d.status === s).length;
@@ -181,7 +183,7 @@ export async function correctAttendance(sq: Sequelize, ctx: RequestContext, empl
   return withUow(sq, ctx, async (u) => {
     const e: any = await u.repo("HrEmployee").findById(employeeId, { transaction: u.tx });
     if (!e) throw new NotFoundError("Employee");
-    const sh = await shiftOf(u, e);
+    const sh = await dayPlan(u, e, day);
     const cin = o.checkInAt ? new Date(o.checkInAt) : null, cout = o.checkOutAt ? new Date(o.checkOutAt) : null;
     if ((cin && Number.isNaN(+cin)) || (cout && Number.isNaN(+cout))) throw new ConflictError("Invalid time");
     if (cin && cout && cout <= cin) throw new ConflictError("Check-out must be after check-in");
@@ -207,7 +209,7 @@ export async function attendanceCloseSweep(sq: Sequelize, ctx: RequestContext, n
     const open = (await u.repo("HrAttendance").findAll({ where: { checkInAt: { [Op.ne]: null }, checkOutAt: null, workDate: { [Op.lt]: today } }, limit: 500, transaction: u.tx })) as any[];
     for (const a of open) {
       const e: any = await u.repo("HrEmployee").findById(a.get("employeeId"), { transaction: u.tx });
-      const sh = await shiftOf(u, e);
+      const sh = await dayPlan(u, e, String(a.get("workDate")).slice(0, 10));
       const endAt = new Date(new Date(`${a.get("workDate")}T00:00:00Z`).getTime() - 4 * 3_600_000 + sh.end * MIN);
       const outAt = endAt > new Date(a.get("checkInAt")) ? endAt : new Date(new Date(a.get("checkInAt")).getTime() + MIN);
       for (const b of (await u.repo("HrBreak").findAll({ where: { attendanceId: a.get("id"), endedAt: null }, transaction: u.tx })) as any[]) await u.repo("HrBreak").updateById(b.get("id"), { endedAt: outAt > new Date(b.get("startedAt")) ? outAt : new Date(b.get("startedAt")) }, { transaction: u.tx });

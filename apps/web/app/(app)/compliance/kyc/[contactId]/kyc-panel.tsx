@@ -12,6 +12,22 @@ export function KycPanel({ contactId, isEntity, profile, ubo, can }: Props) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [f, setF] = useState({ idType: profile?.idType ?? "passport", idNumber: "", dateOfBirth: "", nationality: profile?.nationality ?? "", countryOfResidence: profile?.countryOfResidence ?? "", sourceOfFunds: profile?.sourceOfFunds ?? "", occupation: profile?.occupation ?? "" });
   const [doc, setDoc] = useState({ documentId: "", docType: "passport", expiresOn: "" });
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  /** Uploads the chosen file to Documents, then attaches it to this KYC profile. */
+  const uploadAndAttach = async () => {
+    if (!file) return;
+    setUploading(true); setMsg(null);
+    const fd = new FormData(); fd.set("file", file); fd.set("title", `KYC ${doc.docType.replace(/_/g, " ")}: ${file.name}`.slice(0, 255)); fd.set("kind", "other"); fd.set("entityType", "contact"); fd.set("entityId", contactId);
+    const up = await fetch("/api/v1/documents", { method: "POST", body: fd, headers: { "idempotency-key": crypto.randomUUID() } });
+    const upj = await up.json().catch(() => null);
+    if (!up.ok) { setUploading(false); return setMsg({ ok: false, text: upj?.error?.message ?? "Upload failed" }); }
+    const docId = upj?.document?.id ?? upj?.id;
+    const r = await postJson(`/api/v1/kyc-profiles/${profile.id}/documents`, { documentId: docId, docType: doc.docType, ...(doc.expiresOn ? { expiresOn: doc.expiresOn } : {}) });
+    setUploading(false);
+    if (r.ok) setFile(null);
+    await done(r, "Document uploaded and attached.");
+  };
   const [ubl, setUbl] = useState({ ownerContactId: "", ownershipPct: "" });
 
   const done = async (r: { ok: boolean; data: any; status: number }, ok = "Done.") => {
@@ -53,9 +69,10 @@ export function KycPanel({ contactId, isEntity, profile, ubo, can }: Props) {
               <tbody>{profile.documents.map((d: any) => <tr key={d.id}><td>{d.docType}</td><td>{String(d.documentId).slice(0, 8)}</td><td>{d.expiresOn ?? "-"}</td></tr>)}{profile.documents.length === 0 && <tr><td colSpan={3} className="muted">None attached.</td></tr>}</tbody></table>
             {can.manage && (
               <div className="flex flex-wrap items-end gap-2 p-2">
-                <label className="text-sm">Document id (uploaded in Documents)<input className="input mt-1" value={doc.documentId} onChange={(e) => setDoc({ ...doc, documentId: e.target.value })} /></label>
+                <label className="text-sm">Document (PDF or image)<input className="input mt-1" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
                 <label className="text-sm">Type<select className="input mt-1" value={doc.docType} onChange={(e) => setDoc({ ...doc, docType: e.target.value })}>{DOC_TYPES.map((t) => <option key={t}>{t}</option>)}</select></label>
                 <label className="text-sm">Expires<input className="input mt-1" type="date" value={doc.expiresOn} onChange={(e) => setDoc({ ...doc, expiresOn: e.target.value })} /></label>
+                <button className="btn" disabled={!file || uploading} onClick={uploadAndAttach}>{uploading ? "Uploading..." : "Upload and attach"}</button>
                 <button className="btn-ghost" disabled={!doc.documentId} onClick={async () => done(await postJson(api(`kyc-profiles/${profile.id}/documents`), { documentId: doc.documentId.trim(), docType: doc.docType, ...(doc.expiresOn ? { expiresOn: doc.expiresOn } : {}) }), "Document attached.")}>Attach</button>
               </div>
             )}

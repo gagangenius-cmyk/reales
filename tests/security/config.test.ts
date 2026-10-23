@@ -35,7 +35,7 @@ describe("web security configuration", () => {
     for (const f of files) {
       const src = readFileSync(f, "utf8");
       const exportsHandlers = /export (const|async function) (GET|POST|PUT|PATCH|DELETE)\b/.test(src);
-      if (exportsHandlers && !/\bapi(<|\()/.test(src) && !/ingestWebhook|webhook/i.test(src) && !/health/.test(f) && !/feeds[\\/]\[token\]/.test(f)) bare.push(path.relative(API_ROOT, f));
+      if (exportsHandlers && !/\bapi(<|\()/.test(src) && !/ingestWebhook|webhook/i.test(src) && !/health/.test(f) && !/feeds[\\/](calendar[\\/])?\[token\]/.test(f)) bare.push(path.relative(API_ROOT, f));
     }
     expect(bare).toEqual([]);
   });
@@ -44,7 +44,7 @@ describe("web security configuration", () => {
     const open: string[] = [];
     for (const f of routes(API_ROOT)) if (/auth:\s*"none"/.test(readFileSync(f, "utf8"))) open.push(path.relative(API_ROOT, f).replace(/\\/g, "/"));
     // Webhook receivers do not use the session at all: they authenticate by verifying the provider's signature (covered in messaging-webhooks and documents tests).
-    expect(open.sort()).toEqual(["v1/auth/invite/accept/route.ts", "v1/auth/login/route.ts", "v1/auth/logout/route.ts", "v1/auth/password/forgot/route.ts", "v1/auth/password/reset/route.ts", "v1/auth/sso/begin/route.ts", "v1/auth/sso/callback/route.ts", "v1/preferences/language/route.ts", "v1/public/enquiry/route.ts"]);
+    expect(open.sort()).toEqual(["v1/auth/invite/accept/route.ts", "v1/auth/login/route.ts", "v1/auth/logout/route.ts", "v1/auth/password/forgot/route.ts", "v1/auth/password/reset/route.ts", "v1/auth/sso/begin/route.ts", "v1/auth/sso/callback/route.ts", "v1/preferences/language/route.ts", "v1/public/enquiry/route.ts", "v1/public/lead-form/route.ts"]);
     for (const p of open.filter((x) => !x.includes("logout"))) expect(readFileSync(path.join(API_ROOT, p), "utf8")).toMatch(/limit:/);
   });
 });

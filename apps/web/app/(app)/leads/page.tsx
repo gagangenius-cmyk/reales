@@ -6,6 +6,7 @@ import { ActiveChips, Check, Field, Num, Sel, SortTh, ViewTabs, date, num, pick,
 import { LiveSearch } from "@/components/live-search";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
+import { TransferLeads } from "./transfer-leads";
 import { NewLeadDrawer } from "./new-lead-drawer";
 import { LeadBoard, LeadsTable, type LeadRow } from "./lead-views";
 
@@ -143,6 +144,7 @@ export default async function Leads({ searchParams }: { searchParams: Promise<SP
           <Link className={`rounded-md px-3 py-1.5 ${board ? "btn" : ""}`} href={q({ view: "board", page: undefined })}>Board</Link>
         </nav>
       </div>
+      {can(ctx, "lead.assign") && <TransferLeads users={assignable.map((u) => ({ id: u.id, email: u.email }))} />}
       <ActiveChips chips={chips} />
       {board
         ? <LeadBoard rows={rows} stages={stages} canMove={can(ctx, "lead.update")} />

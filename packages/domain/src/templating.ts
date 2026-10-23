@@ -95,6 +95,8 @@ export interface WhatsAppComponents {
   body: { text: string };
   footer?: { text: string };
   buttons?: Array<{ type: "quick_reply" | "url"; text: string; url?: string }>;
+  /** Name and language of the Meta-approved template this one is sent as (WhatsApp Cloud). */
+  meta?: { name: string; language: string };
 }
 
 export interface TemplateContent {

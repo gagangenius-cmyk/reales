@@ -149,12 +149,13 @@ describe("portal publication snapshots", () => {
     expect(first.publications.every((p) => p.status === "exported" && p.action === "publish")).toBe(true);
 
     const rows = await sq().query<any>("SELECT action, payload_format, payload, snapshot_hash, snapshot FROM portal_publications WHERE tenant_id=:t AND listing_id=:l", { replacements: { t: t.tenantId, l: k.listing.id }, type: QueryTypes.SELECT });
-    const xml = rows.find((r) => r.payload_format === "xml").payload as string;
+    const xml = rows.find((r) => String(r.payload).startsWith("<Property>")).payload as string;
+    const pf = rows.find((r) => String(r.payload).startsWith("<property ")).payload as string;
     expect(xml).toContain("Sea &lt;view&gt; &amp; &quot;marina&quot; 2BR");
     expect(xml).toContain(`<Permit_Number>${k.permit.permitNo}</Permit_Number>`);
-    const json = JSON.parse(rows.find((r) => r.payload_format === "json").payload);
-    expect(json.permit_number).toBe(k.permit.permitNo);
-    expect(json.price).toEqual({ value: 2_100_000, currency: "AED" });
+    expect(pf).toContain(`<permit_number>${k.permit.permitNo}</permit_number>`);
+    expect(pf).toContain("Sea &lt;view&gt; &amp; &quot;marina&quot; 2BR");
+    expect(pf).toContain("<price>2100000</price>");
 
     await sq().query("UPDATE listings SET price=2500000 WHERE id=:id", { replacements: { id: k.listing.id } });
     const second = await publishListing(sq(), t.admin, k.listing.id);

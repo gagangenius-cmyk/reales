@@ -20,7 +20,7 @@ export default defineConfig({
     include: ["tests/**/*.test.ts", "packages/**/*.test.ts"],
     setupFiles: ["tests/setup-env.ts"],
     globalSetup: ["tests/global-setup.ts"],
-    testTimeout: 30000,
+    testTimeout: 90000, // each tenant bootstrap hashes passwords with argon2; a loaded CI database can take well over 30 s
     hookTimeout: 60000,
     fileParallelism: false,
   },

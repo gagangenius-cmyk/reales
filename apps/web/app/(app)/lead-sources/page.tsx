@@ -26,7 +26,7 @@ export default async function LeadSources() {
             {data.sources.map((s: any) => (
               <tr key={s.id} style={{ opacity: s.active ? 1 : 0.6 }}>
                 <td className="font-medium">{s.name}{s.campaign && <span className="muted block text-xs">{s.campaign}</span>}</td><td><span className="badge badge-gray">{s.kind}</span></td>
-                <td className="font-mono text-xs" id={`pub-${s.id}`}>{s.publicId}</td><td>{s.routeMode === "pool" ? "Pool" : "Routing rules"}</td><td>{s.totalReceived}</td><td>{dt(s.lastReceivedAt)}</td>
+                <td className="font-mono text-xs" id={`pub-${s.id}`}>{s.publicId}{s.kind === "website" && s.active && <span className="mt-1 block font-sans"><a href={`/f/${s.publicId}`} target="_blank" rel="noopener noreferrer">Public form</a> - <a href={`/api/v1/lead-sources/${s.id}/qr`} download={`lead-form-${s.publicId}.svg`}>QR code</a></span>}</td><td>{s.routeMode === "pool" ? "Pool" : "Routing rules"}</td><td>{s.totalReceived}</td><td>{dt(s.lastReceivedAt)}</td>
                 <td><span className={`badge ${s.active ? "badge-ok" : "badge-gray"}`}>{s.active ? "active" : "disabled"}</span></td><td className="text-right"><SourceActions id={s.id} active={!!s.active} /></td>
               </tr>
             ))}

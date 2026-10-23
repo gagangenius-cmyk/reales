@@ -75,7 +75,7 @@ describe("listing details, quality and lifecycle", () => {
     const r1 = await listingLifecycleSweep(sq(), systemContext(t.tenantId, uniq("c")));
     expect(r1.expired).toBeGreaterThanOrEqual(1);
     const [row] = await sq().query<{ status: string }>("SELECT status FROM listings WHERE id=:id", { replacements: { id: listing.id }, type: QueryTypes.SELECT });
-    expect(row!.status).toBe("unpublished");
+    expect(row!.status).toBe("expired");
     await expect(refreshListing(sq(), t.admin, listing.id)).resolves.toBeTruthy();
     const r2 = await listingLifecycleSweep(sq(), systemContext(t.tenantId, uniq("c")));
     expect(r2.expired).toBe(0); // idempotent

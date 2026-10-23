@@ -166,3 +166,37 @@ export async function receiveIngestedLeads(sq: Sequelize, o: { publicId: string;
   await sq.query("UPDATE lead_ingest_sources SET total_received = total_received + :n, last_received_at = NOW(3) WHERE id=:id AND tenant_id=:t", { replacements: { n: result.created, id: src.id, t: src.tenant_id } });
   return result;
 }
+
+// ---------------------------------------------------------------- public lead-capture form (landing page, QR code)
+/** What the hosted form page needs to show, or null when there is no active website-kind source with that public id. */
+export async function publicLeadFormInfo(sq: Sequelize, publicId: string) {
+  if (!/^[A-Za-z0-9_-]{6,40}$/.test(publicId)) return null;
+  const [row] = await sq.query<{ name: string; tenant: string; default_purpose: string; campaign: string | null }>("SELECT s.name, t.name AS tenant, s.default_purpose, s.campaign FROM lead_ingest_sources s JOIN tenants t ON t.id=s.tenant_id WHERE s.public_id=:p AND s.kind='website' AND s.active=1 AND t.status='active'", { replacements: { p: publicId }, type: QueryTypes.SELECT });
+  return row ? { source: row.name, company: row.tenant, purpose: row.default_purpose, campaign: row.campaign } : null;
+}
+
+export interface PublicLeadFormInput { name: string; phone?: string; email?: string; message?: string; purpose?: "buy" | "rent" | "invest" | "off_plan"; budgetMax?: number; website?: string }
+
+/**
+ * A visitor filling in the hosted form (or scanning its QR code). It goes through the same path as every other inbound source, so de-duplication, routing,
+ * pools and the event log behave identically; the server signs the payload with the source's own secret, which never leaves the server. Only sources of
+ * kind "website" accept public submissions. The same person submitting twice on the same day is recorded once.
+ */
+export async function submitPublicLeadForm(sq: Sequelize, publicId: string, i: PublicLeadFormInput): Promise<{ ok: true }> {
+  if (i.website?.trim()) return { ok: true }; // honeypot: bots fill the hidden field; pretend success
+  const name = i.name?.trim() ?? "", phone = i.phone?.trim() ?? "", email = i.email?.trim() ?? "";
+  if (!name) throw new ConflictError("Please enter your name");
+  if (!phone && !email) throw new ConflictError("Please give a phone number or an email address");
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ConflictError("That email address does not look right");
+  if (phone && phone.replace(/[^\d]/g, "").length < 7) throw new ConflictError("That phone number does not look right");
+  if ((i.message?.length ?? 0) > 2000) throw new ConflictError("The message is too long");
+  const [src] = await sq.query<{ secret_enc: string; active: number; kind: string }>("SELECT secret_enc, active, kind FROM lead_ingest_sources WHERE public_id=:p", { replacements: { p: publicId }, type: QueryTypes.SELECT });
+  if (!src || !src.active || src.kind !== "website") throw new NotFoundError("Form");
+  const [first, ...rest] = name.split(/\s+/);
+  const day = new Date(Date.now() + 4 * 3_600_000).toISOString().slice(0, 10);
+  const externalId = `form:${createHmac("sha256", "lead-form").update(`${phone.replace(/[^\d]/g, "")}|${email.toLowerCase()}`).digest("hex").slice(0, 24)}:${day}`;
+  const raw = JSON.stringify({ externalId, firstName: first, lastName: rest.join(" ") || undefined, phone: phone || undefined, email: email || undefined, purpose: i.purpose, notes: i.message?.trim() ? `Website form: ${i.message.trim()}` : "Website form", budgetMax: i.budgetMax });
+  const sig = createHmac("sha256", decryptField(src.secret_enc)).update(raw).digest("hex");
+  await receiveIngestedLeads(sq, { publicId, rawBody: raw, headers: { "x-signature": `sha256=${sig}` } });
+  return { ok: true };
+}

@@ -62,7 +62,8 @@ export const TRASH_ENTITIES: Record<string, TrashEntity> = {
   support_ticket: { table: "support_tickets", label: "Support ticket", plural: "Support tickets", title: "CONCAT('#', t.number, ' ', t.subject)", perm: "support.manage" },
   lead_pool: { table: "lead_pools", label: "Lead pool", plural: "Lead pools", title: name(), perm: "pool.manage",
     guard: async (q, id) => ((await q("SELECT COUNT(*) n FROM leads WHERE tenant_id=:t AND pool_id=:id AND status='open' AND assigned_user_id IS NULL AND deleted_at IS NULL", { id }))[0].n > 0 ? "Leads are still waiting in this pool." : null) },
-  document: { table: "documents", label: "Document", plural: "Documents", title: "COALESCE(t.title, 'Document')", perm: "document.manage" },
+  document: { table: "documents", label: "Document", plural: "Documents", title: "COALESCE(t.title, 'Document')", perm: "document.manage",
+    guard: async (q, id) => { const r = (await q("SELECT retain_until FROM documents WHERE tenant_id=:t AND id=:id", { id }))[0]?.retain_until; return r && String(r).slice(0, 10) > new Date().toISOString().slice(0, 10) ? `This document is retained until ${String(r).slice(0, 10)} by its folder policy and cannot be deleted before then.` : null; } },
 };
 
 export const TRASH_KEYS = Object.keys(TRASH_ENTITIES);

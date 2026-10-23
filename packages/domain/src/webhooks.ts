@@ -11,6 +11,8 @@ import { getPaymentProvider, getSignatureProvider, WebhookSignatureError } from 
 export type WebhookKind = "esign" | "payment" | "messaging";
 
 export interface IncomingWebhook {
+  /** The signature was already checked over the whole delivery (a delivery split into several events keeps the provider's single signature). */
+  verified?: boolean;
   kind: WebhookKind;
   provider: string;
   rawBody: string;
@@ -23,7 +25,7 @@ function parse(w: IncomingWebhook): { eventId: string; ref: string; refKind?: "a
   if (w.kind === "messaging") {
     const p = getMessagingProvider(w.provider);
     if (!p) throw new Error("Unknown messaging provider");
-    if (!p.verifyWebhook(w.rawBody, w.headers)) throw new WebhookSignatureError();
+    if (!w.verified && !p.verifyWebhook(w.rawBody, w.headers)) throw new WebhookSignatureError();
     const e = p.parseWebhook(w.rawBody);
     return e.kind === "status" ? { eventId: e.event.eventId, ref: e.event.providerMessageId } : { eventId: e.event.eventId, ref: e.event.to ?? "", refKind: "account" };
   }

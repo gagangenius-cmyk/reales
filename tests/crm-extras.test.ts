@@ -78,15 +78,15 @@ describe("matching, alerts and notifications", () => {
     const first = await matchSweep(sq(), sys);
     expect(first.leadAlerts).toBe(2);
     expect((await matchSweep(sq(), sys)).leadAlerts).toBe(0); // idempotent
-    const mine = await listMyNotifications(sq(), m.agent.ctx);
+    const mine = (await listMyNotifications(sq(), m.agent.ctx)).filter((n: any) => n.kind === "match.new"); // new leads also notify their agent ("lead.assigned")
     expect(mine).toHaveLength(2);
     expect(mine[0]).toMatchObject({ kind: "match.new", entityType: "lead", entityId: lead.lead.id });
-    expect(await countMyUnread(sq(), m.agent.ctx)).toBe(2);
+    expect(await countMyUnread(sq(), m.agent.ctx)).toBe(3); // two match alerts and the "lead assigned" notice
     expect(await listMyNotifications(sq(), m.other.ctx)).toHaveLength(0);
     await expect(markNotificationRead(sq(), m.other.ctx, mine[0]!.id)).rejects.toThrow(/not found/i);
     await markNotificationRead(sq(), m.agent.ctx, mine[0]!.id);
-    expect(await countMyUnread(sq(), m.agent.ctx)).toBe(1);
-    expect(await markAllRead(sq(), m.agent.ctx)).toBe(1);
+    expect(await countMyUnread(sq(), m.agent.ctx)).toBe(2);
+    expect(await markAllRead(sq(), m.agent.ctx)).toBe(2);
     expect(await countMyUnread(sq(), m.agent.ctx)).toBe(0);
     void best;
   });

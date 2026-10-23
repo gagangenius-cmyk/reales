@@ -26,7 +26,7 @@ export const holidaySchema = z.object({ onDate: date, name: text(120).min(1) }).
 export const leaveTypeSchema = z.object({
   id: uuid.optional(), code: z.string().regex(/^[A-Z0-9_]{2,30}$/), name: text(80).min(1), annualDays: z.number().min(0).max(365), accrual: z.enum(["upfront", "monthly"]), carryForwardMax: z.number().min(0).max(365), paid: z.boolean(),
   requiresDocumentAfterDays: z.number().int().min(0).max(365), maxConsecutiveDays: z.number().int().min(0).max(365), minNoticeDays: z.number().int().min(0).max(365), gender: z.enum(["any", "male", "female"]), countsWeekends: z.boolean(),
-  minServiceMonths: z.number().int().min(0).max(120), active: z.boolean(), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
+  minServiceMonths: z.number().int().min(0).max(120), active: z.boolean(), encashable: z.boolean().optional(), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
 }).strict();
 export const leaveRequestSchema = z.object({ employeeId: uuid.optional(), leaveTypeId: uuid, fromDate: date, toDate: date, halfDay: z.enum(["none", "first", "second"]).optional(), reason: text(500).optional() }).strict();
 export const leaveDecisionSchema = z.object({ approve: z.boolean(), note: text(300).optional() }).strict();
@@ -47,3 +47,29 @@ export const announcementSchema = z.object({ id: uuid.optional(), title: text(20
 export const occasionSchema = z.object({ id: uuid.optional(), title: text(160).min(1), onDate: date, kind: z.enum(["celebration", "event", "holiday_notice", "other"]).optional(), message: text(500).nullable().optional(), yearly: z.boolean().optional() }).strict();
 export const employeeListQuery = z.object({ q: z.string().max(100).optional(), status: z.enum(["active", "on_notice", "exited"]).optional(), department: z.string().max(120).optional(), limit: z.coerce.number().int().min(1).max(200).optional(), offset: z.coerce.number().int().min(0).optional() });
 export const docListQuery = z.object({ employeeId: uuid.optional(), category: z.string().max(40).optional(), expiringWithinDays: z.coerce.number().int().min(0).max(730).optional() });
+
+export const payrollCreateSchema = z.object({ period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/) }).strict();
+export const payrollPaidSchema = z.object({ payDate: date, reference: text(120).optional() }).strict();
+export const payslipAdjustSchema = z.union([
+  z.object({ type: z.enum(["earning", "deduction"]), name: text(80).min(1), amount: z.number().positive().max(10_000_000), reason: text(200).min(1) }).strict(),
+  z.object({ type: z.enum(["earning", "deduction"]), remove: z.number().int().min(0).max(50) }).strict(),
+]);
+
+const shiftId = uuid.nullable().optional();
+export const rosterSchema = z.object({ employeeIds: z.array(uuid).min(1).max(200), from: date, to: date, shiftId, dayOff: z.boolean().optional(), weekdays: z.array(z.enum(["sun", "mon", "tue", "wed", "thu", "fri", "sat"])).max(7).optional(), note: text(200).optional() }).strict();
+export const rosterClearSchema = z.object({ employeeIds: z.array(uuid).min(1).max(200), from: date, to: date }).strict();
+export const rosterQuery = z.object({ from: date, to: date, mine: z.enum(["1"]).optional() });
+export const encashSchema = z.object({ leaveTypeId: uuid, days: z.number().positive().max(365), reason: text(200).optional(), year: z.number().int().min(2000).max(2100).optional() }).strict();
+export const reviewCycleSchema = z.object({ name: text(120).min(1), periodStart: date, periodEnd: date, ratingScale: z.number().int().optional() }).strict();
+export const goalsSchema = z.object({ goals: z.array(z.object({ title: text(160).min(1), weight: z.number().min(0).max(100).optional(), target: text(200).optional(), progress: z.number().min(0).max(100).optional() }).strict()).max(15) }).strict();
+export const ratingSchema = z.object({ rating: z.number().int().min(1).max(10), comments: z.string().trim().min(1).max(4000) }).strict();
+export const finaliseSchema = z.object({ finalRating: z.number().int().min(1).max(10), outcome: text(200).optional() }).strict();
+
+export const assistantSchema = z.object({ message: z.string().trim().min(1).max(200) }).strict();
+
+export const folderSchema = z.object({ id: uuid.optional(), name: text(120).min(1), description: text(300).nullable().optional(), restricted: z.boolean().optional(), defaultExpiryDays: z.number().int().min(1).max(36500).nullable().optional(), retentionDays: z.number().int().min(1).max(36500).nullable().optional(), allowedKinds: z.array(z.enum(["contract", "id_document", "permit", "invoice", "receipt", "other"])).max(6).nullable().optional(), requiresLink: z.boolean().optional() }).strict();
+export const moveDocumentSchema = z.object({ folderId: uuid.nullable() }).strict();
+export const libraryQuery = z.object({ folderId: uuid.optional(), q: z.string().max(100).optional(), expiringWithinDays: z.coerce.number().int().min(0).max(3650).optional() });
+
+export const ledgerQuery = z.object({ from: date, to: date, format: z.enum(["json", "csv"]).optional() });
+export const trialBalanceQuery = z.object({ asOf: date });

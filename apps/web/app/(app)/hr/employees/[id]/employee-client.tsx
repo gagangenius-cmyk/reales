@@ -60,3 +60,25 @@ export function BalanceAdjust({ employeeId, types }: { employeeId: string; types
     </form>
   );
 }
+
+interface Enc { id: string; typeName: string; days: number; amount: number; status: string; createdAt: string; reason: string | null }
+/** Pay out unused leave (types marked encashable). The amount joins the next payroll run. */
+export function EncashPanel({ employeeId, types, items, currency }: { employeeId: string; types: { id: string; name: string; available: number | null }[]; items: Enc[]; currency: string }) {
+  const { busy, run, Msg, post } = useAction();
+  const [v, setV] = useState({ leaveTypeId: types[0]?.id ?? "", days: "", reason: "" });
+  const chosen = types.find((t) => t.id === v.leaveTypeId);
+  return (
+    <div className="card p-4">
+      <h2 className="mb-2 font-semibold">Leave encashment</h2>
+      {types.length === 0 ? <p className="muted text-sm">No leave type is marked as encashable. Turn it on under HR setup.</p> : (
+        <form className="flex flex-wrap items-end gap-2 text-sm" onSubmit={(e) => { e.preventDefault(); void run(() => post(`/api/v1/hr/employees/${employeeId}/encash`, { leaveTypeId: v.leaveTypeId, days: Number(v.days), ...(v.reason.trim() ? { reason: v.reason.trim() } : {}) }), "Encashment recorded. It will be paid in the next payroll."); }}>
+          <Lbl label="Leave type"><select className="input" value={v.leaveTypeId} onChange={(e) => setV({ ...v, leaveTypeId: e.target.value })}>{types.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.available ?? "unlimited"} left)</option>)}</select></Lbl>
+          <Lbl label="Days"><input className="input w-24" type="number" min="0.5" step="0.5" max={chosen?.available ?? undefined} required value={v.days} onChange={(e) => setV({ ...v, days: e.target.value })} /></Lbl>
+          <Lbl label="Reason"><input className="input" value={v.reason} onChange={(e) => setV({ ...v, reason: e.target.value })} placeholder="Final settlement" /></Lbl><button className="btn-ghost" disabled={busy || !v.days}>Encash</button>
+        </form>
+      )}
+      <Msg />
+      {items.length > 0 && <table className="t mt-3"><thead><tr><th>Date</th><th>Leave</th><th>Days</th><th>Amount</th><th>Status</th><th /></tr></thead><tbody>{items.map((x) => <tr key={x.id}><td>{x.createdAt.slice(0, 10)}</td><td>{x.typeName}</td><td>{x.days}</td><td>{currency} {x.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td><td>{x.status}</td><td className="text-right">{x.status === "pending" && <button className="btn-ghost text-xs err" disabled={busy} onClick={() => run(() => post(`/api/v1/hr/encashments/${x.id}`, undefined, "DELETE"), "Cancelled and the days returned.")}>Cancel</button>}</td></tr>)}</tbody></table>}
+    </div>
+  );
+}

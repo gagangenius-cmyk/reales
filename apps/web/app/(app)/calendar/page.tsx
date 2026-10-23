@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
 import { getCalendar } from "@reales/domain";
+import { Subscribe } from "./subscribe";
 import { requireContext } from "@/lib/page-context";
 
 export const metadata = { title: "Calendar | Reales CRM" };
@@ -22,6 +23,7 @@ export default async function Calendar({ searchParams }: { searchParams: Promise
   const today = new Date().toISOString().slice(0, 10);
   return (
     <section className="flex flex-col gap-4">
+      <Subscribe />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">Calendar - {ym}</h1>
         <div className="flex gap-2">

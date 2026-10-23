@@ -35,6 +35,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/contacts", label: "Contacts", show: hasPermission(ctx, "contact.read") },
     { href: "/inventory", label: "Inventory", show: hasPermission(ctx, "inventory.read") || hasPermission(ctx, "inventory.manage") },
     { href: "/listings", label: "Listings", show: hasPermission(ctx, "listing.read") },
+    { href: "/ledger", label: "Ledger", show: ctx.grants.some((g) => g.permission === "finance.read" && g.scope === "tenant") },
+    { href: "/documents", label: "Documents", show: hasPermission(ctx, "document.read") || hasPermission(ctx, "document.manage") },
+    { href: "/channels", label: "Messaging accounts", show: hasPermission(ctx, "channel.manage") },
+    { href: "/assistant", label: "Assistant", show: true },
     { href: "/hr", label: "HR", show: true },
     { href: "/trash", label: "Trash", show: ["contact.update", "lead.assign", "listing.manage", "inventory.manage", "org.manage", "project.manage", "campaign.manage", "template.manage"].some((p) => hasPermission(ctx, p)) },
     { href: "/distribution", label: "Portals and feeds", show: hasPermission(ctx, "portal.manage") },
@@ -77,7 +81,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/audit", label: "Audit log", show: hasPermission(ctx, "audit.read") },
   ].filter((n) => n.show && modOn(n.href));
   const byHref = new Map(flat.map((n) => [n.href, n]));
-  const groupDefs: Record<string, string[]> = {"Overview": ["/dashboard", "/insights", "/noticeboard", "/support", "/notifications", "/calendar", "/tasks"], "Sales": ["/leads", "/pools", "/calls", "/contacts", "/viewings", "/availability", "/deals", "/targets", "/checklists", "/searches", "/referrals", "/valuation"], "Inventory": ["/inventory", "/listings", "/distribution", "/website", "/projects"], "Marketing": ["/inbox", "/lead-sources", "/templates", "/campaigns", "/bots", "/automation"], "People": ["/hr"], "Property management": ["/portfolios", "/leases", "/maintenance", "/inspections"], "Finance": ["/finance", "/commissions", "/payouts", "/agents"], "Compliance": ["/compliance"], "Administration": ["/organization", "/users", "/roles", "/portal-access", "/imports", "/settings", "/settings/modules", "/trash", "/audit"]};
+  const groupDefs: Record<string, string[]> = {"Overview": ["/dashboard", "/assistant", "/insights", "/noticeboard", "/support", "/notifications", "/calendar", "/tasks"], "Sales": ["/leads", "/documents", "/pools", "/calls", "/contacts", "/viewings", "/availability", "/deals", "/targets", "/checklists", "/searches", "/referrals", "/valuation"], "Inventory": ["/inventory", "/listings", "/distribution", "/website", "/projects"], "Marketing": ["/inbox", "/channels", "/lead-sources", "/templates", "/campaigns", "/bots", "/automation"], "People": ["/hr"], "Property management": ["/portfolios", "/leases", "/maintenance", "/inspections"], "Finance": ["/finance", "/ledger", "/commissions", "/payouts", "/agents"], "Compliance": ["/compliance"], "Administration": ["/organization", "/users", "/roles", "/portal-access", "/imports", "/settings", "/settings/modules", "/trash", "/audit"]};
   const groups = Object.entries(groupDefs).map(([title, hrefs]) => ({
     title: translate(lang, title),
     items: hrefs.map((h) => byHref.get(h)).filter((n): n is NonNullable<typeof n> => !!n).map((n) => ({ href: n.href, label: translate(lang, n.href === "/notifications" ? "Notifications" : n.label), count: n.href === "/notifications" ? unread : undefined })),

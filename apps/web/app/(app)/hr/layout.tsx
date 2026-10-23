@@ -7,7 +7,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
   const read = hasPermission(ctx, "hr.read"), manage = hasPermission(ctx, "hr.manage");
   const tabs = [
     { href: "/hr", label: "Home", show: true }, { href: "/hr/employees", label: "Employees", show: read }, { href: "/hr/attendance", label: "Attendance", show: true },
-    { href: "/hr/leave", label: "Leave", show: true }, { href: "/hr/letters", label: "Letters", show: hasPermission(ctx, "hr.letters") }, { href: "/hr/documents", label: "Documents", show: true },
+    { href: "/hr/leave", label: "Leave", show: true }, { href: "/hr/roster", label: "Roster", show: true }, { href: "/hr/performance", label: "Performance", show: true }, { href: "/hr/letters", label: "Letters", show: hasPermission(ctx, "hr.letters") }, { href: "/hr/payslips", label: "My payslips", show: true }, { href: "/hr/payroll", label: "Payroll", show: hasPermission(ctx, "hr.salary") }, { href: "/hr/documents", label: "Documents", show: true },
     { href: "/hr/noticeboard", label: "Noticeboard", show: true }, { href: "/hr/setup", label: "Setup", show: manage },
   ].filter((t) => t.show);
   return (

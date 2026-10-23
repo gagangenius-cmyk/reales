@@ -44,7 +44,16 @@ async function assertCanManageVia(u: Uow, ctx: RequestContext, link: EntityRef) 
   authorize(ctx, SPEC[link.entityType].managePerm, SPEC[link.entityType].ref(e));
 }
 
+/** A document in a restricted folder is only open to people with tenant-wide document access, whatever else would normally let them in. */
+async function blockedByFolder(u: Uow, ctx: RequestContext, doc: any, perm: "document.read" | "document.manage"): Promise<boolean> {
+  if (!doc.get("folderId")) return false;
+  const f: any = await u.repo("DocumentFolder").findById(doc.get("folderId"), { transaction: u.tx });
+  if (!f?.get("restricted")) return false;
+  return !ctx.grants.some((g) => (g.permission === perm || g.permission === "document.manage") && g.scope === "tenant");
+}
+
 async function canRead(u: Uow, ctx: RequestContext, doc: any): Promise<boolean> {
+  if (await blockedByFolder(u, ctx, doc, "document.read")) return false;
   if (can(ctx, "document.read") && ctx.grants.some((g) => g.permission === "document.read" && g.scope === "tenant")) return true;
   if (doc.get("createdBy") === ctx.userId && hasPermission(ctx, "document.read")) return true;
   const links = (await u.repo("DocumentLink").findAll({ where: { documentId: doc.get("id") }, transaction: u.tx })) as any[];
@@ -53,6 +62,7 @@ async function canRead(u: Uow, ctx: RequestContext, doc: any): Promise<boolean> 
 }
 
 async function canManage(u: Uow, ctx: RequestContext, doc: any): Promise<boolean> {
+  if (await blockedByFolder(u, ctx, doc, "document.manage")) return false;
   if (ctx.grants.some((g) => g.permission === "document.manage" && g.scope === "tenant")) return true;
   if (doc.get("createdBy") === ctx.userId && hasPermission(ctx, "document.manage")) return true;
   const links = (await u.repo("DocumentLink").findAll({ where: { documentId: doc.get("id") }, transaction: u.tx })) as any[];
@@ -78,7 +88,11 @@ async function writeVersion(u: Uow, ctx: RequestContext, doc: any, upload: { fil
   return { version, hash: v.hash };
 }
 
+/** What a person may do with one document (folder policy included). */
+export async function documentAccess(u: Uow, ctx: RequestContext, doc: any) { return { read: await canRead(u, ctx, doc), manage: await canManage(u, ctx, doc) }; }
+
 export interface CreateDocumentInput {
+  folderId?: string | null;
   title: string; kind?: "contract" | "id_document" | "permit" | "invoice" | "receipt" | "other";
   links?: EntityRef[]; file: { filename: string; mime?: string; bytes: Buffer };
 }
@@ -92,6 +106,13 @@ export async function createDocument(sq: Sequelize, ctx: RequestContext, i: Crea
     const doc = await u.repo("Document").create({ id, title: i.title, kind: i.kind ?? "other", currentVersion: 0, createdBy: ctx.userId }, { transaction: u.tx });
     for (const l of links) await u.repo("DocumentLink").create({ id: randomUUID(), documentId: id, entityType: l.entityType, entityId: l.entityId, createdAt: mysqlDate(new Date()) }, { transaction: u.tx });
     const v = await writeVersion(u, ctx, doc, i.file);
+    if (i.folderId) {
+      const folder: any = await u.repo("DocumentFolder").findById(i.folderId, { transaction: u.tx });
+      if (!folder) throw new NotFoundError("Folder");
+      if (folder.get("restricted") && !ctx.grants.some((g) => g.permission === "document.manage" && g.scope === "tenant")) throw new ConflictError("Only people with tenant-wide document management can use a restricted folder");
+      const { applyFolderPolicy } = await import("./document-folders");
+      await applyFolderPolicy(u, folder, doc, { links: links.length });
+    }
     await u.emit({ type: "document.created", aggregateType: "document", aggregateId: id, payload: { kind: i.kind ?? "other", links: links.length } });
     return { ...plain(await u.repo("Document").findById(id, { transaction: u.tx })), version: v.version, contentHash: v.hash };
   });

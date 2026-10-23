@@ -9,6 +9,8 @@ const components = z.object({
   body: z.object({ text: z.string().max(4000) }).strict(),
   footer: z.object({ text: z.string().max(200) }).strict().optional(),
   buttons: z.array(z.object({ type: z.enum(["quick_reply", "url"]), text: z.string().max(100), url: z.string().max(500).optional() }).strict()).max(10).optional(),
+  /** The name and language this template was approved under in Meta (WhatsApp Cloud). Body variables are sent in order of appearance as {{1}}, {{2}}... */
+  meta: z.object({ name: z.string().regex(/^[a-z0-9_]{1,512}$/), language: z.string().regex(/^[a-z]{2}(_[A-Z]{2})?$/) }).strict().optional(),
 }).strict();
 
 const versionBody = {

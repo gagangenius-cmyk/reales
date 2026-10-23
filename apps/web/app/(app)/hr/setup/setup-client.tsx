@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lbl, useAction } from "@/components/hr-ui";
 
-interface LT { id?: string; code: string; name: string; annualDays: number; accrual: "upfront" | "monthly"; carryForwardMax: number; paid: boolean; requiresDocumentAfterDays: number; maxConsecutiveDays: number; minNoticeDays: number; gender: "any" | "male" | "female"; countsWeekends: boolean; minServiceMonths: number; active: boolean; color: string | null }
+interface LT { id?: string; code: string; name: string; annualDays: number; accrual: "upfront" | "monthly"; carryForwardMax: number; paid: boolean; requiresDocumentAfterDays: number; maxConsecutiveDays: number; minNoticeDays: number; gender: "any" | "male" | "female"; countsWeekends: boolean; minServiceMonths: number; active: boolean; encashable?: boolean; color: string | null }
 interface Shift { id?: string; name: string; startTime: string; endTime: string; breakMinutes: number; graceMinutes: number; halfDayMinutes: number; weeklyOff: string[]; active: boolean }
 interface Hol { id: string; onDate: string; name: string }
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -40,7 +40,7 @@ export function SetupClient({ types, shifts, holidays, year }: { types: LT[]; sh
             <Lbl label="Longest single request (days, 0 = no limit)"><input className="input" type="number" min="0" value={t.maxConsecutiveDays} onChange={(e) => setT({ ...t, maxConsecutiveDays: num(e.target.value) })} /></Lbl>
             <Lbl label="Document needed beyond (days)"><input className="input" type="number" min="0" value={t.requiresDocumentAfterDays} onChange={(e) => setT({ ...t, requiresDocumentAfterDays: num(e.target.value) })} /></Lbl>
             <Lbl label="Months of service needed"><input className="input" type="number" min="0" value={t.minServiceMonths} onChange={(e) => setT({ ...t, minServiceMonths: num(e.target.value) })} /></Lbl>
-            <div className="flex flex-col justify-end gap-1.5 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={t.paid} onChange={(e) => setT({ ...t, paid: e.target.checked })} />Paid</label><label className="flex items-center gap-2"><input type="checkbox" checked={t.countsWeekends} onChange={(e) => setT({ ...t, countsWeekends: e.target.checked })} />Weekends and holidays count</label><label className="flex items-center gap-2"><input type="checkbox" checked={t.active} onChange={(e) => setT({ ...t, active: e.target.checked })} />Active</label></div>
+            <div className="flex flex-col justify-end gap-1.5 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={t.paid} onChange={(e) => setT({ ...t, paid: e.target.checked })} />Paid</label><label className="flex items-center gap-2"><input type="checkbox" checked={t.countsWeekends} onChange={(e) => setT({ ...t, countsWeekends: e.target.checked })} />Weekends and holidays count</label><label className="flex items-center gap-2"><input type="checkbox" checked={!!t.encashable} onChange={(e) => setT({ ...t, encashable: e.target.checked })} />Can be encashed (paid out)</label><label className="flex items-center gap-2"><input type="checkbox" checked={t.active} onChange={(e) => setT({ ...t, active: e.target.checked })} />Active</label></div>
             <div className="flex gap-2 sm:col-span-4"><button className="btn" disabled={busy}>Save</button><button type="button" className="btn-ghost" onClick={() => setT(null)}>Cancel</button></div>
           </form>
         )}

@@ -41,7 +41,9 @@ describe("tenant isolation: schema guard", () => {
     // events only enter after signature verification, so a tenant cannot squat another tenant's event ids.
     // sso_states is looked up by the hash of a 192-bit random OIDC state in the IdP callback, before the tenant is known; the state is single-use and short-lived. auth_tokens is looked up by the hash of the emailed one-time token (256-bit random) before the tenant is known.
     // listings.share_token is a 192-bit random token resolved by the public property page before the tenant is known; it only exposes a published listing whose public page is switched on. lead_ingest_sources is looked up by its 120-bit random public id in the inbound-lead URL before the tenant is known; every request is then verified against that source's own HMAC secret.
-    const GLOBAL_BY_DESIGN = new Set(["webhook_events", "sso_states", "auth_tokens", "lead_ingest_sources", "listings"]);
+    // calendar_feeds.token is a 192-bit random secret in a user's calendar subscription link (Google Calendar polls it with no session); it exposes only that user's own agenda.
+    // portal_accounts.feed_token is a random secret in the public XML feed URL that Bayut / Property Finder pull; it is resolved before the tenant is known and exposes only that account's published listings.
+    const GLOBAL_BY_DESIGN = new Set(["webhook_events", "sso_states", "auth_tokens", "lead_ingest_sources", "listings", "portal_accounts", "calendar_feeds"]);
     const offenders = rows.filter((r) => tenantOwned.has(r.t) && !GLOBAL_BY_DESIGN.has(r.t) && r.idx !== "PRIMARY" && !r.cols.split(",").includes("tenant_id") && !["role_id"].includes(r.cols.split(",")[0]!));
     expect(offenders).toEqual([]);
   });
