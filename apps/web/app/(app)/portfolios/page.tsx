@@ -1,9 +1,10 @@
 import { getSequelize } from "@reales/database";
-import { listOwnerStatements, listPortfolios } from "@reales/domain";
+import { listOwnerStatements, listPortfolios, listUnits } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
 import { PdfActions } from "../pdf-actions";
+import { PortfolioForms } from "./portfolio-forms";
 
 export const metadata = { title: "Portfolios | Reales CRM" };
 
@@ -15,10 +16,13 @@ export default async function Portfolios() {
   const sq = getSequelize();
   const portfolios: any[] = await listPortfolios(sq, ctx);
   const statements: any[] = hasPermission(ctx, "statement.read") ? await listOwnerStatements(sq, ctx, { limit: 50, offset: 0 }) : [];
+  const canManage = hasPermission(ctx, "portfolio.manage");
+  const units = canManage ? ((await listUnits(sq, ctx, { limit: 200, offset: 0 }).catch(() => [])) as any[]).map((u) => ({ id: u.id as string, label: `Unit ${u.unitNumber} - ${String(u.type).replace(/_/g, " ")}` })) : [];
   const names = new Map(portfolios.map((p) => [p.id, p.name]));
   return (
     <section className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Portfolios</h1>
+      {canManage && <PortfolioForms portfolios={portfolios.map((p) => ({ id: p.id, label: p.name }))} units={units} />}
       <div className="card overflow-x-auto p-2">
         <table className="t">
           <thead><tr><th>Name</th><th>Status</th></tr></thead>

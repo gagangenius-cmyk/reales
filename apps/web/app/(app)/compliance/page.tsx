@@ -6,6 +6,7 @@ import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
 import { KycJump } from "./kyc-jump";
 import { DsrActions, DsrCreate } from "./dsr-client";
+import { CaseActions, CaseCreate } from "./cases-client";
 
 export const metadata = { title: "Compliance | Reales CRM" };
 
@@ -46,14 +47,15 @@ export default async function Compliance() {
           </table>
         </div>
       )}
+      {casesOk && hasPermission(ctx, "case.manage") && <CaseCreate profiles={profiles.map((p) => ({ id: p.id, label: `${p.subjectType} - ${p.status}${p.riskLevel ? `, ${p.riskLevel} risk` : ""} (${String(p.contactId).slice(0, 8)})` }))} />}
       {casesOk && (
         <div className="card overflow-x-auto p-2">
           <h2 className="p-2 font-semibold">Cases</h2>
           <table className="t">
-            <thead><tr><th>Opened</th><th>Kind</th><th>Status</th><th>Summary</th><th>Outcome</th></tr></thead>
+            <thead><tr><th>Opened</th><th>Kind</th><th>Status</th><th>Summary</th><th>Outcome</th><th /></tr></thead>
             <tbody>
-              {cases.map((c) => <tr key={c.id}><td>{day(c.createdAt)}</td><td>{c.kind}</td><td>{c.status}</td><td>{c.summary}</td><td>{c.outcome ?? "-"}</td></tr>)}
-              {cases.length === 0 && <tr><td colSpan={5} className="muted">No cases.</td></tr>}
+              {cases.map((c) => <tr key={c.id}><td>{day(c.createdAt)}</td><td>{c.kind}</td><td>{c.status}</td><td>{c.summary}</td><td>{c.outcome ?? "-"}</td><td>{hasPermission(ctx, "case.manage") && <CaseActions id={c.id} status={c.status} />}</td></tr>)}
+              {cases.length === 0 && <tr><td colSpan={6} className="muted">No cases.</td></tr>}
             </tbody>
           </table>
         </div>

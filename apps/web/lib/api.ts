@@ -28,6 +28,13 @@ export function clientIp(req: NextRequest): string | null {
 }
 
 /** Reject cross-site state changes: browsers always send Origin on unsafe requests. */
+/** The session token: the browser cookie, or "Authorization: Bearer <token>" from a native app. Browsers never attach that header on their own across sites, so a bearer request needs no Origin check. */
+export function sessionToken(req: NextRequest): string | undefined {
+  const m = /^Bearer\s+([A-Za-z0-9._~-]{20,200})$/.exec(req.headers.get("authorization") ?? "");
+  return m?.[1] ?? req.cookies.get(SESSION_COOKIE)?.value;
+}
+const usesBearer = (req: NextRequest) => !req.cookies.get(SESSION_COOKIE)?.value && /^Bearer\s/.test(req.headers.get("authorization") ?? "");
+
 function sameOrigin(req: NextRequest): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return false;
@@ -108,7 +115,7 @@ export function api<P = Record<string, string>, B extends ZodTypeAny | undefined
     return runWithCorrelation({ correlationId }, async () => {
       try {
         const unsafe = !["GET", "HEAD", "OPTIONS"].includes(req.method);
-        if (unsafe && !sameOrigin(req)) throw new ForbiddenError("Cross-origin request rejected");
+        if (unsafe && !usesBearer(req) && !sameOrigin(req)) throw new ForbiddenError("Cross-origin request rejected");
 
         const ip = clientIp(req);
         if (opts.limit) {
@@ -121,7 +128,7 @@ export function api<P = Record<string, string>, B extends ZodTypeAny | undefined
         const sq = getSequelize();
         let ctx = undefined as unknown as RequestContext;
         if ((opts.auth ?? "required") !== "none") {
-          ctx = await resolveRequestContext(sq, req.cookies.get(SESSION_COOKIE)?.value, {
+          ctx = await resolveRequestContext(sq, sessionToken(req), {
             correlationId, ip, userAgent: req.headers.get("user-agent"), allowPendingMfa: opts.auth === "pending-mfa",
           });
           // A module the company switched off in Settings is closed to the API as well as hidden from the menu.

@@ -39,10 +39,10 @@ function requireAccountant(ctx: RequestContext) {
   if (!ctx.grants.some((g) => g.permission === "finance.read" && g.scope === "tenant")) throw new ForbiddenError("The ledger needs tenant-wide finance access");
 }
 
-export async function journal(sq: Sequelize, ctx: RequestContext, range: { from: string; to: string }): Promise<JournalEntry[]> {
+export async function journal(sq: Sequelize, ctx: RequestContext, range: { from: string; to: string }, o: { unbounded?: boolean } = {}): Promise<JournalEntry[]> {
   requireAccountant(ctx);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(range.from) || !/^\d{4}-\d{2}-\d{2}$/.test(range.to) || range.to < range.from) throw new ConflictError("Choose a valid date range");
-  if ((Date.parse(range.to) - Date.parse(range.from)) / 86_400_000 > 800) throw new ConflictError("Choose at most about two years at a time");
+  if (!o.unbounded && (Date.parse(range.to) - Date.parse(range.from)) / 86_400_000 > 800) throw new ConflictError("Choose at most about two years at a time");
   const from = new Date(`${range.from}T00:00:00+04:00`), to = new Date(`${range.to}T23:59:59.999+04:00`);
   return withUow(sq, ctx, async (u) => {
     const out: JournalEntry[] = [];
@@ -74,7 +74,7 @@ export async function journal(sq: Sequelize, ctx: RequestContext, range: { from:
 
 /** Balances of every account as at a date, per currency. Debits minus credits for assets and expenses, credits minus debits for liabilities and income. */
 export async function trialBalance(sq: Sequelize, ctx: RequestContext, asOf: string) {
-  const entries = await journal(sq, ctx, { from: "2000-01-01", to: asOf });
+  const entries = await journal(sq, ctx, { from: "2000-01-01", to: asOf }, { unbounded: true });
   const rows = new Map<string, { currency: string; account: string; debit: number; credit: number }>();
   for (const e of entries) for (const l of e.lines) {
     const k = `${e.currency}|${l.account}`, r = rows.get(k) ?? { currency: e.currency, account: l.account, debit: 0, credit: 0 };

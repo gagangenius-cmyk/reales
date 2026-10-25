@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { AMENITIES, AMENITY_GROUPS, EMIRATES, PROPERTY_TYPES, listLocations, listAssignableUsers, listInventoryTree, listUnits, searchListingsAdvanced, listingPins, type ListingFilters } from "@reales/domain";
+import { redirect } from "next/navigation";
+import { AMENITIES, AMENITY_GROUPS, EMIRATES, PROPERTY_TYPES, listLocations, listAssignableUsers, listInventoryTree, listUnits, searchListingsAdvanced, listingParams, listingPins, smartListingQuery, type ListingFilters } from "@reales/domain";
 import { can, hasPermission } from "@reales/rbac";
 import { ActiveChips, Check, Field, Num, Sel, SortTh, ViewTabs, date, num, pick, qs } from "@/components/filter-bits";
 import { LiveSearch } from "@/components/live-search";
@@ -16,12 +17,17 @@ const PAGE = 25;
 const TYPES = ["apartment", "villa", "townhouse", "penthouse", "duplex", "hotel_apartment", "studio", "compound", "full_floor", "half_floor", "whole_building", "bulk_units", "office", "retail", "showroom", "warehouse", "factory", "labour_camp", "staff_accommodation", "land", "farm"] as const;
 const SORTS = ["newest", "oldest", "price_asc", "price_desc", "views", "enquiries", "expiry"] as const;
 type SP = Record<string, string | undefined>;
-const KEYS = ["view", "q", "status", "purpose", "type", "bedsMin", "bedsMax", "minPrice", "maxPrice", "community", "agent", "featured", "exclusivity", "expiring", "noPhotos", "permit", "web", "furnishing", "from", "to", "stale", "enq", "sort"];
+const KEYS = ["view", "said", "q", "status", "purpose", "type", "bedsMin", "bedsMax", "minPrice", "maxPrice", "community", "agent", "featured", "exclusivity", "expiring", "noPhotos", "permit", "web", "furnishing", "from", "to", "stale", "enq", "sort"];
 
 export default async function Listings({ searchParams }: { searchParams: Promise<SP> }) {
   const ctx = await requireContext();
   if (!hasPermission(ctx, "listing.read")) return <NoAccess />;
   const sp = await searchParams;
+  if (sp.smart?.trim()) {
+    // "2 bed apartment in marina under 2m": read the sentence into ordinary filters and show them as such
+    const sm = await smartListingQuery(getSequelize(), ctx, sp.smart);
+    redirect(`/listings${qs({ ...listingParams(sm.filters), said: sp.smart.trim().slice(0, 120) })}`);
+  }
   const page = Math.max(1, Number(sp.page) || 1);
   const filters: ListingFilters = {
     q: sp.q?.trim() || undefined, status: pick(sp.status, ["draft", "published", "unpublished", "expired", "closed", "archived"]), purpose: pick(sp.purpose, ["sale", "rent"]), types: pick(sp.type, TYPES) ? [sp.type!] : undefined,
@@ -49,9 +55,9 @@ export default async function Listings({ searchParams }: { searchParams: Promise
   const current: SP = Object.fromEntries(KEYS.map((k) => [k, sp[k]]));
   const href = (over: SP) => `/listings${qs({ ...current, ...over })}`;
   const sortHref = (s: string) => href({ sort: s, page: undefined });
-  const advancedKeys = KEYS.filter((k) => !["view", "q", "status", "purpose", "sort"].includes(k));
+  const advancedKeys = KEYS.filter((k) => !["view", "said", "q", "status", "purpose", "sort"].includes(k));
   const advancedOn = advancedKeys.some((k) => sp[k]);
-  const label: Record<string, string> = { q: "Search", status: "Status", purpose: "Purpose", type: "Type", bedsMin: "Beds from", bedsMax: "Beds to", minPrice: "Min price", maxPrice: "Max price", community: "Community", agent: "Agent", featured: "Featured", exclusivity: "Exclusivity", expiring: "Expiring (days)", noPhotos: "No photos", permit: "Permit", web: "On website", furnishing: "Furnishing", from: "Created from", to: "Created to", stale: "Not refreshed (days)", enq: "Has enquiries" };
+  const label: Record<string, string> = { said: "Smart search", q: "Search", status: "Status", purpose: "Purpose", type: "Type", bedsMin: "Beds from", bedsMax: "Beds to", minPrice: "Min price", maxPrice: "Max price", community: "Community", agent: "Agent", featured: "Featured", exclusivity: "Exclusivity", expiring: "Expiring (days)", noPhotos: "No photos", permit: "Permit", web: "On website", furnishing: "Furnishing", from: "Created from", to: "Created to", stale: "Not refreshed (days)", enq: "Has enquiries" };
   const chips = KEYS.filter((k) => k !== "sort" && k !== "view" && sp[k]).map((k) => ({ label: `${label[k]}${["featured", "noPhotos", "web", "enq"].includes(k) ? "" : `: ${sp[k]}`}`, href: href({ [k]: undefined, page: undefined }) }));
   const chip = (active: boolean) => (active ? "btn" : "btn-ghost");
   const rows = res.rows.map((l: any) => {
@@ -75,6 +81,10 @@ export default async function Listings({ searchParams }: { searchParams: Promise
         <div><h1>Listings</h1><p className="muted text-sm">{res.total} listing{res.total === 1 ? "" : "s"}. Tick listings to create a client PDF or act on several at once. Publishing is blocked until the permit, brokerage licence and required fields pass the jurisdiction rules.</p></div>
         <div className="flex items-center gap-3"><ViewTabs base="/listings" active={mapView ? "map" : "list"} extra={[{ key: "map", label: "Map", href: href({ view: "map", page: undefined }) }]} />{manage && <ListingDrawer mode="create" units={unitOpts} agents={agentOpts} amenities={AMENITIES} groups={AMENITY_GROUPS} locations={locationOpts} emirates={[...EMIRATES]} types={PROPERTY_TYPES.map((t) => ({ ...t }))} />}</div>
       </div>
+      <form className="card mb-3 flex flex-wrap items-center gap-3 p-3" action="/listings" aria-label="Smart search">
+        <label className="grow text-sm"><span className="muted text-xs font-medium">Smart search: describe what you are looking for</span><input className="input mt-1" name="smart" placeholder="2 bed apartment in Dubai Marina under 2m, furnished studio for rent below 80k..." defaultValue={sp.said ?? ""} /></label>
+        <button className="btn self-end">Find</button>
+      </form>
       <form className="card mb-3 flex flex-col gap-3 p-3" action="/listings">
         {filters.sort !== "newest" && <input type="hidden" name="sort" value={filters.sort} />}{sp.view === "map" && <input type="hidden" name="view" value="map" />}
         <div className="flex flex-wrap items-end gap-3">

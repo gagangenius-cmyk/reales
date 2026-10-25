@@ -1,7 +1,7 @@
 import { DeleteButton } from "@/components/delete-button";
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { getContact, getLead, listPipelines, listPools, matchesForLead, nextBestActions } from "@reales/domain";
+import { getContact, getLead, listPipelines, listPools, matchesForLead, nextBestActions, summarizeLead } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../../no-access";
@@ -9,6 +9,7 @@ import { LeadActions } from "./lead-actions";
 import { MatchPanel } from "./match-panel";
 import { EditLeadDrawer } from "./edit-lead-drawer";
 import { LogCallDrawer } from "../../calls/log-call-drawer";
+import { CallButton } from "../../calls/call-button";
 import { ReleaseButton } from "../../pools/pool-client";
 import { can } from "@reales/rbac";
 
@@ -41,6 +42,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   ];
   const pools: any[] = hasPermission(ctx, "pool.claim") || hasPermission(ctx, "pool.manage") ? await listPools(sq, ctx).catch(() => []) : [];
   const actions = await nextBestActions(sq, ctx, lead.id).catch(() => []);
+  const summary = await summarizeLead(sq, ctx, lead.id).catch(() => null);
   const matches: any[] = hasPermission(ctx, "match.read") ? await matchesForLead(sq, ctx, lead.id).catch(() => []) : [];
   return (
     <section className="flex flex-col gap-4">
@@ -52,11 +54,18 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         </div>
         <div className="flex flex-wrap items-center gap-2">
         {hasPermission(ctx, "lead.assign") && <DeleteButton entity="lead" id={lead.id} name={`Lead - ${lead.purpose}`} redirectTo="/leads" small={false} />}
+        {hasPermission(ctx, "call.log") && lead.status === "open" && <CallButton leadId={lead.id} />}
         {hasPermission(ctx, "call.log") && lead.status === "open" && <LogCallDrawer leadId={lead.id} contactLabel={contactName ?? undefined} label="Log call" />}
         {lead.status === "open" && (lead.assignedUserId === ctx.userId || hasPermission(ctx, "lead.assign")) && <ReleaseButton leadId={lead.id} pools={pools.filter((p) => p.active).map((p) => ({ id: p.id, name: p.name }))} />}
         {can(ctx, "lead.update", { ownerUserId: lead.assignedUserId, branchId: lead.branchId, projectId: lead.projectId }) && <EditLeadDrawer leadId={lead.id} initial={{ purpose: lead.purpose, budgetMin: lead.budgetMin ? String(Number(lead.budgetMin)) : "", budgetMax: lead.budgetMax ? String(Number(lead.budgetMax)) : "", currency: lead.currency ?? "AED", bedrooms: lead.bedrooms != null ? String(lead.bedrooms) : "", preferredAreas: (lead.preferredAreas ?? []).join(", "), language: lead.language ?? "en", isHot: !!lead.isHot, campaign: lead.campaign ?? "", financing: lead.financing ?? "", purchaseTimeline: lead.purchaseTimeline ?? "", propertyTypes: lead.propertyTypes ?? [], tags: (lead.tags ?? []).join(", "), notes: lead.notes ?? "", nextFollowUpAt: lead.nextFollowUpAt ? new Date(new Date(lead.nextFollowUpAt).getTime() + 4 * 3600000).toISOString().slice(0, 16) : "", expectedCloseDate: lead.expectedCloseDate ?? "" }} />}
         </div>
       </div>
+      {summary && (
+        <div className="card p-4" aria-label="Lead summary">
+          <h2 className="mb-2 font-semibold">Summary</h2>
+          <div className="flex flex-col gap-1.5 text-sm">{summary.aiText ? <><p>{summary.aiText}</p><p className="muted text-xs">Reworded by AI from the facts below; every number is checked against the record.</p></> : null}{summary.paragraphs.map((p, i) => <p key={i} className={summary.aiText ? "muted text-xs" : undefined}>{p}</p>)}</div>
+        </div>
+      )}
       {actions.length > 0 && (
         <div className="card p-4" aria-label="What to do next">
           <h2 className="mb-2 font-semibold">What to do next</h2>

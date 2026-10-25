@@ -223,3 +223,7 @@ export const publicLeadFormSchema = z.object({
   publicId: z.string().regex(/^[A-Za-z0-9_-]{6,40}$/), name: z.string().trim().min(1).max(120), phone: z.string().trim().max(40).optional(), email: z.string().trim().max(254).optional(), message: z.string().max(2000).optional(),
   purpose: z.enum(["buy", "rent", "invest", "off_plan"]).optional(), budgetMax: z.number().positive().max(1e12).optional(), website: z.string().max(200).optional(),
 }).strict();
+
+export const telephonySchema = z.object({ accountSid: z.string().trim().max(64), authToken: z.string().trim().max(128).optional(), fromNumber: z.string().trim().max(32), enabled: z.boolean().optional() }).strict();
+export const dialSchema = z.object({ leadId: uuidV.optional(), contactId: uuidV.optional() }).strict().refine((v) => !!v.leadId || !!v.contactId, { message: "provide a leadId or a contactId" });
+export const mergeContactSchema = z.object({ duplicateId: uuidV }).strict();

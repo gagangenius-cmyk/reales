@@ -1,11 +1,12 @@
 import { DeleteButton } from "@/components/delete-button";
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { getContact, leadsForContact } from "@reales/domain";
+import { duplicateCandidates, getContact, leadsForContact } from "@reales/domain";
 import { can, hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../../no-access";
 import { ContactDrawer } from "../contact-drawer";
+import { MergePanel } from "./merge-panel";
 
 export const metadata = { title: "Contact | Reales CRM" };
 
@@ -19,6 +20,7 @@ export default async function ContactPage({ params }: { params: Promise<{ id: st
   let c: any;
   try { c = await getContact(sq, ctx, id); } catch { return <section><h1 className="text-2xl font-semibold">Contact not found</h1><Link className="btn-ghost mt-3 inline-block" href="/contacts">Back to contacts</Link></section>; }
   const leads: any[] = hasPermission(ctx, "lead.read") ? await leadsForContact(sq, ctx, id).catch(() => []) : [];
+  const dupes = ctx.grants.some((g) => g.permission === "contact.update" && g.scope === "tenant") ? await duplicateCandidates(sq, ctx, id).catch(() => []) : [];
   const name = [c.salutation, c.firstName, c.lastName].filter(Boolean).join(" ") || c.companyName || c.email || "Unnamed";
   const canEdit = can(ctx, "contact.update", { ownerUserId: c.ownerUserId, branchId: c.branchId });
   const facts: [string, string][] = [
@@ -34,6 +36,7 @@ export default async function ContactPage({ params }: { params: Promise<{ id: st
         {canEdit && <DeleteButton entity="contact" id={c.id} name={name} redirectTo="/contacts" small={false} />}
         {canEdit && <ContactDrawer id={c.id} initial={{ firstName: c.firstName ?? "", lastName: c.lastName ?? "", companyName: c.companyName ?? "", email: c.email ?? "", phone: c.phoneE164 ?? "", language: c.language ?? "en", nationality: c.nationality ?? "", salutation: c.salutation ?? "", gender: c.gender ?? "", dateOfBirth: c.dateOfBirth ?? "", jobTitle: c.jobTitle ?? "", employer: c.employer ?? "", phoneSecondary: c.phoneSecondary ?? "", whatsapp: c.whatsappE164 ?? "", addressLine: c.addressLine ?? "", city: c.city ?? "", country: c.country ?? "", residency: c.residency ?? "", preferredChannel: c.preferredChannel ?? "", preferredContactTime: c.preferredContactTime ?? "", tags: (c.tags ?? []).join(", "), notes: c.notes ?? "" }} />}
       </div>
+      <MergePanel contactId={c.id} duplicates={dupes} />
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="card p-4">
           <h2 className="mb-3 font-semibold">Details</h2>

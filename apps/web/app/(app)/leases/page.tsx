@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { listLeases } from "@reales/domain";
+import { listLeases, listUnits } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
+import { NewLeaseDrawer } from "./new-lease-drawer";
 
 export const metadata = { title: "Leases | Reales CRM" };
 
@@ -12,10 +13,13 @@ const money = (v: unknown, c = "AED") => `${c} ${Number(v).toLocaleString("en-US
 export default async function Leases() {
   const ctx = await requireContext();
   if (!hasPermission(ctx, "lease.read")) return <NoAccess />;
-  const leases: any[] = await listLeases(getSequelize(), ctx, { limit: 100, offset: 0 });
+  const sq = getSequelize();
+  const leases: any[] = await listLeases(sq, ctx, { limit: 100, offset: 0 });
+  const canCreate = hasPermission(ctx, "lease.manage");
+  const units = canCreate ? ((await listUnits(sq, ctx, { limit: 200, offset: 0 }).catch(() => [])) as any[]).filter((u) => u.status !== "sold" && u.status !== "blocked").map((u) => ({ id: u.id as string, label: `Unit ${u.unitNumber} - ${String(u.type).replace(/_/g, " ")}${u.bedrooms != null ? `, ${u.bedrooms} bed` : ""} (${u.status})` })) : [];
   return (
     <section className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Leases</h1>
+      <div className="page-head"><h1 className="text-2xl font-semibold">Leases</h1>{canCreate && <NewLeaseDrawer units={units} />}</div>
       <div className="card overflow-x-auto p-2">
         <table className="t">
           <thead><tr><th>Term</th><th>Status</th><th>Annual rent</th><th>Instalments</th><th>Registration</th><th /></tr></thead>

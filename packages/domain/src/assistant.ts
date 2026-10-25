@@ -5,6 +5,7 @@ import { isModuleOn } from "./config";
 import { leadStatusSummary, searchLeadsAdvanced, searchListingsAdvanced } from "./filters";
 import { liveBoard } from "./hr-attendance";
 import { globalSearch } from "./search";
+import { listingParams, smartListingQuery } from "./smart-search";
 
 /**
  * A command assistant for the CRM: ask in plain words ("hot leads", "listings expiring this week", "who is on leave today", "find 0501234567") and it
@@ -88,7 +89,7 @@ async function answerRaw(sq: Sequelize, ctx: RequestContext, message: string): P
   }
 
   // ---- listings
-  if (has(q, "listing", "propert")) {
+  if (has(q, "listing", "propert") || /\b\d\s*(?:br|bed|bhk)|apartment|villa|studio|townhouse|penthouse|\bflats?\b|\bfor (?:rent|sale)\b/.test(q)) {
     if (!listingsOn) return { answer: "Listings are switched off for your company.", items: [], suggestions: SUGGEST };
     const f: Parameters<typeof searchListingsAdvanced>[2] = { limit: 8 };
     let label = "listings", href = "/listings";
@@ -98,6 +99,10 @@ async function answerRaw(sq: Sequelize, ctx: RequestContext, message: string): P
     else if (has(q, "draft")) { f.status = "draft"; label = "draft listings"; href = "/listings?status=draft"; }
     else if (has(q, "publish", "live")) { f.status = "published"; label = "published listings"; href = "/listings?status=published"; }
     else if (has(q, "stale", "not refreshed")) { f.staleDays = 30; f.status = "published"; label = "published listings not refreshed for 30 days"; href = "/listings?stale=30&status=published"; }
+    if (label === "listings") {
+      const sm = await smartListingQuery(sq, ctx, message);
+      if (sm.understood.length) { Object.assign(f, sm.filters, { limit: 8 }); label = `listings: ${sm.understood.join(", ")}`; href = `/listings${Object.keys(listingParams(sm.filters)).length ? `?${new URLSearchParams(listingParams(sm.filters))}` : ""}`; }
+    }
     const res: any = await tool(() => searchListingsAdvanced(sq, ctx, f));
     if (denied(res)) return noAccess("listings");
     return { answer: res.total === 0 ? `No ${label}.` : `${res.total} ${label}${res.total > 8 ? ", here are the first 8" : ""}.`, items: res.rows.map((l: any) => ({ title: `${l.reference ?? ""} ${l.title ?? "(untitled)"}`.trim(), subtitle: [l.unit?.building, l.unit?.community, l.price ? `${l.currency} ${Number(l.price).toLocaleString("en-US")}` : null].filter(Boolean).join(", "), href: `/listings/${l.id}` })), link: { label: "Open in Listings", href }, suggestions: SUGGEST };

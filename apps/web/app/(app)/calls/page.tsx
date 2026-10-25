@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { CALL_OUTCOMES, callStats, listCalls } from "@reales/domain";
+import { CALL_OUTCOMES, callStats, getTelephony, listCalls } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
 import { LogCallDrawer } from "./log-call-drawer";
+import { TelephonyPanel } from "./telephony-panel";
 
 export const metadata = { title: "Calls | Reales CRM" };
 
@@ -29,6 +30,7 @@ export default async function Calls({ searchParams }: { searchParams: Promise<SP
     ? await Promise.all([callStats(sq, ctx, range), listCalls(sq, ctx, { limit: PAGE + 1, offset: (page - 1) * PAGE, outcome, from, to }) as Promise<any[]>])
     : [null, [] as any[]];
   const calls = rows.slice(0, PAGE);
+  const telephony = hasPermission(ctx, "tenant.manage") ? await getTelephony(sq, ctx) : null;
   const qs = (o: Record<string, string | undefined>) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries({ outcome, from, to, range: sp.range, ...o })) if (v) p.set(k, v); const s = p.toString(); return s ? `?${s}` : "?"; };
   return (
     <section className="flex flex-col gap-5">
@@ -36,6 +38,7 @@ export default async function Calls({ searchParams }: { searchParams: Promise<SP
         <div><h1>Calls</h1><p className="muted text-sm">Every call is tied to its lead timeline, last-contacted date and follow-up.</p></div>
         {hasPermission(ctx, "call.log") && <LogCallDrawer />}
       </div>
+      {telephony && <TelephonyPanel initial={telephony} />}
       {stats && (
         <>
           <div className="flex items-center justify-between">

@@ -11,7 +11,9 @@ export const POST = api({ auth: "none", body: loginSchema, limit: { limit: 20, w
     return NextResponse.json({ error: { code: "rate_limited", message: "Too many attempts" } }, { status: 429, headers: { "retry-after": "60" } });
   }
   const r = await login(sq, { tenantSlug: body.tenant, email: body.email, password: body.password, ip: clientIp(req), userAgent: req.headers.get("user-agent") });
-  const res = NextResponse.json({ status: r.status });
+  // A native app asks for the token in the body (x-client: native) because it has no cookie jar; browsers keep getting the httpOnly cookie only.
+  const native = req.headers.get("x-client") === "native";
+  const res = NextResponse.json({ status: r.status, ...(native ? { token: r.token } : {}) }, { headers: native ? { "cache-control": "no-store" } : undefined });
   setSessionCookie(res, r.token);
   return res;
 });

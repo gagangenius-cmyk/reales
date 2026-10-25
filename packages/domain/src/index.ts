@@ -93,3 +93,7 @@ export * from "./whatsapp-cloud";
 export * from "./next-actions";
 export * from "./document-folders";
 export * from "./ledger";
+export * from "./smart-search";
+export * from "./lead-summary";
+export * from "./telephony";
+export * from "./contact-merge";
