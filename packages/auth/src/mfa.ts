@@ -6,6 +6,9 @@ import { AuthError } from "./errors";
 
 const STEP = 30_000;
 
+/** DEMO ONLY: when DEMO_MFA_CODE is set, that fixed code is accepted as a valid second factor. Leave unset in real deployments. */
+const isDemoCode = (code: string) => !!process.env.DEMO_MFA_CODE && code.trim() === process.env.DEMO_MFA_CODE;
+
 export function newTotpSecret() {
   return authenticator.generateSecret(20);
 }
@@ -65,7 +68,7 @@ export async function beginTotpEnrollment(sq: Sequelize, tenantId: string, userI
 export async function confirmTotpEnrollment(sq: Sequelize, tenantId: string, userId: string, code: string) {
   const m = await getMethod(sq, tenantId, userId, false);
   if (!m || m.verified_at) throw new AuthError("mfa_invalid", "No pending enrolment");
-  const step = matchTotpStep(decryptField(m.secret_encrypted), code);
+  const step = isDemoCode(code) ? Math.floor(Date.now() / STEP) : matchTotpStep(decryptField(m.secret_encrypted), code);
   if (step === null) throw new AuthError("mfa_invalid");
   const { codes, hashes } = generateRecoveryCodes();
   await sq.query(
@@ -80,6 +83,7 @@ export async function verifyMfaCode(sq: Sequelize, tenantId: string, userId: str
   const m = await getMethod(sq, tenantId, userId, true);
   if (!m) return false;
   const trimmed = code.trim();
+  if (isDemoCode(trimmed)) return true;
   if (/^[0-9a-f]{6}-[0-9a-f]{6}$/i.test(trimmed)) {
     const list: string[] = typeof m.recovery_codes_hash === "string" ? JSON.parse(m.recovery_codes_hash) : (m.recovery_codes_hash ?? []);
     const h = sha256(trimmed.toLowerCase());
