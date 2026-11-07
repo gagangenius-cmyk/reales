@@ -67,6 +67,7 @@ export * from "./lead-ingest";
 export * from "./payouts";
 export * from "./noticeboard";
 export * from "./api-keys";
+export * from "./dashboards";
 export * from "./heartbeat";
 export * from "./google";
 export * from "./claims";
