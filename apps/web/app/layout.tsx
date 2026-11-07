@@ -9,7 +9,8 @@ export const viewport = { themeColor: "#2563eb" };
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const lang = await getLang();
   return (
-    <html lang={lang} dir={lang === "ar" ? "rtl" : "ltr"}>
+    <html lang={lang} dir={lang === "ar" ? "rtl" : "ltr"} suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('reales-sidebar')==='collapsed')document.documentElement.dataset.sidebar='collapsed'}catch(e){}" }} /></head>
       <body className="min-h-screen antialiased">{children}<RegisterServiceWorker /></body>
     </html>
   );

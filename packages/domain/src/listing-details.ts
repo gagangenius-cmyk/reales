@@ -175,6 +175,38 @@ export async function uploadListingMedia(sq: Sequelize, ctx: RequestContext, id:
   });
 }
 
+const VIDEO_TYPES: { ext: string[]; mime: string; test: (b: Buffer) => boolean }[] = [
+  { ext: [".mp4", ".m4v"], mime: "video/mp4", test: (b) => b.length > 12 && b.subarray(4, 8).toString("latin1") === "ftyp" },
+  { ext: [".mov"], mime: "video/quicktime", test: (b) => b.length > 12 && b.subarray(4, 8).toString("latin1") === "ftyp" },
+  { ext: [".webm"], mime: "video/webm", test: (b) => b.length > 4 && b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3 },
+];
+export const MAX_LISTING_VIDEOS = 3;
+
+/** A walkthrough video file (MP4, MOV or WEBM, checked by content, not just by name). Large videos are better shared as a YouTube link. */
+export async function uploadListingVideo(sq: Sequelize, ctx: RequestContext, id: string, file: { filename: string; mime?: string; bytes: Buffer }, o: { caption?: string; maxBytes: number }) {
+  if (!file.bytes.length) throw new ConflictError("The file is empty");
+  if (file.bytes.length > o.maxBytes) throw new ConflictError(`The video is over the ${Math.round(o.maxBytes / 1_048_576)} MB limit; share larger videos as a YouTube link instead`);
+  const name = file.filename.replace(/\\/g, "/").split("/").pop()!.replace(/[\u0000-\u001f<>:"|?*]/g, "").trim().slice(0, 200);
+  const ext = name.slice(name.lastIndexOf(".")).toLowerCase();
+  const kind = VIDEO_TYPES.find((t) => t.ext.includes(ext) && t.test(file.bytes));
+  if (!name || name.startsWith(".") || !kind) throw new ConflictError("The video must be an MP4, MOV or WEBM file");
+  const hash = (await import("node:crypto")).createHash("sha256").update(file.bytes).digest("hex");
+  await scanUpload({ filename: name, mime: kind.mime, bytes: file.bytes, hash });
+  return withUow(sq, ctx, async (u) => {
+    const l = await scoped(u, ctx, id);
+    authorize(ctx, "listing.manage", ref(l));
+    const existing = (await u.repo("ListingMedia").findAll({ where: { listingId: id }, transaction: u.tx })) as any[];
+    const key = storageKeyFor(ctx.tenantId, hash);
+    if (existing.some((m) => m.get("storageKey") === key)) throw new ConflictError("This video is already on the listing");
+    if (existing.filter((m) => m.get("kind") === "video").length >= MAX_LISTING_VIDEOS) throw new ConflictError(`A listing can have at most ${MAX_LISTING_VIDEOS} video files`);
+    await getStorage().put(key, file.bytes);
+    const mid = randomUUID();
+    await u.repo("ListingMedia").create({ id: mid, listingId: id, kind: "video", storageKey: key, position: existing.length, caption: o.caption?.trim().slice(0, 200) || null, fileName: name, mime: kind.mime, sizeBytes: file.bytes.length }, { transaction: u.tx });
+    await u.audit({ action: "listing.media_added", entityType: "listing", entityId: id, after: { file: name, kind: "video", bytes: file.bytes.length } });
+    return plain(await u.repo("ListingMedia").findById(mid, { transaction: u.tx }));
+  });
+}
+
 export async function reorderListingMedia(sq: Sequelize, ctx: RequestContext, id: string, orderedIds: string[]) {
   return withUow(sq, ctx, async (u) => {
     const l = await scoped(u, ctx, id);

@@ -20,6 +20,7 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
   const [found, setFound] = useState<Contact[]>([]);
   const [picked, setPicked] = useState<Contact | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<1 | 2 | 3>(1);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const first = useRef<HTMLButtonElement>(null);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
@@ -90,7 +91,7 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
     <label className={`flex flex-col gap-1.5 ${span ? "sm:col-span-2" : ""}`}><span className="text-xs font-medium muted">{title}</span>{children}</label>
   );
   const Section = ({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) => (
-    <section className="rounded-xl border p-5" style={{ borderColor: "var(--border)" }}>
+    <section hidden={tab !== n} className="rounded-xl border p-5" style={{ borderColor: "var(--border)" }}>
       <header className="mb-4 flex items-center gap-3">
         <span className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "var(--accent)" }}>{n}</span>
         <div><h3 className="font-semibold leading-tight">{title}</h3>{hint && <p className="muted text-xs">{hint}</p>}</div>
@@ -113,6 +114,11 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
               <button type="button" ref={first} className="btn-ghost text-sm" onClick={() => setOpen(false)} aria-label="Close drawer">&#10005;</button>
             </header>
 
+            <nav className="flex gap-1 overflow-x-auto border-b px-4 pt-2" style={{ borderColor: "var(--border)", background: "var(--card)" }} role="tablist" aria-label="Lead sections">
+              {([[1, "Contact"], [2, "Lead"], [3, "Requirements"]] as const).map(([k, label]) => (
+                <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className="whitespace-nowrap rounded-t-lg px-4 py-2 text-sm font-medium" style={{ borderBottom: tab === k ? "2px solid var(--accent)" : "2px solid transparent", color: tab === k ? "var(--accent)" : "var(--muted)" }}>{k}. {label}</button>
+              ))}
+            </nav>
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
               <Section n={1} title="Contact" hint="Who is enquiring? Matching email or phone reuses the existing contact.">
                 <div className="mb-4 inline-flex rounded-lg border p-0.5 text-sm" style={{ borderColor: "var(--border)" }} role="tablist">
@@ -191,9 +197,9 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
                 </div>
               </Section>
 
-              <details className="rounded-xl border" style={{ borderColor: "var(--border)" }}>
-                <summary className="cursor-pointer px-5 py-4 font-semibold">Requirements <span className="muted text-xs font-normal">(optional: purpose, budget, project, areas)</span></summary>
-                <div className="grid gap-4 border-t p-5 sm:grid-cols-2" style={{ borderColor: "var(--border)" }}>
+              <section hidden={tab !== 3} className="rounded-xl border p-5" style={{ borderColor: "var(--border)" }}>
+                <header className="mb-4 flex items-center gap-3"><span className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: "var(--accent)" }}>3</span><div><h3 className="font-semibold leading-tight">Requirements</h3><p className="muted text-xs">Optional: purpose, budget, project, areas, follow-up and notes.</p></div></header>
+                <div className="grid gap-4 sm:grid-cols-2">
                   <Field title="Purpose"><Select className="input" value={f.purpose} onChange={set("purpose")}><option value="buy">Buy</option><option value="rent">Rent</option><option value="invest">Invest</option><option value="off_plan">Off-plan</option></Select></Field>
                   <Field title="Lead language"><Select className="input" value={f.language} onChange={set("language")}><option value="en">English</option><option value="ar">Arabic</option></Select></Field>
                   <Field title="Project" span><Select className="input" value={f.projectId} onChange={set("projectId")}><option value="">None</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></Field>
@@ -210,12 +216,12 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
                   <Field title="Lead tags (comma separated)" span><input className="input" value={f.leadTags} onChange={set("leadTags")} placeholder="golden-visa, off-plan-investor" /></Field>
                   <Field title="Notes on the enquiry" span><textarea className="input min-h-20" value={f.leadNotes} onChange={set("leadNotes")} /></Field>
                 </div>
-              </details>
+              </section>
             </div>
 
             <footer className="flex items-center justify-between gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
               <p role={msg?.ok ? "status" : "alert"} className={`min-w-0 flex-1 text-sm ${msg?.ok ? "muted" : "err"}`}>{msg?.text}</p>
-              <div className="flex shrink-0 gap-2"><button type="button" className="btn-ghost" onClick={() => setOpen(false)}>Close</button><button className="btn" disabled={busy}>{busy ? "Saving..." : "Add lead"}</button></div>
+              <div className="flex shrink-0 gap-2"><button type="button" className="btn-ghost" onClick={() => setOpen(false)}>Close</button>{tab < 3 && <button type="button" className="btn-ghost" onClick={() => setTab((tab + 1) as 2 | 3)}>Next</button>}<button className="btn" disabled={busy}>{busy ? "Saving..." : "Add lead"}</button></div>
             </footer>
           </form>
         </div>

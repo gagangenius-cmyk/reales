@@ -128,3 +128,17 @@ table.t tbody tr:hover td { background: color-mix(in srgb, var(--accent) 5%, tra
 .ant-table-wrapper .ant-table { background: transparent; }
 .ant-table-wrapper .ant-table-tbody > tr:hover > td { background: color-mix(in srgb, var(--accent) 6%, transparent) !important; }
 .ant-tag { border-radius: 999px; padding-inline: 10px; font-weight: 600; }
+
+/* Collapsible sidebar: icons only (names stay as tooltips); the choice is remembered per browser. */
+.sidebar { transition: width 0.18s ease; }
+.sidebar .brand { position: relative; }
+.sidebar-toggle { margin-left: auto; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 0.55rem; color: var(--sidebar-fg); background: rgba(255, 255, 255, 0.06); cursor: pointer; transition: background 0.12s, color 0.12s; }
+.sidebar-toggle:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+html[data-sidebar="collapsed"] .sidebar { width: 4.6rem; overflow-x: hidden; }
+html[data-sidebar="collapsed"] .sidebar .brand { flex-direction: column; gap: 0.6rem; padding: 1rem 0.5rem 0.6rem; }
+html[data-sidebar="collapsed"] .sidebar .brand-text, html[data-sidebar="collapsed"] .nav-label { display: none; }
+html[data-sidebar="collapsed"] .sidebar-toggle { margin-left: 0; }
+html[data-sidebar="collapsed"] .nav-group { padding: 0.5rem 0.5rem 0.1rem; border-top: 1px solid rgba(255, 255, 255, 0.07); }
+html[data-sidebar="collapsed"] .nav-title { height: 0; padding: 0; overflow: hidden; visibility: hidden; }
+html[data-sidebar="collapsed"] .nav-link { justify-content: center; padding: 0.6rem 0; position: relative; }
+html[data-sidebar="collapsed"] .nav-count { position: absolute; top: 2px; right: 6px; margin: 0; font-size: 0.6rem; padding: 0 0.3rem; }

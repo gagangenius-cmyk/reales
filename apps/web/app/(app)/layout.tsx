@@ -9,6 +9,7 @@ import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { LogoutButton } from "./logout-button";
 import { AntProvider } from "@/components/ant-provider";
+import { SidebarToggle } from "@/components/sidebar-toggle";
 import { SidebarNav } from "./sidebar-nav";
 import { CommandPalette } from "@/components/command-palette";
 import { LanguageSwitch } from "@/components/language-switch";
@@ -96,7 +97,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <aside className="sidebar">
         <div className="brand">
           <span className="logo">R</span>
-          <div className="min-w-0"><p className="truncate font-semibold text-white">{t?.name ?? "Reales"}</p><p className="truncate text-xs opacity-60">{t?.jurisdiction}</p></div>
+          <div className="brand-text min-w-0"><p className="truncate font-semibold text-white">{t?.name ?? "Reales"}</p><p className="truncate text-xs opacity-60">{t?.jurisdiction}</p></div>
+          <SidebarToggle />
         </div>
         <SidebarNav groups={groups} />
       </aside>

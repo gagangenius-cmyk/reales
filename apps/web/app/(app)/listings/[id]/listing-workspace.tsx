@@ -33,7 +33,7 @@ export function ListingWorkspace({ l, channels, amenities, groups, canManage, ca
   }
   const u = l.unit ?? {}, b = l.building ?? {};
   const q = l.quality;
-  const images = l.media.filter((m: any) => m.kind === "image"), plans = l.media.filter((m: any) => m.kind === "floorplan");
+  const images = l.media.filter((m: any) => m.kind === "image"), plans = l.media.filter((m: any) => m.kind === "floorplan"), videos = l.media.filter((m: any) => m.kind === "video");
   const publicUrl = site && l.shareToken && l.reference ? `/p/${site.slug}/${l.reference}` : null;
 
   // ---- overview form
@@ -60,7 +60,7 @@ export function ListingWorkspace({ l, channels, amenities, groups, canManage, ca
   // ---- uploads
   
   const [uploading, setUploading] = useState<string | null>(null);
-  async function upload(files: FileList | File[] | null, kind: "image" | "floorplan") {
+  async function upload(files: FileList | File[] | null, kind: "image" | "floorplan" | "video") {
     if (!files?.length) return;
     setMsg(null);
     let done = 0; const errors: string[] = [];
@@ -189,7 +189,12 @@ export function ListingWorkspace({ l, channels, amenities, groups, canManage, ca
             {canManage && <div className="mb-3"><Dropzone multiple disabled={!!uploading} accept="image/jpeg,image/png,image/webp" maxBytes={12 * 1_048_576} hint="Floor plan as an image" onFiles={(f) => { void upload(f, "floorplan"); }} /></div>}
             <ul className="grid gap-3 sm:grid-cols-2">{plans.map((m: any) => <li key={m.id} className="card p-2"><img src={`/api/v1/listings/${l.id}/media/${m.id}`} alt="Floor plan" loading="lazy" className="w-full" />{canManage && <button className="btn-ghost mt-2 text-xs" onClick={() => confirm("Remove this floor plan?") && act(postJson(`/api/v1/listings/${l.id}/media/${m.id}`, undefined, "DELETE"), "Removed.")}>Remove</button>}</li>)}{plans.length === 0 && <li className="muted text-sm">No floor plan yet.</li>}</ul>
           </section>
-          <section className="card p-5 text-sm"><h2 className="mb-1 font-semibold">Video and tour</h2><p className="muted">Video: {l.videoUrl ? <a href={l.videoUrl} target="_blank" rel="noopener noreferrer" className="underline">{l.videoUrl}</a> : "not set"} &middot; Tour: {l.virtualTourUrl ? <a href={l.virtualTourUrl} target="_blank" rel="noopener noreferrer" className="underline">{l.virtualTourUrl}</a> : "not set"}. Edit the links on the Overview tab.</p></section>
+          <section className="card p-5">
+            <div className="mb-3"><h2 className="font-semibold">Videos ({videos.length}/3)</h2><p className="muted text-xs">MP4, MOV or WEBM files. Large videos are better shared as a YouTube link (Overview tab).</p></div>
+            {canManage && videos.length < 3 && <div className="mb-3"><Dropzone disabled={!!uploading} accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" hint="MP4, MOV or WEBM" onFiles={(f) => { void upload(f, "video"); }} /></div>}
+            <ul className="grid gap-3 sm:grid-cols-2">{videos.map((m: any) => <li key={m.id} className="card p-2"><video controls preload="metadata" className="w-full rounded" src={`/api/v1/listings/${l.id}/media/${m.id}`} />{canManage && <button className="btn-ghost mt-2 text-xs" onClick={() => confirm("Remove this video?") && act(postJson(`/api/v1/listings/${l.id}/media/${m.id}`, undefined, "DELETE"), "Removed.")}>Remove</button>}</li>)}{videos.length === 0 && <li className="muted text-sm">No video files yet.</li>}</ul>
+          </section>
+          <section className="card p-5 text-sm"><h2 className="mb-1 font-semibold">YouTube and 360 view</h2><p className="muted">YouTube / video link: {l.videoUrl ? <a href={l.videoUrl} target="_blank" rel="noopener noreferrer" className="underline">{l.videoUrl}</a> : "not set"} &middot; 360 view link: {l.virtualTourUrl ? <a href={l.virtualTourUrl} target="_blank" rel="noopener noreferrer" className="underline">{l.virtualTourUrl}</a> : "not set"}. Edit the links on the Overview tab.</p></section>
         </div>
       )}
 

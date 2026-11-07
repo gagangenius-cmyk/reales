@@ -41,6 +41,8 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
   const [photos, setPhotos] = useState<File[]>([]);
   const [plans, setPlans] = useState<File[]>([]);
   const [progress, setProgress] = useState<string | null>(null);
+  const [videos, setVideos] = useState<File[]>([]);
+  const [tab, setTab] = useState<"property" | "details" | "terms" | "arabic" | "amenities" | "media">(mode === "create" ? "property" : "details");
   const setx = (k: keyof typeof x) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setX({ ...x, [k]: e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value });
   const toggleFeature = (c: string) => setFeatures((cur) => { const n = new Set(cur); if (n.has(c)) n.delete(c); else n.add(c); return n; });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
@@ -87,7 +89,7 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
         };
         const problems: string[] = [];
         if (Object.keys(details).length) { const d = await postJson(`/api/v1/listings/${id}/details`, details, "PUT"); if (!d.ok) problems.push(`Details: ${errMsg(d)}`); }
-        const files = [...photos.map((file) => ({ file, kind: "image" })), ...plans.map((file) => ({ file, kind: "floorplan" }))];
+        const files = [...photos.map((file) => ({ file, kind: "image" })), ...plans.map((file) => ({ file, kind: "floorplan" })), ...videos.map((file) => ({ file, kind: "video" }))];
         for (let i = 0; i < files.length; i++) {
           setProgress(`Uploading ${i + 1} of ${files.length}...`);
           const fd = new FormData(); fd.append("file", files[i]!.file); fd.append("kind", files[i]!.kind);
@@ -118,10 +120,17 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
               <h2 className="text-xl font-semibold">{mode === "create" ? "Add listing" : "Edit listing"}</h2>
               <p className="muted text-sm">{mode === "create" ? "Everything here can be changed later. A listing starts as a draft; add the permit and licence on its page, then publish." : "Price changes are kept in the price history."}</p>
             </header>
+            {mode === "create" && (
+              <nav className="flex gap-1 overflow-x-auto border-b px-4 pt-2" style={{ borderColor: "var(--border)", background: "var(--card)" }} role="tablist" aria-label="Listing sections">
+                {([["property", "Property"], ["details", "Details"], ["terms", "Terms"], ["arabic", "Arabic"], ["amenities", "Amenities"], ["media", "Media"]] as const).filter(([k]) => k !== "amenities" || amenities.length > 0).map(([k, label]) => (
+                  <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className="whitespace-nowrap rounded-t-lg px-4 py-2 text-sm font-medium" style={{ borderBottom: tab === k ? "2px solid var(--accent)" : "2px solid transparent", color: tab === k ? "var(--accent)" : "var(--muted)" }}>{label}</button>
+                ))}
+              </nav>
+            )}
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
               {mode === "create" && (
-                <section className="card flex flex-col gap-4 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">1. Property</h3>
+                <section hidden={tab !== "property"} className="card flex flex-col gap-4 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Property</h3>
                     {units.length > 0 && <div className="inline-flex rounded-lg border p-0.5 text-sm" style={{ borderColor: "var(--border)" }}><button type="button" className={`rounded-md px-3 py-1 ${src === "new" ? "btn" : ""}`} onClick={() => setSrc("new")}>New property</button><button type="button" className={`rounded-md px-3 py-1 ${src === "existing" ? "btn" : ""}`} onClick={() => setSrc("existing")}>Existing unit</button></div>}
                   </div>
                   {src === "existing" ? (
@@ -173,8 +182,8 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
                   )}
                 </section>
               )}
-              <section className="card grid gap-4 p-4 sm:grid-cols-2">
-                <h3 className="font-semibold sm:col-span-2">{mode === "create" ? "2. Details" : "Details"}</h3>
+              <section hidden={tab !== "details"} className="card grid gap-4 p-4 sm:grid-cols-2">
+                <h3 className="font-semibold sm:col-span-2">Details</h3>
                 {mode === "create" && <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Purpose</span><Select className="input" value={f.purpose} onChange={set("purpose")}><option value="sale">For sale</option><option value="rent">For rent</option></Select></label>}
                 <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Price {unit ? `(${unit.currency})` : "(AED)"}</span><input className="input" type="number" min="1" step="any" value={f.price} onChange={set("price")} placeholder={unit?.listPrice ? `Unit list price ${unit.listPrice.toLocaleString("en-US")}` : ""} />{mode === "create" && src === "new" && <span className="muted text-xs">{pps ? `AED ${pps.toLocaleString("en-US")} per sqft${f.purpose === "rent" ? " per year" : ""}` : "Price per sqft is worked out from the price and the BUA"}</span>}</label>
                 <label className="flex flex-col gap-1.5 text-sm sm:col-span-2"><span className={cap}>Title (shown on portals)</span><input className="input" maxLength={255} value={f.title} onChange={set("title")} placeholder="Marina view 2BR, Tower A" /><span className="muted text-xs">{f.title.length}/255</span></label>
@@ -190,8 +199,8 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
               </section>
               {mode === "create" && (
                 <>
-                  <section className="card grid gap-4 p-4 sm:grid-cols-2">
-                    <h3 className="font-semibold sm:col-span-2">3. Terms and ownership</h3>
+                  <section hidden={tab !== "terms"} className="card grid gap-4 p-4 sm:grid-cols-2">
+                    <h3 className="font-semibold sm:col-span-2">Terms and ownership</h3>
                     {f.purpose === "rent" && (
                       <>
                         <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Rent is paid</span><Select className="input" value={x.rentFrequency} onChange={setx("rentFrequency")}><option value="yearly">Per year</option><option value="quarterly">Per quarter</option><option value="monthly">Per month</option></Select></label>
@@ -214,16 +223,14 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
                     )}
                     <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={x.featured} onChange={setx("featured")} />Feature this listing</label>
                   </section>
-                  <section className="card grid gap-4 p-4 sm:grid-cols-2">
-                    <h3 className="font-semibold sm:col-span-2">4. Arabic copy and media links</h3>
+                  <section hidden={tab !== "arabic"} className="card grid gap-4 p-4 sm:grid-cols-2">
+                    <h3 className="font-semibold sm:col-span-2">Arabic copy</h3>
                     <label className="flex flex-col gap-1.5 text-sm sm:col-span-2"><span className={cap}>Title in Arabic</span><input className="input" dir="rtl" maxLength={255} value={x.titleAr} onChange={setx("titleAr")} /></label>
                     <label className="flex flex-col gap-1.5 text-sm sm:col-span-2"><span className={cap}>Description in Arabic</span><textarea className="input min-h-24" dir="rtl" maxLength={10000} value={x.descriptionAr} onChange={setx("descriptionAr")} /></label>
-                    <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Video link</span><input className="input" type="url" maxLength={300} value={x.videoUrl} onChange={setx("videoUrl")} placeholder="https://youtube.com/..." /></label>
-                    <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Virtual tour link</span><input className="input" type="url" maxLength={300} value={x.virtualTourUrl} onChange={setx("virtualTourUrl")} /></label>
                   </section>
                   {amenities.length > 0 && (
-                    <section className="card p-4">
-                      <h3 className="mb-3 font-semibold">5. Features and amenities <span className="muted text-xs font-normal">({features.size} selected)</span></h3>
+                    <section hidden={tab !== "amenities"} className="card p-4">
+                      <h3 className="mb-3 font-semibold">Features and amenities <span className="muted text-xs font-normal">({features.size} selected)</span></h3>
                       {groups.map((g) => (
                         <fieldset key={g.key} className="mb-3"><legend className="muted mb-1 text-xs font-medium">{g.label}</legend>
                           <div className="flex flex-wrap gap-2">{amenities.filter((a) => a.group === g.key).map((a) => <label key={a.code} className={`cursor-pointer rounded-full border px-3 py-1 text-xs ${features.has(a.code) ? "btn" : ""}`} style={{ borderColor: "var(--border)" }}><input type="checkbox" className="sr-only" checked={features.has(a.code)} onChange={() => toggleFeature(a.code)} />{a.label}</label>)}</div>
@@ -231,17 +238,21 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
                       ))}
                     </section>
                   )}
-                  <section className="card grid gap-4 p-4 sm:grid-cols-2">
-                    <h3 className="font-semibold sm:col-span-2">6. Photos and floor plans</h3>
+                  <section hidden={tab !== "media"} className="card grid gap-4 p-4 sm:grid-cols-2">
+                    <h3 className="font-semibold sm:col-span-2">Photos, video and 360 view</h3>
+                    <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>YouTube or video link</span><input className="input" type="url" placeholder="https://www.youtube.com/watch?v=..." maxLength={300} value={x.videoUrl} onChange={setx("videoUrl")} /></label>
+                    <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>360 view link (Matterport, Kuula, etc.)</span><input className="input" type="url" placeholder="https://my.matterport.com/show/?m=..." maxLength={300} value={x.virtualTourUrl} onChange={setx("virtualTourUrl")} /></label>
+
                     <Dropzone label="Photos (JPEG, PNG or WEBP; the first is the cover)" multiple accept="image/jpeg,image/png,image/webp" files={photos} onFiles={(f) => setPhotos(f)} hint="Optional now, can be added later" />
                     <Dropzone label="Floor plans" multiple accept="image/jpeg,image/png,image/webp" files={plans} onFiles={(f) => setPlans(f)} hint="Optional" />
+                    <div className="sm:col-span-2"><Dropzone label="Video file (MP4, MOV or WEBM)" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" files={videos} onFiles={(f) => setVideos(f)} hint="Optional. Large videos are better shared as a YouTube link above." /></div>
                   </section>
                 </>
               )}
             </div>
             <footer className="flex items-center justify-between gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
               <p role="alert" className="err min-w-0 flex-1 text-sm">{msg}</p>
-              <div className="flex gap-2"><button type="button" className="btn-ghost" onClick={() => setOpen(false)}>Cancel</button><button className="btn" disabled={busy}>{busy ? (progress ?? "Saving...") : mode === "create" ? "Create and open" : "Save"}</button></div>
+              <div className="flex gap-2"><button type="button" className="btn-ghost" onClick={() => setOpen(false)}>Cancel</button>{mode === "create" && tab !== "media" && <button type="button" className="btn-ghost" onClick={() => { const order = (["property", "details", "terms", "arabic", "amenities", "media"] as const).filter((k) => k !== "amenities" || amenities.length > 0); setTab(order[Math.min(order.indexOf(tab) + 1, order.length - 1)]!); }}>Next</button>}<button className="btn" disabled={busy}>{busy ? (progress ?? "Saving...") : mode === "create" ? "Create and open" : "Save"}</button></div>
             </footer>
           </form>
         </div>

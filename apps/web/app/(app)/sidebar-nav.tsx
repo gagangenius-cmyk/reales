@@ -30,9 +30,9 @@ export function SidebarNav({ groups }: { groups: NavGroup[] }) {
               const active = path === n.href || path.startsWith(n.href + "/");
               return (
                 <li key={n.href}>
-                  <Link href={n.href} className="nav-link" aria-current={active ? "page" : undefined}>
+                  <Link href={n.href} className="nav-link" title={n.label} aria-label={n.label} aria-current={active ? "page" : undefined}>
                     <Icon size={17} aria-hidden strokeWidth={1.8} />
-                    <span>{n.label}</span>
+                    <span className="nav-label">{n.label}</span>
                     {n.count ? <span className="nav-count">{n.count}</span> : null}
                   </Link>
                 </li>
