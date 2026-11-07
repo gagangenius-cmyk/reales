@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AuthError, resolveRequestContext } from "@reales/auth";
@@ -5,7 +6,7 @@ import { getSequelize, RequestContext } from "@reales/database";
 import { SESSION_COOKIE } from "./api";
 
 /** For server components: resolve the tenant context from the session cookie or redirect to the right auth step. */
-export async function requireContext(): Promise<RequestContext> {
+async function resolveContext(): Promise<RequestContext> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const h = await headers();
   try {
@@ -23,3 +24,6 @@ export async function requireContext(): Promise<RequestContext> {
     throw e;
   }
 }
+
+/** One resolution per request: the layout and the page both call this, and React shares the first result instead of repeating the session and permission queries. */
+export const requireContext: () => Promise<RequestContext> = cache(resolveContext);

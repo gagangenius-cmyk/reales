@@ -20,9 +20,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const lang = await getLang();
   // Owner/tenant portal accounts have no CRM access: send them to their own page.
   if (ctx.grants.length > 0 && ctx.grants.every((g) => g.permission === "portal.access")) redirect("/portal");
-  const [t] = await getSequelize().query<{ name: string; jurisdiction: string }>("SELECT name, jurisdiction FROM tenants WHERE id=:t", { replacements: { t: ctx.tenantId }, type: QueryTypes.SELECT });
-  const unread = await countMyUnread(getSequelize(), ctx).catch(() => 0);
-  const states = await moduleStates(getSequelize(), ctx.tenantId).catch(() => ({}) as Record<string, boolean>);
+  // Independent reads run together instead of one after another.
+  const [[t], unread, states] = await Promise.all([
+    getSequelize().query<{ name: string; jurisdiction: string }>("SELECT name, jurisdiction FROM tenants WHERE id=:t", { replacements: { t: ctx.tenantId }, type: QueryTypes.SELECT }),
+    countMyUnread(getSequelize(), ctx).catch(() => 0),
+    moduleStates(getSequelize(), ctx.tenantId).catch(() => ({}) as Record<string, boolean>),
+  ]);
   const modOn = (href: string) => { const m = moduleForPage(href); return !m || states[m] !== false; };
   const here = (await headers()).get("x-pathname") ?? "";
   const hereModule = moduleForPage(here);

@@ -33,6 +33,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  // Import only the components a page uses from these large libraries (smaller client bundles).
+  experimental: { optimizePackageImports: ["antd", "react-select", "lucide-react", "react-dropzone"] },
   outputFileTracingRoot: path.join(__dirname, "../../"),
   transpilePackages: ["@reales/database", "@reales/domain", "@reales/auth", "@reales/rbac", "@reales/events", "@reales/observability", "@reales/validation"],
   // Files that are loaded dynamically (native argon2 binary, driver internals) are invisible to static tracing: include them explicitly.
