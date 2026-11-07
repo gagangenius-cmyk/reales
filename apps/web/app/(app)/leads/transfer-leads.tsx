@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -32,9 +33,9 @@ export function TransferLeads({ users }: { users: { id: string; email: string }[
   return (
     <form className="card grid gap-3 p-4 text-sm sm:grid-cols-4" onSubmit={(e) => { e.preventDefault(); void (count === null ? preview() : run()); }}>
       <h2 className="font-semibold sm:col-span-4">Transfer leads between people</h2>
-      <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">From</span><select className="input" required value={v.fromUserId} onChange={(e) => { setV({ ...v, fromUserId: e.target.value }); setCount(null); }}><option value="">Choose...</option>{users.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}</select></label>
-      <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">To</span><select className="input" required value={v.toUserId} onChange={(e) => { setV({ ...v, toUserId: e.target.value }); setCount(null); }}><option value="">Choose...</option>{users.filter((u) => u.id !== v.fromUserId).map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}</select></label>
-      <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">Which leads</span><select className="input" value={v.scope} onChange={(e) => { setV({ ...v, scope: e.target.value }); setCount(null); }}><option value="open">Open leads</option><option value="hot">Hot open leads</option><option value="all">All leads, including won and lost</option></select></label>
+      <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">From</span><Select className="input" required value={v.fromUserId} onChange={(e) => { setV({ ...v, fromUserId: e.target.value }); setCount(null); }}><option value="">Choose...</option>{users.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}</Select></label>
+      <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">To</span><Select className="input" required value={v.toUserId} onChange={(e) => { setV({ ...v, toUserId: e.target.value }); setCount(null); }}><option value="">Choose...</option>{users.filter((u) => u.id !== v.fromUserId).map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}</Select></label>
+      <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">Which leads</span><Select className="input" value={v.scope} onChange={(e) => { setV({ ...v, scope: e.target.value }); setCount(null); }}><option value="open">Open leads</option><option value="hot">Hot open leads</option><option value="all">All leads, including won and lost</option></Select></label>
       <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">Reason</span><input className="input" value={v.reason} onChange={(e) => setV({ ...v, reason: e.target.value })} placeholder="Agent left the company" /></label>
       <div className="flex flex-wrap items-center gap-3 sm:col-span-4">
         <button className="btn" disabled={busy || !v.fromUserId || !v.toUserId}>{busy ? "Working..." : count === null ? "Check how many will move" : `Transfer ${count} lead${count === 1 ? "" : "s"}`}</button>

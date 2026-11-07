@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { Lbl, useAction } from "@/components/hr-ui";
 
 interface Sal { id: string; effectiveFrom: string; currency: string; basic: number; housing: number; transport: number; otherAllowance: number; gross: number; paymentMethod: string; iban: string | null; reason: string | null; current: boolean; components: { name: string; type: string; amount: number }[] }
@@ -31,7 +32,7 @@ export function SalaryPanel({ employeeId, history, canEdit }: { employeeId: stri
           <Lbl label="Housing"><input className="input" type="number" min="0" step="any" value={v.housing} onChange={(e) => setV({ ...v, housing: e.target.value })} /></Lbl>
           <Lbl label="Transport"><input className="input" type="number" min="0" step="any" value={v.transport} onChange={(e) => setV({ ...v, transport: e.target.value })} /></Lbl>
           <Lbl label="Other allowances"><input className="input" type="number" min="0" step="any" value={v.other} onChange={(e) => setV({ ...v, other: e.target.value })} /></Lbl>
-          <Lbl label="Paid by"><select className="input" value={v.paymentMethod} onChange={(e) => setV({ ...v, paymentMethod: e.target.value })}><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="cheque">Cheque</option></select></Lbl>
+          <Lbl label="Paid by"><Select className="input" value={v.paymentMethod} onChange={(e) => setV({ ...v, paymentMethod: e.target.value })}><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="cheque">Cheque</option></Select></Lbl>
           <Lbl label="IBAN (kept encrypted)"><input className="input" value={v.iban} onChange={(e) => setV({ ...v, iban: e.target.value })} placeholder="Leave blank to keep the current one" /></Lbl>
           <Lbl label="Reason for change"><input className="input" value={v.reason} onChange={(e) => setV({ ...v, reason: e.target.value })} placeholder="Annual review" /></Lbl>
           <div className="flex items-center gap-3 sm:col-span-4"><span className="text-sm">Gross: <b>{gross.toLocaleString("en-US")}</b></span><button className="btn" disabled={busy}>Save</button></div>
@@ -53,7 +54,7 @@ export function BalanceAdjust({ employeeId, types }: { employeeId: string; types
   if (!types.length) return null;
   return (
     <form className="mt-3 flex flex-wrap items-end gap-2 border-t pt-3 text-sm" style={{ borderColor: "var(--border)" }} onSubmit={(e) => { e.preventDefault(); void run(() => post(`/api/v1/hr/employees/${employeeId}/leave-balances`, { leaveTypeId: v.leaveTypeId, year: new Date().getFullYear(), adjusted: Number(v.delta), note: v.note }), "Balance adjusted."); }}>
-      <Lbl label="Adjust balance"><select className="input" value={v.leaveTypeId} onChange={(e) => setV({ ...v, leaveTypeId: e.target.value })}>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Lbl>
+      <Lbl label="Adjust balance"><Select className="input" value={v.leaveTypeId} onChange={(e) => setV({ ...v, leaveTypeId: e.target.value })}>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select></Lbl>
       <Lbl label="Days (+/-)"><input className="input w-24" type="number" step="0.5" required value={v.delta} onChange={(e) => setV({ ...v, delta: e.target.value })} /></Lbl>
       <Lbl label="Reason"><input className="input" required value={v.note} onChange={(e) => setV({ ...v, note: e.target.value })} /></Lbl>
       <button className="btn-ghost" disabled={busy || !v.delta || !v.note.trim()}>Apply</button><Msg />
@@ -72,7 +73,7 @@ export function EncashPanel({ employeeId, types, items, currency }: { employeeId
       <h2 className="mb-2 font-semibold">Leave encashment</h2>
       {types.length === 0 ? <p className="muted text-sm">No leave type is marked as encashable. Turn it on under HR setup.</p> : (
         <form className="flex flex-wrap items-end gap-2 text-sm" onSubmit={(e) => { e.preventDefault(); void run(() => post(`/api/v1/hr/employees/${employeeId}/encash`, { leaveTypeId: v.leaveTypeId, days: Number(v.days), ...(v.reason.trim() ? { reason: v.reason.trim() } : {}) }), "Encashment recorded. It will be paid in the next payroll."); }}>
-          <Lbl label="Leave type"><select className="input" value={v.leaveTypeId} onChange={(e) => setV({ ...v, leaveTypeId: e.target.value })}>{types.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.available ?? "unlimited"} left)</option>)}</select></Lbl>
+          <Lbl label="Leave type"><Select className="input" value={v.leaveTypeId} onChange={(e) => setV({ ...v, leaveTypeId: e.target.value })}>{types.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.available ?? "unlimited"} left)</option>)}</Select></Lbl>
           <Lbl label="Days"><input className="input w-24" type="number" min="0.5" step="0.5" max={chosen?.available ?? undefined} required value={v.days} onChange={(e) => setV({ ...v, days: e.target.value })} /></Lbl>
           <Lbl label="Reason"><input className="input" value={v.reason} onChange={(e) => setV({ ...v, reason: e.target.value })} placeholder="Final settlement" /></Lbl><button className="btn-ghost" disabled={busy || !v.days}>Encash</button>
         </form>

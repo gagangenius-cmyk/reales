@@ -1,6 +1,7 @@
 "use client";
 
 import "@xyflow/react/dist/style.css";
+import { Select } from "@/components/select";
 import { useCallback, useMemo, useState } from "react";
 import { addEdge, Background, Controls, Handle, Position, ReactFlow, useEdgesState, useNodesState, type Connection, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import { errMsg, postJson } from "@/lib/client";
@@ -137,9 +138,9 @@ export function WorkflowEditor({ id, initial, status }: { id: string; initial: G
       <aside className="flex flex-col gap-3">
         <div className="card p-3">
           <h2 className="mb-2 text-sm font-semibold">Trigger</h2>
-          <select className="input" value={triggerNode ? (triggerNode.data as any).type.replace("trigger.", "") : ""} onChange={(e) => changeTrigger(e.target.value)} aria-label="Trigger event">
+          <Select className="input" value={triggerNode ? (triggerNode.data as any).type.replace("trigger.", "") : ""} onChange={(e) => changeTrigger(e.target.value)} aria-label="Trigger event">
             {TRIGGERS.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          </Select>
           <h2 className="mb-2 mt-3 text-sm font-semibold">Add step</h2>
           <div className="flex flex-wrap gap-2">{Object.entries(DEFS).map(([t, d]) => <button key={t} className="btn-ghost text-xs" onClick={() => add(t)}>{d.label}</button>)}</div>
         </div>
@@ -149,7 +150,7 @@ export function WorkflowEditor({ id, initial, status }: { id: string; initial: G
             {def?.fields.map((f) => (
               <label key={f.key} className="mb-2 block text-xs">{f.label}
                 {f.kind === "select"
-                  ? <select className="input mt-1" value={String((selected.data as any).config?.[f.key] ?? "")} onChange={(e) => setConfig(f.key, e.target.value, f.kind)}>{f.options!.map((o) => <option key={o}>{o}</option>)}</select>
+                  ? <Select className="input mt-1" value={String((selected.data as any).config?.[f.key] ?? "")} onChange={(e) => setConfig(f.key, e.target.value, f.kind)}>{f.options!.map((o) => <option key={o}>{o}</option>)}</Select>
                   : <input className="input mt-1" type={f.kind === "number" ? "number" : "text"} placeholder={f.placeholder} value={String((selected.data as any).config?.[f.key] ?? "")} onChange={(e) => setConfig(f.key, e.target.value, f.kind)} />}
               </label>
             ))}

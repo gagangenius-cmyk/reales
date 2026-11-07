@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { Lbl, useAction } from "@/components/hr-ui";
 
 export interface EmpValues {
@@ -40,17 +41,17 @@ export function EmployeeForm({ id, initial, shifts, users, managers }: { id?: st
                 <Lbl label="Department"><input className="input" value={v.department} onChange={set("department")} /></Lbl>
                 <Lbl label="Joining date"><input className="input" type="date" required value={v.joinedOn} onChange={set("joinedOn")} /></Lbl>
                 <Lbl label="Probation ends"><input className="input" type="date" value={v.probationEndsOn} onChange={set("probationEndsOn")} /></Lbl>
-                <Lbl label="Employment type"><select className="input" value={v.employmentType} onChange={set("employmentType")}><option value="full_time">Full time</option><option value="part_time">Part time</option><option value="contract">Contract</option><option value="intern">Intern</option></select></Lbl>
-                <Lbl label="Shift"><select className="input" value={v.shiftId} onChange={set("shiftId")}><option value="">Default shift</option>{shifts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Lbl>
-                <Lbl label="Reports to"><select className="input" value={v.managerEmployeeId} onChange={set("managerEmployeeId")}><option value="">Nobody</option>{managers.filter((m) => m.id !== id).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select></Lbl>
+                <Lbl label="Employment type"><Select className="input" value={v.employmentType} onChange={set("employmentType")}><option value="full_time">Full time</option><option value="part_time">Part time</option><option value="contract">Contract</option><option value="intern">Intern</option></Select></Lbl>
+                <Lbl label="Shift"><Select className="input" value={v.shiftId} onChange={set("shiftId")}><option value="">Default shift</option>{shifts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Lbl>
+                <Lbl label="Reports to"><Select className="input" value={v.managerEmployeeId} onChange={set("managerEmployeeId")}><option value="">Nobody</option>{managers.filter((m) => m.id !== id).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></Lbl>
                 <Lbl label="Work location"><input className="input" value={v.workLocation} onChange={set("workLocation")} /></Lbl>
-                <Lbl label="CRM login (so they can check in)" wide><select className="input" value={v.userId} onChange={set("userId")}><option value="">Not linked</option>{users.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}</select></Lbl>
+                <Lbl label="CRM login (so they can check in)" wide><Select className="input" value={v.userId} onChange={set("userId")}><option value="">Not linked</option>{users.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}</Select></Lbl>
               </section>
               <section className="card grid gap-4 p-4 sm:grid-cols-2"><h3 className="font-semibold sm:col-span-2">Personal and documents</h3>
                 <Lbl label="E-mail"><input className="input" type="email" value={v.email} onChange={set("email")} /></Lbl>
                 <Lbl label="Phone"><input className="input" value={v.phone} onChange={set("phone")} /></Lbl>
                 <Lbl label="Date of birth"><input className="input" type="date" value={v.dateOfBirth} onChange={set("dateOfBirth")} /></Lbl>
-                <Lbl label="Gender"><select className="input" value={v.gender} onChange={set("gender")}><option value="">Not stated</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></Lbl>
+                <Lbl label="Gender"><Select className="input" value={v.gender} onChange={set("gender")}><option value="">Not stated</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></Select></Lbl>
                 <Lbl label="Nationality"><input className="input" value={v.nationality} onChange={set("nationality")} /></Lbl>
                 <Lbl label="Labour card no."><input className="input" value={v.labourCardNo} onChange={set("labourCardNo")} /></Lbl>
                 <Lbl label="Passport expires"><input className="input" type="date" value={v.passportExpiresOn} onChange={set("passportExpiresOn")} /></Lbl>
@@ -60,7 +61,7 @@ export function EmployeeForm({ id, initial, shifts, users, managers }: { id?: st
               </section>
               {id && (
                 <section className="card grid gap-4 p-4 sm:grid-cols-2"><h3 className="font-semibold sm:col-span-2">Status</h3>
-                  <Lbl label="Employment status"><select className="input" value={v.status} onChange={set("status")}><option value="active">Active</option><option value="on_notice">On notice</option><option value="exited">Exited</option></select></Lbl>
+                  <Lbl label="Employment status"><Select className="input" value={v.status} onChange={set("status")}><option value="active">Active</option><option value="on_notice">On notice</option><option value="exited">Exited</option></Select></Lbl>
                   <Lbl label="Last working day"><input className="input" type="date" value={v.exitOn} onChange={set("exitOn")} /></Lbl>
                   <Lbl label="Reason for leaving" wide><input className="input" maxLength={300} value={v.exitReason} onChange={set("exitReason")} /></Lbl>
                 </section>

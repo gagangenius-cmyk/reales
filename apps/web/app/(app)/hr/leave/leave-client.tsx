@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { dayDubai, Lbl, useAction } from "@/components/hr-ui";
 
 interface Bal { leaveTypeId: string; code: string; name: string; color: string | null; unlimited: boolean; entitled: number; carried: number; adjusted: number; taken: number; pending: number; available: number | null }
@@ -31,10 +32,10 @@ export function LeaveClient({ linked, balances, types, mine, approvals, calendar
           </div>
           <form onSubmit={submit} className="card grid gap-3 p-4 sm:grid-cols-4">
             <h2 className="font-semibold sm:col-span-4">Request leave</h2>
-            <Lbl label="Type"><select className="input" value={f.leaveTypeId} onChange={(e) => setF({ ...f, leaveTypeId: e.target.value })}>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Lbl>
+            <Lbl label="Type"><Select className="input" value={f.leaveTypeId} onChange={(e) => setF({ ...f, leaveTypeId: e.target.value })}>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select></Lbl>
             <Lbl label="From"><input className="input" type="date" required value={f.fromDate} onChange={(e) => setF({ ...f, fromDate: e.target.value, toDate: f.toDate || e.target.value })} /></Lbl>
             <Lbl label="To"><input className="input" type="date" required min={f.fromDate} value={f.toDate} onChange={(e) => setF({ ...f, toDate: e.target.value })} /></Lbl>
-            <Lbl label="Half day"><select className="input" value={f.halfDay} onChange={(e) => setF({ ...f, halfDay: e.target.value })}><option value="none">No</option><option value="first">First half</option><option value="second">Second half</option></select></Lbl>
+            <Lbl label="Half day"><Select className="input" value={f.halfDay} onChange={(e) => setF({ ...f, halfDay: e.target.value })}><option value="none">No</option><option value="first">First half</option><option value="second">Second half</option></Select></Lbl>
             <Lbl label="Reason" wide><input className="input" maxLength={500} value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} /></Lbl>
             <div className="sm:col-span-2 flex items-end"><button className="btn" disabled={busy || !f.leaveTypeId}>Send request</button></div>
           </form>

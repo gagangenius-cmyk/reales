@@ -1,4 +1,5 @@
 import { getSequelize } from "@reales/database";
+import { Select } from "@/components/select";
 import { listCases, listContacts, listDsr, listKycProfiles } from "@reales/domain";
 import Link from "next/link";
 import { hasPermission } from "@reales/rbac";
@@ -31,7 +32,7 @@ export default async function Compliance() {
       <p className="muted text-sm">Screening here uses a mock provider and illustrative risk weights; both need compliance-function review before production use.</p>
       {kycOk && hasPermission(ctx, "kyc.manage") && contacts.length > 0 && (
         <div className="card flex flex-wrap items-end gap-3 p-4">
-          <label className="grow text-sm">Open or start a KYC profile for<select className="input mt-1 w-full" id="kyc-contact">{contacts.map((c) => <option key={c.id} value={c.id}>{[c.firstName, c.lastName].filter(Boolean).join(" ") || c.companyName || c.email || c.id}</option>)}</select></label>
+          <label className="grow text-sm">Open or start a KYC profile for<Select className="input mt-1 w-full" id="kyc-contact">{contacts.map((c) => <option key={c.id} value={c.id}>{[c.firstName, c.lastName].filter(Boolean).join(" ") || c.companyName || c.email || c.id}</option>)}</Select></label>
           <KycJump />
         </div>
       )}

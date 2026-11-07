@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { useStepUp } from "@/components/step-up";
 import { errMsg, postJson } from "@/lib/client";
@@ -102,7 +103,7 @@ export function BatchActions({ batch, can, items }: Props) {
           return act({ action: "evidence", kind: v.kind, description: v.text });
         }}>
           {ask.action === "schedule" && <label className={lab}><span className={cap}>Release date (Dubai)</span><input className="input" type="date" required value={v.date} onChange={(e) => setV({ ...v, date: e.target.value })} /></label>}
-          {ask.action === "evidence" && <label className={lab}><span className={cap}>Type</span><select className="input" value={v.kind} onChange={(e) => setV({ ...v, kind: e.target.value })}>{["bank_statement", "invoice", "contract", "email", "other"].map((k) => <option key={k} value={k}>{k.replace("_", " ")}</option>)}</select></label>}
+          {ask.action === "evidence" && <label className={lab}><span className={cap}>Type</span><Select className="input" value={v.kind} onChange={(e) => setV({ ...v, kind: e.target.value })}>{["bank_statement", "invoice", "contract", "email", "other"].map((k) => <option key={k} value={k}>{k.replace("_", " ")}</option>)}</Select></label>}
           {ask.action !== "schedule" && <label className={lab}><span className={cap}>{{ release: "Bank payment reference", reverse: "Why is the release being reversed?", reject: "Reason", cancel: "Reason", flag: "What is wrong?", evidence: "Describe the evidence" }[ask.action]}</span><input className="input w-80" required value={v.text} onChange={(e) => setV({ ...v, text: e.target.value })} maxLength={ask.action === "evidence" ? 300 : 255} /></label>}
           <button className="btn">Confirm</button><button type="button" className="btn-ghost" onClick={() => setAsk(null)}>Cancel</button>
         </form>)}

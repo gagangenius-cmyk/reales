@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -23,9 +24,9 @@ export function NewProjectForm() {
     <form onSubmit={submit} className="card mt-4 grid gap-3 p-4 md:grid-cols-5">
       <input className="input" placeholder="Code" value={code} onChange={(e) => setCode(e.target.value)} required aria-label="Code" />
       <input className="input md:col-span-2" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required aria-label="Name" />
-      <select className="input" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Kind">
+      <Select className="input" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Kind">
         <option value="project">Project</option><option value="portfolio">Portfolio</option><option value="workspace">Workspace</option>
-      </select>
+      </Select>
       <button className="btn">Add</button>
       {error && <p role="alert" className="err text-sm md:col-span-5">{error}</p>}
     </form>

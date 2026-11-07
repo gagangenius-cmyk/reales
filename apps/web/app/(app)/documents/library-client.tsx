@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
+import { Dropzone } from "@/components/dropzone";
 
 interface Folder { id: string; name: string; description: string | null; restricted: boolean; defaultExpiryDays: number | null; retentionDays: number | null; allowedKinds: string[] | null; requiresLink: boolean; documents: number }
 interface Doc { id: string; title: string; kind: string; folderId: string | null; folderName: string | null; expiresOn: string | null; retainUntil: string | null; createdAt: string }
@@ -58,16 +60,16 @@ export function LibraryClient({ folders, docs, canManage, folder, q, expiring }:
         )}
         {canManage && (
           <form onSubmit={upload} className="card flex flex-wrap items-end gap-3 p-3 text-sm">
-            <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">File</span><input type="file" required onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+            <Dropzone label="File" required files={file ? [file] : []} onFiles={(f) => setFile(f[0] ?? null)} />
             <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">Title</span><input className="input" value={up.title} onChange={(e) => setUp({ ...up, title: e.target.value })} /></label>
-            <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">Kind</span><select className="input" value={up.kind} onChange={(e) => setUp({ ...up, kind: e.target.value })}>{KINDS.map((k) => <option key={k} value={k}>{k.replace("_", " ")}</option>)}</select></label>
-            <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">Folder</span><select className="input" value={up.folderId} onChange={(e) => setUp({ ...up, folderId: e.target.value })}><option value="">No folder</option>{folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
+            <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">Kind</span><Select className="input" value={up.kind} onChange={(e) => setUp({ ...up, kind: e.target.value })}>{KINDS.map((k) => <option key={k} value={k}>{k.replace("_", " ")}</option>)}</Select></label>
+            <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">Folder</span><Select className="input" value={up.folderId} onChange={(e) => setUp({ ...up, folderId: e.target.value })}><option value="">No folder</option>{folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</Select></label>
             <button className="btn" disabled={busy || !file}>Upload</button>
           </form>
         )}
         <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); go({ q: search }); }}>
           <input className="input w-64" type="search" placeholder="Search by title" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search documents" />
-          <select className="input w-auto" value={expiring ?? ""} onChange={(e) => go({ expiring: e.target.value })} aria-label="Expiry filter"><option value="">Any expiry</option><option value="30">Expiring within 30 days</option><option value="0">Already expired</option></select>
+          <Select className="input w-auto" value={expiring ?? ""} onChange={(e) => go({ expiring: e.target.value })} aria-label="Expiry filter"><option value="">Any expiry</option><option value="30">Expiring within 30 days</option><option value="0">Already expired</option></Select>
           <button className="btn-ghost">Search</button>
         </form>
         <div className="card overflow-x-auto" data-server-table>
@@ -76,7 +78,7 @@ export function LibraryClient({ folders, docs, canManage, folder, q, expiring }:
               {docs.map((d) => (
                 <tr key={d.id}><td className="font-medium"><a href={`/api/v1/documents/${d.id}/download`}>{d.title}</a><div className="muted text-xs font-normal">{d.createdAt.slice(0, 10)}</div></td><td>{d.kind.replace("_", " ")}</td><td>{d.folderName ?? "-"}</td>
                   <td className={d.expiresOn && d.expiresOn.slice(0, 10) < today() ? "err" : ""}>{d.expiresOn ? d.expiresOn.slice(0, 10) : "-"}</td><td>{d.retainUntil ? d.retainUntil.slice(0, 10) : "-"}</td>
-                  <td className="text-right">{canManage && <select className="input w-auto py-1 text-xs" value={d.folderId ?? ""} aria-label={`Move ${d.title}`} onChange={(e) => run(postJson(`/api/v1/documents/${d.id}/move`, { folderId: e.target.value || null }), "Moved.")}><option value="">No folder</option>{folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select>}</td></tr>
+                  <td className="text-right">{canManage && <Select className="input w-auto py-1 text-xs" value={d.folderId ?? ""} aria-label={`Move ${d.title}`} onChange={(e) => run(postJson(`/api/v1/documents/${d.id}/move`, { folderId: e.target.value || null }), "Moved.")}><option value="">No folder</option>{folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</Select>}</td></tr>
               ))}
               {docs.length === 0 && <tr><td colSpan={6} className="muted">No documents.</td></tr>}
             </tbody>

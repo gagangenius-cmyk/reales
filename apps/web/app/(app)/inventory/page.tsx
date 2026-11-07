@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Select } from "@/components/select";
 import { getSequelize } from "@reales/database";
 import { listInventoryTree, listUnits } from "@reales/domain";
 import { can, hasPermission } from "@reales/rbac";
@@ -45,10 +46,10 @@ export default async function Inventory({ searchParams }: { searchParams: Promis
       </div>
       <form className="card flex flex-wrap items-end gap-3 p-3" action="/inventory">
         <label className="grow text-sm"><span className="muted text-xs font-medium">Search</span><input className="input mt-1" name="q" defaultValue={sp.q ?? ""} placeholder="Unit, building, community or view" /></label>
-        <label className="text-sm"><span className="muted text-xs font-medium">Status</span><select className="input mt-1" name="status" defaultValue={status ?? ""}><option value="">All</option>{STATUSES.map((s) => <option key={s}>{s}</option>)}</select></label>
-        <label className="text-sm"><span className="muted text-xs font-medium">Type</span><select className="input mt-1" name="type" defaultValue={type ?? ""}><option value="">All</option>{["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land"].map((t) => <option key={t}>{t}</option>)}</select></label>
+        <label className="text-sm"><span className="muted text-xs font-medium">Status</span><Select className="input mt-1" name="status" defaultValue={status ?? ""}><option value="">All</option>{STATUSES.map((s) => <option key={s}>{s}</option>)}</Select></label>
+        <label className="text-sm"><span className="muted text-xs font-medium">Type</span><Select className="input mt-1" name="type" defaultValue={type ?? ""}><option value="">All</option>{["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land"].map((t) => <option key={t}>{t}</option>)}</Select></label>
         <label className="text-sm"><span className="muted text-xs font-medium">Bedrooms</span><input className="input mt-1 w-24" name="beds" type="number" min="0" defaultValue={sp.beds ?? ""} /></label>
-        <label className="text-sm"><span className="muted text-xs font-medium">Project</span><select className="input mt-1" name="project" defaultValue={sp.project ?? ""}><option value="">All</option>{tree.projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+        <label className="text-sm"><span className="muted text-xs font-medium">Project</span><Select className="input mt-1" name="project" defaultValue={sp.project ?? ""}><option value="">All</option>{tree.projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></label>
         <button className="btn">Filter</button>{(sp.q || status || type || sp.beds || sp.project) && <Link className="btn-ghost" href="/inventory">Clear</Link>}
       </form>
       <div className="card overflow-x-auto">

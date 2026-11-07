@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -30,7 +31,7 @@ export function SearchForm() {
   return (
     <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-4">
       <label className="grow text-sm">Name<input className="input mt-1 w-full" value={f.name} onChange={set("name")} required maxLength={160} placeholder="2BR Marina under 2.5M" /></label>
-      <label className="text-sm">For<select className="input mt-1" value={f.purpose} onChange={set("purpose")}><option value="sale">Sale</option><option value="rent">Rent</option></select></label>
+      <label className="text-sm">For<Select className="input mt-1" value={f.purpose} onChange={set("purpose")}><option value="sale">Sale</option><option value="rent">Rent</option></Select></label>
       <label className="text-sm">Min price<input className="input mt-1 w-28" inputMode="numeric" value={f.minPrice} onChange={set("minPrice")} /></label>
       <label className="text-sm">Max price<input className="input mt-1 w-28" inputMode="numeric" value={f.maxPrice} onChange={set("maxPrice")} /></label>
       <label className="text-sm">Bedrooms<input className="input mt-1 w-20" inputMode="numeric" value={f.bedrooms} onChange={set("bedrooms")} /></label>

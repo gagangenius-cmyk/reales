@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -91,9 +92,9 @@ export function RoleEditor({ roles, modules, canManage }: { roles: Role[]; modul
                   {m.permissions.map((p) => (
                     <li key={p.key} className="flex items-center justify-between gap-3 border-b px-4 py-2 last:border-0" style={{ borderColor: "var(--border)" }}>
                       <span className="min-w-0 text-sm"><span className="font-medium">{p.action}</span><br /><span className="muted text-xs">{p.description}</span></span>
-                      <select className="input w-40 shrink-0 py-1 text-sm" disabled={!editable} value={draft[p.key] ?? ""} onChange={(e) => setDraft({ ...draft, [p.key]: e.target.value })} aria-label={`${p.key} scope`}>
+                      <Select className="input w-40 shrink-0 py-1 text-sm" disabled={!editable} value={draft[p.key] ?? ""} onChange={(e) => setDraft({ ...draft, [p.key]: e.target.value })} aria-label={`${p.key} scope`}>
                         {SCOPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                      </select>
+                      </Select>
                     </li>
                   ))}
                 </ul>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Select } from "@/components/select";
 import { getSequelize } from "@reales/database";
 import { getAvailability, listAssignableUsers } from "@reales/domain";
 import { can, hasPermission } from "@reales/rbac";
@@ -24,7 +25,7 @@ export default async function Availability({ searchParams }: { searchParams: Pro
         <div><h1>Availability</h1><p className="muted text-sm">Working hours and time off decide when viewings can be booked. Times are Dubai time.</p></div>
         {team.length > 1 && (
           <form action="/availability" className="flex items-center gap-2">
-            <select name="user" defaultValue={userId} className="input w-auto" aria-label="Agent">{team.map((t) => <option key={t.id} value={t.id}>{t.email}{t.id === ctx.userId ? " (me)" : ""}</option>)}</select>
+            <Select name="user" defaultValue={userId} className="input w-auto" aria-label="Agent">{team.map((t) => <option key={t.id} value={t.id}>{t.email}{t.id === ctx.userId ? " (me)" : ""}</option>)}</Select>
             <button className="btn-ghost">View</button>
           </form>
         )}

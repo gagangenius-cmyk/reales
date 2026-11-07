@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/components/select";
 import { hm, timeDubai, useAction } from "@/components/hr-ui";
 
 export interface Today { linked: boolean; employee?: { name: string }; state?: string; allowed?: boolean; checkInAt?: string | null; checkOutAt?: string | null; lateMinutes?: number; breakMinutes?: number; workedMinutes?: number; openBreak?: { kind: string; startedAt: string } | null; serverTime?: string }
@@ -39,7 +40,7 @@ export function Clock({ initial }: { initial: Today }) {
         {t.state === "not_started" && <button className="btn" disabled={busy || !t.allowed} onClick={() => run(() => post("/api/v1/hr/attendance/check-in", {}), "Checked in.")}>Check in</button>}
         {t.state === "working" && (
           <>
-            <select className="input w-auto py-1.5" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Break type"><option value="lunch">Lunch</option><option value="tea">Tea</option><option value="prayer">Prayer</option><option value="other">Other</option></select>
+            <Select className="input w-auto py-1.5" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Break type"><option value="lunch">Lunch</option><option value="tea">Tea</option><option value="prayer">Prayer</option><option value="other">Other</option></Select>
             <button className="btn-ghost" disabled={busy} onClick={() => run(() => post("/api/v1/hr/attendance/break", { kind }), "Break started.")}>Start break</button>
             <button className="btn" disabled={busy} onClick={() => run(() => post("/api/v1/hr/attendance/check-out", {}), "Checked out. See you tomorrow.")}>Check out</button>
           </>

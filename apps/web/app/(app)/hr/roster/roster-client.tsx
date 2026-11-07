@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { Lbl, useAction } from "@/components/hr-ui";
 
@@ -26,7 +27,7 @@ export function RosterClient({ rows, shifts, from, to, canManage }: { rows: Row[
           <h2 className="font-semibold sm:col-span-4">Roster the {sel.size} selected employee{sel.size === 1 ? "" : "s"}</h2>
           <Lbl label="From"><input className="input" type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></Lbl>
           <Lbl label="To"><input className="input" type="date" value={f.to} min={f.from} onChange={(e) => setF({ ...f, to: e.target.value })} /></Lbl>
-          <Lbl label="Put them on"><select className="input" value={f.mode === "off" ? "off" : f.shiftId} onChange={(e) => setF(e.target.value === "off" ? { ...f, mode: "off" } : { ...f, mode: "shift", shiftId: e.target.value })}>{shifts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}<option value="off">A day off</option></select></Lbl>
+          <Lbl label="Put them on"><Select className="input" value={f.mode === "off" ? "off" : f.shiftId} onChange={(e) => setF(e.target.value === "off" ? { ...f, mode: "off" } : { ...f, mode: "shift", shiftId: e.target.value })}>{shifts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}<option value="off">A day off</option></Select></Lbl>
           <Lbl label="Note"><input className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Swapped weekend" /></Lbl>
           <fieldset className="sm:col-span-4"><legend className="muted mb-1 text-xs font-medium">Only on these weekdays (none ticked = every day)</legend><div className="flex flex-wrap gap-3">{WEEK.map((d) => <label key={d} className="flex items-center gap-1"><input type="checkbox" checked={f.weekdays.includes(d)} onChange={(e) => setF({ ...f, weekdays: e.target.checked ? [...f.weekdays, d] : f.weekdays.filter((x) => x !== d) })} />{d}</label>)}</div></fieldset>
           <div className="flex gap-2 sm:col-span-4"><button className="btn" disabled={busy || sel.size === 0}>Save roster</button><button type="button" className="btn-ghost" disabled={busy || sel.size === 0} onClick={() => confirm("Remove the roster for these dates so they follow their normal shift?") && run(() => post("/api/v1/hr/roster", { employeeIds: [...sel], from: f.from, to: f.to }, "DELETE"), "Back to the normal shift.", () => setSel(new Set()))}>Clear roster for these dates</button></div>

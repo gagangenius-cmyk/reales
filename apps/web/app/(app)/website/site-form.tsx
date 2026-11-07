@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -45,8 +46,8 @@ export function SiteForm({ slug, initial, tenantName }: { slug: string; initial:
         </section>
         <section className="card grid gap-4 p-5 sm:grid-cols-2">
           <h2 className="font-semibold sm:col-span-2">Display and search engines</h2>
-          <label className={lab}><span className={cap}>Default language</span><select className="input" value={f.defaultLanguage} onChange={set("defaultLanguage")}><option value="en">English</option><option value="ar">Arabic</option></select></label>
-          <label className={lab}><span className={cap}>Show areas in</span><select className="input" value={f.areaUnit} onChange={set("areaUnit")}><option value="sqft">Square feet</option><option value="sqm">Square metres</option></select></label>
+          <label className={lab}><span className={cap}>Default language</span><Select className="input" value={f.defaultLanguage} onChange={set("defaultLanguage")}><option value="en">English</option><option value="ar">Arabic</option></Select></label>
+          <label className={lab}><span className={cap}>Show areas in</span><Select className="input" value={f.areaUnit} onChange={set("areaUnit")}><option value="sqft">Square feet</option><option value="sqm">Square metres</option></Select></label>
           <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={f.showPrices} onChange={(e) => setF({ ...f, showPrices: e.target.checked })} /> Show prices (otherwise &ldquo;Price on request&rdquo;)</label>
           <label className={`${lab} sm:col-span-2`}><span className={cap}>Search description ({f.seoDescription.length}/300)</span><textarea className="input min-h-20" value={f.seoDescription} onChange={set("seoDescription")} maxLength={300} /></label>
         </section>

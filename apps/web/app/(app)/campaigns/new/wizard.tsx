@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -127,13 +128,13 @@ export function BroadcastWizard({ setup, projects }: { setup: Setup; projects: {
               <button type="button" className={`rounded-md px-3 py-1.5 ${audMode === "build" ? "btn" : ""}`} onClick={() => setAudMode("build")}>Build new</button>
             </div>
             {audMode === "saved" ? (
-              <Lab t="Audience"><select className="input" value={segmentId} onChange={(e) => setSegmentId(e.target.value)}>{setup.segments.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Lab>
+              <Lab t="Audience"><Select className="input" value={segmentId} onChange={(e) => setSegmentId(e.target.value)}>{setup.segments.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Lab>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 <Lab t="Audience name" span><input className="input" value={seg.name} onChange={(e) => setSeg({ ...seg, name: e.target.value })} placeholder="e.g. Open buyer leads, Arabic speakers" /></Lab>
                 <Lab t="Languages (comma separated, e.g. en, ar)"><input className="input" value={seg.languages} onChange={(e) => setSeg({ ...seg, languages: e.target.value })} /></Lab>
                 <Lab t="Nationalities (comma separated)"><input className="input" value={seg.nationality} onChange={(e) => setSeg({ ...seg, nationality: e.target.value })} /></Lab>
-                <Lab t="Has an open lead"><select className="input" value={seg.hasOpenLead} onChange={(e) => setSeg({ ...seg, hasOpenLead: e.target.value })}><option value="any">Any contact</option><option value="yes">Only with an open lead</option><option value="no">Only without an open lead</option></select></Lab>
+                <Lab t="Has an open lead"><Select className="input" value={seg.hasOpenLead} onChange={(e) => setSeg({ ...seg, hasOpenLead: e.target.value })}><option value="any">Any contact</option><option value="yes">Only with an open lead</option><option value="no">Only without an open lead</option></Select></Lab>
                 <div><span className={cap}>Lead purpose</span><div className="mt-1.5 flex flex-wrap gap-2">{["buy", "rent", "invest", "off_plan"].map((p) => <button key={p} type="button" className={seg.purposes.includes(p) ? "btn text-xs" : "btn-ghost text-xs"} onClick={() => setSeg({ ...seg, purposes: toggle(seg.purposes, p) })}>{p.replace("_", "-")}</button>)}</div></div>
                 <Lab t="Budget at least"><input className="input" type="number" min="0" value={seg.budgetMin} onChange={(e) => setSeg({ ...seg, budgetMin: e.target.value })} /></Lab>
                 <Lab t="Budget at most"><input className="input" type="number" min="0" value={seg.budgetMax} onChange={(e) => setSeg({ ...seg, budgetMax: e.target.value })} /></Lab>
@@ -165,8 +166,8 @@ export function BroadcastWizard({ setup, projects }: { setup: Setup; projects: {
 
         {step === 3 && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <Lab t="Send from"><select className="input" value={account?.id ?? ""} onChange={(e) => setAccountId(e.target.value)}>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.identity})</option>)}{accounts.length === 0 && <option value="">No {channel} account connected</option>}</select></Lab>
-            <Lab t="Consent purpose (recipients must have agreed to this)"><select className="input" value={purposeCode} onChange={(e) => setPurposeCode(e.target.value)}>{setup.purposes.map((p) => <option key={p.code} value={p.code}>{p.name}</option>)}</select></Lab>
+            <Lab t="Send from"><Select className="input" value={account?.id ?? ""} onChange={(e) => setAccountId(e.target.value)}>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.identity})</option>)}{accounts.length === 0 && <option value="">No {channel} account connected</option>}</Select></Lab>
+            <Lab t="Consent purpose (recipients must have agreed to this)"><Select className="input" value={purposeCode} onChange={(e) => setPurposeCode(e.target.value)}>{setup.purposes.map((p) => <option key={p.code} value={p.code}>{p.name}</option>)}</Select></Lab>
             <Lab t="Messages per minute (throttle)"><input className="input" type="number" min="1" max="6000" value={rate} onChange={(e) => setRate(e.target.value)} /></Lab>
             <div className="sm:col-span-2"><span className={cap}>When</span>
               <div className="mt-1.5 grid gap-3 sm:grid-cols-3" role="radiogroup">

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
+import { Dropzone } from "@/components/dropzone";
 
 type Kind = "contacts" | "leads" | "units";
 interface Summary { id: string; status: string; totalRows: number; validRows: number; errorRows: number; committedRows: number; skippedRows: number; errors: Array<{ row: number; message: string }>; preview: any[] }
@@ -43,9 +45,9 @@ export function ImportWizard() {
     <div className="card flex flex-col gap-3 p-4">
       <h2 className="font-semibold">Import from CSV</h2>
       <div className="flex flex-wrap items-end gap-3">
-        <label className="text-sm">Data<select className="input mt-1" value={kind} onChange={(e) => { setKind(e.target.value as Kind); setJob(null); }}><option value="contacts">Contacts</option><option value="leads">Leads</option><option value="units">Units</option></select></label>
-        <label className="text-sm">CSV file<input className="input mt-1" type="file" accept=".csv,text/csv" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setJob(null); }} /></label>
-        {kind === "contacts" && <label className="text-sm">If the contact already exists<select className="input mt-1" value={onDuplicate} onChange={(e) => setOnDuplicate(e.target.value as "skip" | "error")}><option value="skip">Skip the row</option><option value="error">Reject the row</option></select></label>}
+        <label className="text-sm">Data<Select className="input mt-1" value={kind} onChange={(e) => { setKind(e.target.value as Kind); setJob(null); }}><option value="contacts">Contacts</option><option value="leads">Leads</option><option value="units">Units</option></Select></label>
+        <Dropzone label="CSV file" accept=".csv,text/csv" files={file ? [file] : []} onFiles={(f) => { setFile(f[0] ?? null); setJob(null); }} />
+        {kind === "contacts" && <label className="text-sm">If the contact already exists<Select className="input mt-1" value={onDuplicate} onChange={(e) => setOnDuplicate(e.target.value as "skip" | "error")}><option value="skip">Skip the row</option><option value="error">Reject the row</option></Select></label>}
         <button className="btn" onClick={check} disabled={!file || busy}>{busy && !job ? "Checking..." : "Check file"}</button>
         <a className="btn-ghost text-sm" href={`/api/v1/imports/template?kind=${kind}`}>Download template</a>
       </div>

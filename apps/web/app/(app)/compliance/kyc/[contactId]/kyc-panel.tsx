@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
+import { Dropzone } from "@/components/dropzone";
 
 interface Props { contactId: string; isEntity: boolean; profile: any | null; ubo: any | null; can: { manage: boolean; review: boolean; screen: boolean; dispose: boolean } }
 const DOC_TYPES = ["passport", "emirates_id", "visa", "trade_licence", "proof_of_address", "source_of_funds", "other"];
@@ -69,8 +71,8 @@ export function KycPanel({ contactId, isEntity, profile, ubo, can }: Props) {
               <tbody>{profile.documents.map((d: any) => <tr key={d.id}><td>{d.docType}</td><td>{String(d.documentId).slice(0, 8)}</td><td>{d.expiresOn ?? "-"}</td></tr>)}{profile.documents.length === 0 && <tr><td colSpan={3} className="muted">None attached.</td></tr>}</tbody></table>
             {can.manage && (
               <div className="flex flex-wrap items-end gap-2 p-2">
-                <label className="text-sm">Document (PDF or image)<input className="input mt-1" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
-                <label className="text-sm">Type<select className="input mt-1" value={doc.docType} onChange={(e) => setDoc({ ...doc, docType: e.target.value })}>{DOC_TYPES.map((t) => <option key={t}>{t}</option>)}</select></label>
+                <Dropzone label="Document (PDF or image)" accept="application/pdf,image/jpeg,image/png,image/webp" files={file ? [file] : []} onFiles={(f) => setFile(f[0] ?? null)} />
+                <label className="text-sm">Type<Select className="input mt-1" value={doc.docType} onChange={(e) => setDoc({ ...doc, docType: e.target.value })}>{DOC_TYPES.map((t) => <option key={t}>{t}</option>)}</Select></label>
                 <label className="text-sm">Expires<input className="input mt-1" type="date" value={doc.expiresOn} onChange={(e) => setDoc({ ...doc, expiresOn: e.target.value })} /></label>
                 <button className="btn" disabled={!file || uploading} onClick={uploadAndAttach}>{uploading ? "Uploading..." : "Upload and attach"}</button>
                 <button className="btn-ghost" disabled={!doc.documentId} onClick={async () => done(await postJson(api(`kyc-profiles/${profile.id}/documents`), { documentId: doc.documentId.trim(), docType: doc.docType, ...(doc.expiresOn ? { expiresOn: doc.expiresOn } : {}) }), "Document attached.")}>Attach</button>

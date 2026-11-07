@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -14,7 +15,7 @@ export function NewAccount({ providers }: { providers: { code: string; label: st
   const [msg, setMsg] = useState<string | null>(null);
   return (
     <form className="card flex flex-wrap items-end gap-3 p-4" onSubmit={async (e) => { e.preventDefault(); setMsg(null); const r = await postJson("/api/v1/portal-connections", { provider: f.provider, name: f.name, mode: "export" }); if (!r.ok) return setMsg(errMsg(r)); setF({ ...f, name: "" }); router.refresh(); }}>
-      <label className={lab}><span className={cap}>Add a portal</span><select className="input" value={f.provider} onChange={(e) => setF({ ...f, provider: e.target.value })}>{providers.map((p) => <option key={p.code} value={p.code}>{p.label}</option>)}</select></label>
+      <label className={lab}><span className={cap}>Add a portal</span><Select className="input" value={f.provider} onChange={(e) => setF({ ...f, provider: e.target.value })}>{providers.map((p) => <option key={p.code} value={p.code}>{p.label}</option>)}</Select></label>
       <label className={`${lab} grow`}><span className={cap}>Account name</span><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="e.g. Bayut - Main office" required /></label>
       <button className="btn">Add account</button>{msg && <p role="alert" className="err w-full text-sm">{msg}</p>}
     </form>

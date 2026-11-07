@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
+import { Dropzone } from "@/components/dropzone";
 import { useRouter } from "next/navigation";
 import { Lbl, useAction } from "@/components/hr-ui";
 
@@ -28,21 +30,21 @@ export function DocsClient({ docs, employees, categories, canManage, employee, c
       {canManage && (
         <form onSubmit={upload} className="card grid gap-3 p-4 sm:grid-cols-4">
           <h2 className="font-semibold sm:col-span-4">Upload a document</h2>
-          <Lbl label="Belongs to"><select className="input" value={f.employeeId} onChange={(e) => setF({ ...f, employeeId: e.target.value })}><option value="">Company (policy, handbook)</option>{employees.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Lbl>
+          <Lbl label="Belongs to"><Select className="input" value={f.employeeId} onChange={(e) => setF({ ...f, employeeId: e.target.value })}><option value="">Company (policy, handbook)</option>{employees.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select></Lbl>
           <Lbl label="Title"><input className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Employment contract" /></Lbl>
-          <Lbl label="Category"><select className="input" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{categories.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}</select></Lbl>
+          <Lbl label="Category"><Select className="input" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{categories.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}</Select></Lbl>
           <Lbl label="Expires (optional)"><input className="input" type="date" value={f.expiresOn} onChange={(e) => setF({ ...f, expiresOn: e.target.value })} /></Lbl>
-          <Lbl label="Who can see it"><select className="input" value={f.visibility} onChange={(e) => setF({ ...f, visibility: e.target.value })}>{f.employeeId ? <><option value="employee">The employee and HR</option><option value="hr_only">HR only</option><option value="company">Everyone</option></> : <><option value="company">Everyone</option><option value="hr_only">HR only</option></>}</select></Lbl>
-          <Lbl label="File (PDF or image)" wide><input type="file" required onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Lbl>
+          <Lbl label="Who can see it"><Select className="input" value={f.visibility} onChange={(e) => setF({ ...f, visibility: e.target.value })}>{f.employeeId ? <><option value="employee">The employee and HR</option><option value="hr_only">HR only</option><option value="company">Everyone</option></> : <><option value="company">Everyone</option><option value="hr_only">HR only</option></>}</Select></Lbl>
+          <Lbl label="File (PDF or image)" wide><Dropzone required accept="application/pdf,image/jpeg,image/png,image/webp" files={file ? [file] : []} onFiles={(f) => setFile(f[0] ?? null)} /></Lbl>
           <div className="flex items-end"><button className="btn" disabled={busy || !file}>Upload</button></div>
           {err && <p role="alert" className="err text-sm sm:col-span-4">{err}</p>}
         </form>
       )}
       <Msg />
       <div className="card flex flex-wrap items-end gap-3 p-3 text-sm">
-        {canManage && <Lbl label="Employee"><select className="input" value={employee ?? ""} onChange={(e) => go({ employee: e.target.value })}><option value="">Everyone</option>{employees.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></Lbl>}
-        <Lbl label="Category"><select className="input" value={category ?? ""} onChange={(e) => go({ category: e.target.value })}><option value="">All</option>{categories.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}</select></Lbl>
-        <Lbl label="Expiring"><select className="input" value={expiring ?? ""} onChange={(e) => go({ expiring: e.target.value })}><option value="">Any time</option><option value="30">Within 30 days</option><option value="60">Within 60 days</option><option value="90">Within 90 days</option><option value="0">Already expired</option></select></Lbl>
+        {canManage && <Lbl label="Employee"><Select className="input" value={employee ?? ""} onChange={(e) => go({ employee: e.target.value })}><option value="">Everyone</option>{employees.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select></Lbl>}
+        <Lbl label="Category"><Select className="input" value={category ?? ""} onChange={(e) => go({ category: e.target.value })}><option value="">All</option>{categories.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}</Select></Lbl>
+        <Lbl label="Expiring"><Select className="input" value={expiring ?? ""} onChange={(e) => go({ expiring: e.target.value })}><option value="">Any time</option><option value="30">Within 30 days</option><option value="60">Within 60 days</option><option value="90">Within 90 days</option><option value="0">Already expired</option></Select></Lbl>
       </div>
       <div className="card overflow-x-auto" data-server-table>
         <table className="t"><thead><tr><th>Document</th><th>Belongs to</th><th>Category</th><th>Expires</th><th>Visible to</th><th /></tr></thead>

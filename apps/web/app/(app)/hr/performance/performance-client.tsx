@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { Lbl, useAction } from "@/components/hr-ui";
 
@@ -27,7 +28,7 @@ export function PerformanceClient({ cycles, detail, canManage }: { cycles: Cycle
           <Lbl label="Name" wide><input className="input" required value={nc.name} onChange={(e) => setNc({ ...nc, name: e.target.value })} placeholder="H1 2026 review" /></Lbl>
           <Lbl label="Period from"><input className="input" type="date" required value={nc.periodStart} onChange={(e) => setNc({ ...nc, periodStart: e.target.value })} /></Lbl>
           <Lbl label="Period to"><input className="input" type="date" required value={nc.periodEnd} onChange={(e) => setNc({ ...nc, periodEnd: e.target.value })} /></Lbl>
-          <Lbl label="Rating scale"><select className="input" value={nc.ratingScale} onChange={(e) => setNc({ ...nc, ratingScale: e.target.value })}>{[3, 4, 5, 10].map((n) => <option key={n} value={n}>1 to {n}</option>)}</select></Lbl>
+          <Lbl label="Rating scale"><Select className="input" value={nc.ratingScale} onChange={(e) => setNc({ ...nc, ratingScale: e.target.value })}>{[3, 4, 5, 10].map((n) => <option key={n} value={n}>1 to {n}</option>)}</Select></Lbl>
           <div className="sm:col-span-5"><button className="btn" disabled={busy}>Open cycle</button></div>
         </form>
       )}

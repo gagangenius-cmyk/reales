@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { Lbl, useAction } from "@/components/hr-ui";
 
@@ -33,9 +34,9 @@ export function SetupClient({ types, shifts, holidays, year }: { types: LT[]; sh
             <Lbl label="Name" wide><input className="input" required value={t.name} onChange={(e) => setT({ ...t, name: e.target.value })} /></Lbl>
             <Lbl label="Colour"><input className="input h-10" type="color" value={t.color ?? "#4f46e5"} onChange={(e) => setT({ ...t, color: e.target.value })} /></Lbl>
             <Lbl label="Days per year (0 + unpaid = unlimited)"><input className="input" type="number" min="0" step="0.5" value={t.annualDays} onChange={(e) => setT({ ...t, annualDays: num(e.target.value) })} /></Lbl>
-            <Lbl label="Earned"><select className="input" value={t.accrual} onChange={(e) => setT({ ...t, accrual: e.target.value as LT["accrual"] })}><option value="upfront">All at the start of the year</option><option value="monthly">Month by month</option></select></Lbl>
+            <Lbl label="Earned"><Select className="input" value={t.accrual} onChange={(e) => setT({ ...t, accrual: e.target.value as LT["accrual"] })}><option value="upfront">All at the start of the year</option><option value="monthly">Month by month</option></Select></Lbl>
             <Lbl label="Carry forward up to (days)"><input className="input" type="number" min="0" step="0.5" value={t.carryForwardMax} onChange={(e) => setT({ ...t, carryForwardMax: num(e.target.value) })} /></Lbl>
-            <Lbl label="Applies to"><select className="input" value={t.gender} onChange={(e) => setT({ ...t, gender: e.target.value as LT["gender"] })}><option value="any">Everyone</option><option value="female">Female employees</option><option value="male">Male employees</option></select></Lbl>
+            <Lbl label="Applies to"><Select className="input" value={t.gender} onChange={(e) => setT({ ...t, gender: e.target.value as LT["gender"] })}><option value="any">Everyone</option><option value="female">Female employees</option><option value="male">Male employees</option></Select></Lbl>
             <Lbl label="Notice needed (days)"><input className="input" type="number" min="0" value={t.minNoticeDays} onChange={(e) => setT({ ...t, minNoticeDays: num(e.target.value) })} /></Lbl>
             <Lbl label="Longest single request (days, 0 = no limit)"><input className="input" type="number" min="0" value={t.maxConsecutiveDays} onChange={(e) => setT({ ...t, maxConsecutiveDays: num(e.target.value) })} /></Lbl>
             <Lbl label="Document needed beyond (days)"><input className="input" type="number" min="0" value={t.requiresDocumentAfterDays} onChange={(e) => setT({ ...t, requiresDocumentAfterDays: num(e.target.value) })} /></Lbl>

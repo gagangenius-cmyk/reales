@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { Select } from "@/components/select";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { EditorRef } from "react-email-editor";
@@ -46,7 +47,7 @@ export function NewTemplateForm() {
     <form onSubmit={submit} className="card mt-4 flex flex-col gap-3 p-4">
       <div className="grid gap-3 md:grid-cols-4">
         <input className="input" placeholder="Template name" value={name} onChange={(e) => setName(e.target.value)} required aria-label="Name" />
-        <select className="input" value={channel} onChange={(e) => setChannel(e.target.value)} aria-label="Channel"><option value="sms">SMS</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option></select>
+        <Select className="input" value={channel} onChange={(e) => setChannel(e.target.value)} aria-label="Channel"><option value="sms">SMS</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option></Select>
         <input className="input" placeholder="Consent purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} aria-label="Consent purpose" />
         {channel === "email" && <input className="input" placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} aria-label="Subject" />}
       </div>

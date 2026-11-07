@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -54,11 +55,11 @@ export function NewLeaseDrawer({ units }: { units: UnitOpt[] }) {
             <header className="border-b px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}><h2 className="text-xl font-semibold">New lease</h2><p className="muted text-sm">The rent schedule is created from the annual rent and the number of instalments.</p></header>
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
               <section className="card grid gap-4 p-4 sm:grid-cols-2">
-                <Lab t="Unit" span><select className="input" value={f.unitId} onChange={set("unitId")} required><option value="">Choose a unit</option>{units.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}</select></Lab>
+                <Lab t="Unit" span><Select className="input" value={f.unitId} onChange={set("unitId")} required><option value="">Choose a unit</option>{units.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}</Select></Lab>
                 <Lab t="Starts on"><input className="input" type="date" value={f.startsOn} onChange={set("startsOn")} required /></Lab>
                 <Lab t="Ends on"><input className="input" type="date" value={f.endsOn} onChange={set("endsOn")} required /></Lab>
                 <Lab t="Annual rent (AED)"><input className="input" inputMode="decimal" value={f.annualRent} onChange={set("annualRent")} required /></Lab>
-                <Lab t="Cheques / instalments"><select className="input" value={f.installments} onChange={set("installments")}>{[1, 2, 3, 4, 6, 12].map((n) => <option key={n} value={n}>{n}</option>)}</select></Lab>
+                <Lab t="Cheques / instalments"><Select className="input" value={f.installments} onChange={set("installments")}>{[1, 2, 3, 4, 6, 12].map((n) => <option key={n} value={n}>{n}</option>)}</Select></Lab>
                 <Lab t="Security deposit (AED)"><input className="input" inputMode="decimal" value={f.deposit} onChange={set("deposit")} /></Lab>
                 <Lab t="Ejari / registration reference"><input className="input" value={f.registrationRef} onChange={set("registrationRef")} /></Lab>
               </section>

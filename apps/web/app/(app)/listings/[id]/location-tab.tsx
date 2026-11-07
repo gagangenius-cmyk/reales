@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { LazyMap } from "@/components/map-lazy";
 import { errMsg, postJson } from "@/lib/client";
@@ -56,11 +57,11 @@ export function LocationTab({ l, canManage }: { l: any; canManage: boolean }) {
           </dl>
         </section>
         <section className="card grid gap-3 p-4 text-sm"><h2 className="font-semibold">Property facts for portals</h2>
-          <label className="flex flex-col gap-1.5"><span className={cap}>Completion status</span><select className="input" value={v.completionStatus} onChange={(e) => setV({ ...v, completionStatus: e.target.value })} disabled={!canManage}><option value="">From the project</option><option value="ready">Ready</option><option value="off_plan">Off-plan</option></select></label>
-          <label className="flex flex-col gap-1.5"><span className={cap}>Ownership</span><select className="input" value={v.ownership} onChange={(e) => setV({ ...v, ownership: e.target.value })} disabled={!canManage}><option value="">Not stated</option><option value="freehold">Freehold</option><option value="leasehold">Leasehold</option><option value="usufruct">Usufruct</option><option value="musataha">Musataha</option></select></label>
+          <label className="flex flex-col gap-1.5"><span className={cap}>Completion status</span><Select className="input" value={v.completionStatus} onChange={(e) => setV({ ...v, completionStatus: e.target.value })} disabled={!canManage}><option value="">From the project</option><option value="ready">Ready</option><option value="off_plan">Off-plan</option></Select></label>
+          <label className="flex flex-col gap-1.5"><span className={cap}>Ownership</span><Select className="input" value={v.ownership} onChange={(e) => setV({ ...v, ownership: e.target.value })} disabled={!canManage}><option value="">Not stated</option><option value="freehold">Freehold</option><option value="leasehold">Leasehold</option><option value="usufruct">Usufruct</option><option value="musataha">Musataha</option></Select></label>
           <label className="flex flex-col gap-1.5"><span className={cap}>Year built</span><input className="input" type="number" min="1900" max="2100" value={v.yearBuilt} onChange={(e) => setV({ ...v, yearBuilt: e.target.value })} disabled={!canManage} /></label>
           <label className="flex flex-col gap-1.5"><span className={cap}>Available from</span><input className="input" type="date" value={v.availableFrom} onChange={(e) => setV({ ...v, availableFrom: e.target.value })} disabled={!canManage} /></label>
-          <label className="flex flex-col gap-1.5"><span className={cap}>Utilities included</span><select className="input" value={v.utilities} onChange={(e) => setV({ ...v, utilities: e.target.value })} disabled={!canManage}><option value="">Not stated</option><option value="yes">Yes</option><option value="no">No</option></select></label>
+          <label className="flex flex-col gap-1.5"><span className={cap}>Utilities included</span><Select className="input" value={v.utilities} onChange={(e) => setV({ ...v, utilities: e.target.value })} disabled={!canManage}><option value="">Not stated</option><option value="yes">Yes</option><option value="no">No</option></Select></label>
         </section>
         {canManage && <div className="flex items-center gap-3"><button className="btn" disabled={busy}>{busy ? "Saving..." : "Save location and facts"}</button>{msg && <span role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "muted" : "err"}`}>{msg.text}</span>}</div>}
       </div>

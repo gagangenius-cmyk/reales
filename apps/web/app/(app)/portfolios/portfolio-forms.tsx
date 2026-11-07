@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -56,8 +57,8 @@ export function PortfolioForms({ portfolios, units }: { portfolios: Opt[]; units
         </form>
         <form onSubmit={assign} className="grid gap-3 sm:grid-cols-2">
           <h3 className="font-semibold sm:col-span-2">Assign a unit</h3>
-          <label className="flex flex-col gap-1.5 text-sm sm:col-span-2"><span className="muted text-xs font-medium">Unit</span><select className="input" value={o.unitId} onChange={(e) => setO({ ...o, unitId: e.target.value })} required><option value="">Choose</option>{units.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}</select></label>
-          <label className="flex flex-col gap-1.5 text-sm sm:col-span-2"><span className="muted text-xs font-medium">Portfolio</span><select className="input" value={o.portfolioId} onChange={(e) => setO({ ...o, portfolioId: e.target.value })} required><option value="">Choose</option>{portfolios.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
+          <label className="flex flex-col gap-1.5 text-sm sm:col-span-2"><span className="muted text-xs font-medium">Unit</span><Select className="input" value={o.unitId} onChange={(e) => setO({ ...o, unitId: e.target.value })} required><option value="">Choose</option>{units.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}</Select></label>
+          <label className="flex flex-col gap-1.5 text-sm sm:col-span-2"><span className="muted text-xs font-medium">Portfolio</span><Select className="input" value={o.portfolioId} onChange={(e) => setO({ ...o, portfolioId: e.target.value })} required><option value="">Choose</option>{portfolios.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</Select></label>
           <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Owner share %</span><input className="input" inputMode="decimal" value={o.sharePct} onChange={(e) => setO({ ...o, sharePct: e.target.value })} /></label>
           <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">From</span><input className="input" type="date" value={o.fromDate} onChange={(e) => setO({ ...o, fromDate: e.target.value })} required /></label>
           <button className="btn w-fit" disabled={busy}>Assign unit</button>

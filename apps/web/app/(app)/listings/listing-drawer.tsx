@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { LazyMap } from "@/components/map-lazy";
 import { errMsg, postJson } from "@/lib/client";
+import { Dropzone } from "@/components/dropzone";
 
 export interface UnitOpt { id: string; label: string; listPrice: number | null; currency: string }
 export interface AgentOpt { id: string; email: string }
@@ -140,18 +142,18 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
                     </div>
                   ) : (
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Country</span><select className="input" disabled><option>United Arab Emirates</option></select></label>
-                      <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Emirate (city)</span><select className="input" value={p.emirate} onChange={(e) => setP({ ...p, emirate: e.target.value, community: "", subCommunity: "" })}>{emirates.map((x) => <option key={x}>{x}</option>)}</select></label>
+                      <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Country</span><Select className="input" disabled><option>United Arab Emirates</option></Select></label>
+                      <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Emirate (city)</span><Select className="input" value={p.emirate} onChange={(e) => setP({ ...p, emirate: e.target.value, community: "", subCommunity: "" })}>{emirates.map((x) => <option key={x}>{x}</option>)}</Select></label>
                       <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Location (community)</span>
-                        <select className="input" value={p.community} onChange={(e) => setP({ ...p, community: e.target.value, subCommunity: "" })}><option value="">Select a location</option>{communities.map((c) => <option key={c}>{c}</option>)}<option value={OTHER}>Other (type it)...</option></select>
+                        <Select className="input" value={p.community} onChange={(e) => setP({ ...p, community: e.target.value, subCommunity: "" })}><option value="">Select a location</option>{communities.map((c) => <option key={c}>{c}</option>)}<option value={OTHER}>Other (type it)...</option></Select>
                         {p.community === OTHER && <input className="input" placeholder="Community name" value={p.communityOther} onChange={setp("communityOther")} />}</label>
                       <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Sub location</span>
-                        <select className="input" value={p.subCommunity} onChange={setp("subCommunity")}><option value="">None</option>{subs.map((c) => <option key={c}>{c}</option>)}<option value={OTHER}>Other (type it)...</option></select>
+                        <Select className="input" value={p.subCommunity} onChange={setp("subCommunity")}><option value="">None</option>{subs.map((c) => <option key={c}>{c}</option>)}<option value={OTHER}>Other (type it)...</option></Select>
                         {p.subCommunity === OTHER && <input className="input" placeholder="Sub-community name" value={p.subOther} onChange={setp("subOther")} />}</label>
                       <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Building / tower / project name</span><input className="input" maxLength={180} value={p.buildingName} onChange={setp("buildingName")} placeholder="Marina Gate 1" /></label>
                       <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Unit number</span><input className="input" maxLength={40} value={p.unitNumber} onChange={setp("unitNumber")} placeholder="2304" /></label>
                       <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Property type</span>
-                        <select className="input" value={p.type} onChange={setp("type")}>{["residential", "commercial", "land"].map((c) => <optgroup key={c} label={c[0]!.toUpperCase() + c.slice(1)}>{types.filter((t) => t.category === c).map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</optgroup>)}</select></label>
+                        <Select className="input" value={p.type} onChange={setp("type")}>{["residential", "commercial", "land"].map((c) => <optgroup key={c} label={c[0]!.toUpperCase() + c.slice(1)}>{types.filter((t) => t.category === c).map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</optgroup>)}</Select></label>
                       <div className="flex flex-col justify-end gap-1 text-sm"><span className={cap}>Category</span><b className="rounded-lg border px-3 py-2" style={{ borderColor: "var(--border)" }}>{typeInfo ? typeInfo.category[0]!.toUpperCase() + typeInfo.category.slice(1) : "-"}</b></div>
                       {!noBeds && p.type !== "studio" && <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Bedrooms</span><input className="input" type="number" min="0" max="30" value={p.bedrooms} onChange={setp("bedrooms")} /></label>}
                       {!["land", "farm"].includes(p.type) && <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Bathrooms</span><input className="input" type="number" min="0" max="30" value={p.bathrooms} onChange={setp("bathrooms")} /></label>}
@@ -159,8 +161,8 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
                       <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Plot area (sqft)</span><input className="input" type="number" min="1" step="any" value={p.plot} onChange={setp("plot")} /></label>
                       <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Floor</span><input className="input" type="number" min="-5" max="200" value={p.floor} onChange={setp("floor")} /></label>
                       <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>View</span><input className="input" maxLength={80} value={p.view} onChange={setp("view")} placeholder="Sea view, Burj Khalifa view..." /></label>
-                      <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Completion status</span><select className="input" value={p.completion} onChange={setp("completion")}><option value="ready">Ready</option><option value="off_plan">Off-plan</option></select></label>
-                      <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Ownership</span><select className="input" value={p.ownership} onChange={setp("ownership")}><option value="">Not stated</option><option value="freehold">Freehold</option><option value="leasehold">Leasehold</option><option value="usufruct">Usufruct</option><option value="musataha">Musataha</option></select></label>
+                      <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Completion status</span><Select className="input" value={p.completion} onChange={setp("completion")}><option value="ready">Ready</option><option value="off_plan">Off-plan</option></Select></label>
+                      <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Ownership</span><Select className="input" value={p.ownership} onChange={setp("ownership")}><option value="">Not stated</option><option value="freehold">Freehold</option><option value="leasehold">Leasehold</option><option value="usufruct">Usufruct</option><option value="musataha">Musataha</option></Select></label>
                       <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Year built</span><input className="input" type="number" min="1900" max="2100" value={p.yearBuilt} onChange={setp("yearBuilt")} /></label>
                       <div className="flex flex-col gap-2 sm:col-span-2">
                         <span className={cap}>Map pin (optional): click the map or drag the pin. Without one, the community centre is used.</span>
@@ -173,16 +175,16 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
               )}
               <section className="card grid gap-4 p-4 sm:grid-cols-2">
                 <h3 className="font-semibold sm:col-span-2">{mode === "create" ? "2. Details" : "Details"}</h3>
-                {mode === "create" && <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Purpose</span><select className="input" value={f.purpose} onChange={set("purpose")}><option value="sale">For sale</option><option value="rent">For rent</option></select></label>}
+                {mode === "create" && <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Purpose</span><Select className="input" value={f.purpose} onChange={set("purpose")}><option value="sale">For sale</option><option value="rent">For rent</option></Select></label>}
                 <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Price {unit ? `(${unit.currency})` : "(AED)"}</span><input className="input" type="number" min="1" step="any" value={f.price} onChange={set("price")} placeholder={unit?.listPrice ? `Unit list price ${unit.listPrice.toLocaleString("en-US")}` : ""} />{mode === "create" && src === "new" && <span className="muted text-xs">{pps ? `AED ${pps.toLocaleString("en-US")} per sqft${f.purpose === "rent" ? " per year" : ""}` : "Price per sqft is worked out from the price and the BUA"}</span>}</label>
                 <label className="flex flex-col gap-1.5 text-sm sm:col-span-2"><span className={cap}>Title (shown on portals)</span><input className="input" maxLength={255} value={f.title} onChange={set("title")} placeholder="Marina view 2BR, Tower A" /><span className="muted text-xs">{f.title.length}/255</span></label>
                 <label className="flex flex-col gap-1.5 text-sm sm:col-span-2"><span className={cap}>Description</span><textarea className="input min-h-32" maxLength={10000} value={f.description} onChange={set("description")} /></label>
                 {(mode === "create" || canReassign) && (
                   <label className="flex flex-col gap-1.5 text-sm sm:col-span-2"><span className={cap}>Listing agent</span>
-                    <select className="input" value={f.agentUserId} onChange={set("agentUserId")} disabled={agents.length <= 1 && mode === "create"}>
+                    <Select className="input" value={f.agentUserId} onChange={set("agentUserId")} disabled={agents.length <= 1 && mode === "create"}>
                       {mode === "create" && agents.length !== 1 && <option value="">Me</option>}
                       {agents.map((a) => <option key={a.id} value={a.id}>{a.email}</option>)}
-                    </select>
+                    </Select>
                   </label>
                 )}
               </section>
@@ -192,17 +194,17 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
                     <h3 className="font-semibold sm:col-span-2">3. Terms and ownership</h3>
                     {f.purpose === "rent" && (
                       <>
-                        <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Rent is paid</span><select className="input" value={x.rentFrequency} onChange={setx("rentFrequency")}><option value="yearly">Per year</option><option value="quarterly">Per quarter</option><option value="monthly">Per month</option></select></label>
+                        <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Rent is paid</span><Select className="input" value={x.rentFrequency} onChange={setx("rentFrequency")}><option value="yearly">Per year</option><option value="quarterly">Per quarter</option><option value="monthly">Per month</option></Select></label>
                         <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Number of cheques</span><input className="input" type="number" min="1" max="12" value={x.cheques} onChange={setx("cheques")} /></label>
                         <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Security deposit</span><input className="input" type="number" min="0" step="any" value={x.securityDeposit} onChange={setx("securityDeposit")} /></label>
                       </>
                     )}
                     <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Service charge (per sqft per year)</span><input className="input" type="number" min="0" step="any" value={x.serviceCharge} onChange={setx("serviceCharge")} /></label>
-                    <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Furnishing</span><select className="input" value={x.furnishing} onChange={setx("furnishing")}><option value="">Not stated</option><option value="unfurnished">Unfurnished</option><option value="semi_furnished">Semi-furnished</option><option value="furnished">Furnished</option></select></label>
+                    <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Furnishing</span><Select className="input" value={x.furnishing} onChange={setx("furnishing")}><option value="">Not stated</option><option value="unfurnished">Unfurnished</option><option value="semi_furnished">Semi-furnished</option><option value="furnished">Furnished</option></Select></label>
                     <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Parking spaces</span><input className="input" type="number" min="0" max="50" value={x.parkingSpaces} onChange={setx("parkingSpaces")} /></label>
                     <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Owner asking price (internal)</span><input className="input" type="number" min="0" step="any" value={x.ownerPrice} onChange={setx("ownerPrice")} /></label>
                     <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Commission %</span><input className="input" type="number" min="0" max="100" step="any" value={x.commissionPct} onChange={setx("commissionPct")} /></label>
-                    <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Exclusivity</span><select className="input" value={x.exclusivity} onChange={setx("exclusivity")}><option value="none">None</option><option value="exclusive">Exclusive</option><option value="non_exclusive">Non-exclusive</option></select></label>
+                    <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Exclusivity</span><Select className="input" value={x.exclusivity} onChange={setx("exclusivity")}><option value="none">None</option><option value="exclusive">Exclusive</option><option value="non_exclusive">Non-exclusive</option></Select></label>
                     <span />
                     {x.exclusivity !== "none" && (
                       <>
@@ -231,8 +233,8 @@ export function ListingDrawer({ mode, units = [], agents, target, canReassign = 
                   )}
                   <section className="card grid gap-4 p-4 sm:grid-cols-2">
                     <h3 className="font-semibold sm:col-span-2">6. Photos and floor plans</h3>
-                    <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Photos (JPEG, PNG or WEBP; the first is the cover)</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setPhotos(Array.from(e.target.files ?? []))} /><span className="muted text-xs">{photos.length ? `${photos.length} selected` : "Optional now, can be added later"}</span></label>
-                    <label className="flex flex-col gap-1.5 text-sm"><span className={cap}>Floor plans</span><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setPlans(Array.from(e.target.files ?? []))} /><span className="muted text-xs">{plans.length ? `${plans.length} selected` : "Optional"}</span></label>
+                    <Dropzone label="Photos (JPEG, PNG or WEBP; the first is the cover)" multiple accept="image/jpeg,image/png,image/webp" files={photos} onFiles={(f) => setPhotos(f)} hint="Optional now, can be added later" />
+                    <Dropzone label="Floor plans" multiple accept="image/jpeg,image/png,image/webp" files={plans} onFiles={(f) => setPlans(f)} hint="Optional" />
                   </section>
                 </>
               )}

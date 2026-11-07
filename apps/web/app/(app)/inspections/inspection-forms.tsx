@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -25,7 +26,7 @@ export function TemplateForm() {
     <details className="card p-4"><summary className="cursor-pointer font-medium">New checklist template</summary>
       <form onSubmit={submit} className="mt-3 flex flex-wrap items-start gap-3">
         <label className="text-sm">Name<input className="input mt-1" value={name} onChange={(e) => setName(e.target.value)} required maxLength={160} /></label>
-        <label className="text-sm">Kind<select className="input mt-1" value={kind} onChange={(e) => setKind(e.target.value)}><option value="move_in">Move-in</option><option value="move_out">Move-out</option><option value="periodic">Periodic</option></select></label>
+        <label className="text-sm">Kind<Select className="input mt-1" value={kind} onChange={(e) => setKind(e.target.value)}><option value="move_in">Move-in</option><option value="move_out">Move-out</option><option value="periodic">Periodic</option></Select></label>
         <label className="grow text-sm">Checklist items (one per line)<textarea className="input mt-1 w-full" rows={5} value={items} onChange={(e) => setItems(e.target.value)} /></label>
         <button className="btn">Save template</button>
         {error && <p role="alert" className="err w-full text-sm">{error}</p>}
@@ -46,7 +47,7 @@ export function ScheduleForm({ templates, units, inspectors }: { templates: Arra
     if (!r.ok) return setError(errMsg(r));
     router.refresh();
   }
-  const sel = (k: keyof typeof f, opts: Opt[], label: string) => <label className="text-sm">{label}<select className="input mt-1" value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })}>{opts.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</select></label>;
+  const sel = (k: keyof typeof f, opts: Opt[], label: string) => <label className="text-sm">{label}<Select className="input mt-1" value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })}>{opts.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}</Select></label>;
   return (
     <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-4">
       {sel("templateId", templates, "Checklist")}{sel("unitId", units, "Unit")}{sel("inspectorUserId", inspectors, "Inspector")}

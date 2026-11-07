@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -25,8 +26,8 @@ export function RequestForm({ leases }: { leases: Array<{ id: string; label: str
     <form onSubmit={submit} className="card flex flex-col gap-3 p-4">
       <h2 className="font-semibold">Report a maintenance problem</h2>
       <div className="flex flex-wrap gap-3">
-        {leases.length > 1 && <label className="text-sm">Home<select className="input mt-1" value={f.leaseId} onChange={(e) => setF({ ...f, leaseId: e.target.value })}>{leases.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}</select></label>}
-        <label className="text-sm">Type<select className="input mt-1" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
+        {leases.length > 1 && <label className="text-sm">Home<Select className="input mt-1" value={f.leaseId} onChange={(e) => setF({ ...f, leaseId: e.target.value })}>{leases.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}</Select></label>}
+        <label className="text-sm">Type<Select className="input mt-1" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</Select></label>
         <label className="grow text-sm">What is wrong?<input className="input mt-1 w-full" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required minLength={3} maxLength={255} /></label>
       </div>
       <label className="text-sm">Details (optional)<textarea className="input mt-1 w-full" rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={4000} /></label>

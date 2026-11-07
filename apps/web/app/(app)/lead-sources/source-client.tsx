@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -23,12 +24,12 @@ export function SourceForm({ sources, pools, projects }: { sources: Opt[]; pools
     <div className="flex flex-col gap-3">
       <form onSubmit={save} className="card grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className={`${lab} lg:col-span-2`}><span className={cap}>Name</span><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required placeholder="e.g. Bayut, Facebook lead form, Website contact form" /></label>
-        <label className={lab}><span className={cap}>Type</span><select className="input" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}><option value="portal">Property portal</option><option value="meta">Meta (Facebook / Instagram)</option><option value="website">Website form</option><option value="generic">Other system</option></select></label>
-        <label className={lab}><span className={cap}>Count as source</span><select className="input" value={f.sourceCode} onChange={(e) => setF({ ...f, sourceCode: e.target.value })}><option value="">Default</option>{sources.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}</select></label>
-        <label className={lab}><span className={cap}>New leads go to</span><select className="input" value={f.routeMode} onChange={(e) => setF({ ...f, routeMode: e.target.value })}><option value="rules">An agent, by routing rules</option><option value="pool">A pool (agents claim)</option></select></label>
-        {f.routeMode === "pool" && <label className={lab}><span className={cap}>Pool</span><select className="input" value={f.poolId} onChange={(e) => setF({ ...f, poolId: e.target.value })} required><option value="">Choose...</option>{pools.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
-        <label className={lab}><span className={cap}>Project</span><select className="input" value={f.projectId} onChange={(e) => setF({ ...f, projectId: e.target.value })}><option value="">None</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-        <label className={lab}><span className={cap}>Default purpose</span><select className="input" value={f.defaultPurpose} onChange={(e) => setF({ ...f, defaultPurpose: e.target.value })}><option value="buy">Buy</option><option value="rent">Rent</option><option value="invest">Invest</option><option value="off_plan">Off-plan</option></select></label>
+        <label className={lab}><span className={cap}>Type</span><Select className="input" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}><option value="portal">Property portal</option><option value="meta">Meta (Facebook / Instagram)</option><option value="website">Website form</option><option value="generic">Other system</option></Select></label>
+        <label className={lab}><span className={cap}>Count as source</span><Select className="input" value={f.sourceCode} onChange={(e) => setF({ ...f, sourceCode: e.target.value })}><option value="">Default</option>{sources.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}</Select></label>
+        <label className={lab}><span className={cap}>New leads go to</span><Select className="input" value={f.routeMode} onChange={(e) => setF({ ...f, routeMode: e.target.value })}><option value="rules">An agent, by routing rules</option><option value="pool">A pool (agents claim)</option></Select></label>
+        {f.routeMode === "pool" && <label className={lab}><span className={cap}>Pool</span><Select className="input" value={f.poolId} onChange={(e) => setF({ ...f, poolId: e.target.value })} required><option value="">Choose...</option>{pools.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></label>}
+        <label className={lab}><span className={cap}>Project</span><Select className="input" value={f.projectId} onChange={(e) => setF({ ...f, projectId: e.target.value })}><option value="">None</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></label>
+        <label className={lab}><span className={cap}>Default purpose</span><Select className="input" value={f.defaultPurpose} onChange={(e) => setF({ ...f, defaultPurpose: e.target.value })}><option value="buy">Buy</option><option value="rent">Rent</option><option value="invest">Invest</option><option value="off_plan">Off-plan</option></Select></label>
         <label className={lab}><span className={cap}>Campaign label</span><input className="input" value={f.campaign} onChange={(e) => setF({ ...f, campaign: e.target.value })} /></label>
         <div className="flex items-end gap-3 sm:col-span-2 lg:col-span-4"><button className="btn">Create source</button>{msg && <p role="alert" className="err text-sm">{msg}</p>}</div>
       </form>

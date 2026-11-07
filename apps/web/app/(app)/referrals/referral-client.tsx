@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -19,7 +20,7 @@ export function PartnerForm() {
   return (
     <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-4">
       <label className="grow text-sm">New partner<input className="input mt-1 w-full" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required maxLength={160} /></label>
-      <label className="text-sm">Type<select className="input mt-1" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{["broker", "developer", "bank", "corporate", "individual"].map((k) => <option key={k}>{k}</option>)}</select></label>
+      <label className="text-sm">Type<Select className="input mt-1" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{["broker", "developer", "bank", "corporate", "individual"].map((k) => <option key={k}>{k}</option>)}</Select></label>
       <label className="text-sm">Fee % of our commission<input className="input mt-1 w-24" inputMode="decimal" value={f.feePct} onChange={(e) => setF({ ...f, feePct: e.target.value })} required /></label>
       <button className="btn">Add partner</button>
       {error && <p role="alert" className="err w-full text-sm">{error}</p>}
@@ -41,8 +42,8 @@ export function ReferralForm({ partners, leads }: { partners: Array<{ id: string
   }
   return (
     <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-4">
-      <label className="text-sm">Partner<select className="input mt-1" value={partnerId} onChange={(e) => setPartnerId(e.target.value)}>{partners.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
-      <label className="text-sm">Lead<select className="input mt-1" value={leadId} onChange={(e) => setLeadId(e.target.value)}>{leads.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}</select></label>
+      <label className="text-sm">Partner<Select className="input mt-1" value={partnerId} onChange={(e) => setPartnerId(e.target.value)}>{partners.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</Select></label>
+      <label className="text-sm">Lead<Select className="input mt-1" value={leadId} onChange={(e) => setLeadId(e.target.value)}>{leads.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}</Select></label>
       <button className="btn" disabled={!partnerId || !leadId}>Attribute lead to partner</button>
       {error && <p role="alert" className="err w-full text-sm">{error}</p>}
     </form>

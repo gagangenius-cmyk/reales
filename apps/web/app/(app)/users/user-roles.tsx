@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -28,9 +29,9 @@ export function UserRoles({ userId, held, roles, canManage }: { userId: string; 
       ))}
       {held.length === 0 && <span className="muted text-xs">No role</span>}
       {canManage && free.length > 0 && (
-        <select className="input w-auto py-0.5 text-xs" value={add} aria-label="Add role" onChange={(e) => { setAdd(e.target.value); if (e.target.value) run(postJson(`/api/v1/users/${userId}/roles`, { roleKey: e.target.value })); }}>
+        <Select className="input w-auto py-0.5 text-xs" value={add} aria-label="Add role" onChange={(e) => { setAdd(e.target.value); if (e.target.value) run(postJson(`/api/v1/users/${userId}/roles`, { roleKey: e.target.value })); }}>
           <option value="">+ role</option>{free.map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}
-        </select>
+        </Select>
       )}
       {msg && <span role="alert" className="err w-full text-xs">{msg}</span>}
     </div>

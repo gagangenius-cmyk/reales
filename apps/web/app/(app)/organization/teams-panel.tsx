@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -38,12 +39,12 @@ export function TeamsPanel({ teams, branches, users, canManage }: { teams: Team[
             </div>
             {canManage && (
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <select className="input w-auto py-1" value={t.parentTeamId ?? ""} aria-label="Parent team" onChange={(e) => run(postJson(`/api/v1/teams/${t.id}`, { parentTeamId: e.target.value || null }, "PATCH"))}>
+                <Select className="input w-auto py-1" value={t.parentTeamId ?? ""} aria-label="Parent team" onChange={(e) => run(postJson(`/api/v1/teams/${t.id}`, { parentTeamId: e.target.value || null }, "PATCH"))}>
                   <option value="">No parent team</option>{teams.filter((x) => x.id !== t.id).map((x) => <option key={x.id} value={x.id}>Under {x.name}</option>)}
-                </select>
-                <select className="input w-auto py-1" value={t.branchId ?? ""} aria-label="Branch" onChange={(e) => run(postJson(`/api/v1/teams/${t.id}`, { branchId: e.target.value || null }, "PATCH"))}>
+                </Select>
+                <Select className="input w-auto py-1" value={t.branchId ?? ""} aria-label="Branch" onChange={(e) => run(postJson(`/api/v1/teams/${t.id}`, { branchId: e.target.value || null }, "PATCH"))}>
                   <option value="">No branch</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
+                </Select>
                 <button className="btn-ghost" onClick={() => run(postJson(`/api/v1/teams/${t.id}`, { status: t.status === "active" ? "archived" : "active" }, "PATCH"))}>{t.status === "active" ? "Archive" : "Restore"}</button>
               </div>
             )}
@@ -64,8 +65,8 @@ export function TeamsPanel({ teams, branches, users, canManage }: { teams: Team[
           </ul>
           {canManage && free.length > 0 && (
             <form className="mt-3 flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (draft.userId) { void run(postJson(`/api/v1/teams/${t.id}/members`, { userId: draft.userId, role: draft.role }, "PUT")); setAdding({ ...adding, [t.id]: { userId: "", role: "member" } }); } }}>
-              <select className="input w-auto py-1 text-sm" value={draft.userId} onChange={(e) => setAdding({ ...adding, [t.id]: { ...draft, userId: e.target.value } })} aria-label="Add member"><option value="">Add a person...</option>{free.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}</select>
-              <select className="input w-auto py-1 text-sm" value={draft.role} onChange={(e) => setAdding({ ...adding, [t.id]: { ...draft, role: e.target.value } })} aria-label="Role"><option value="member">Member</option><option value="leader">Team leader</option></select>
+              <Select className="input w-auto py-1 text-sm" value={draft.userId} onChange={(e) => setAdding({ ...adding, [t.id]: { ...draft, userId: e.target.value } })} aria-label="Add member"><option value="">Add a person...</option>{free.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}</Select>
+              <Select className="input w-auto py-1 text-sm" value={draft.role} onChange={(e) => setAdding({ ...adding, [t.id]: { ...draft, role: e.target.value } })} aria-label="Role"><option value="member">Member</option><option value="leader">Team leader</option></Select>
               <button className="btn-ghost text-sm" disabled={!draft.userId}>Add</button>
             </form>
           )}
@@ -80,7 +81,7 @@ export function TeamsPanel({ teams, branches, users, canManage }: { teams: Team[
       {canManage && (
         <form className="card flex flex-wrap items-end gap-3 p-4" onSubmit={(e) => { e.preventDefault(); void run(postJson("/api/v1/teams", { name, ...(branchId ? { branchId } : {}) })); setName(""); }}>
           <label className="grow text-sm"><span className="muted text-xs font-medium">New team</span><input className="input mt-1" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Marina Sales A" required /></label>
-          <label className="text-sm"><span className="muted text-xs font-medium">Branch</span><select className="input mt-1" value={branchId} onChange={(e) => setBranchId(e.target.value)}><option value="">None</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label className="text-sm"><span className="muted text-xs font-medium">Branch</span><Select className="input mt-1" value={branchId} onChange={(e) => setBranchId(e.target.value)}><option value="">None</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</Select></label>
           <button className="btn">Create team</button>
         </form>
       )}

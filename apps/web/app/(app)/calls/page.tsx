@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Select } from "@/components/select";
 import { getSequelize } from "@reales/database";
 import { CALL_OUTCOMES, callStats, getTelephony, listCalls } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
@@ -61,7 +62,7 @@ export default async function Calls({ searchParams }: { searchParams: Promise<SP
       {canRead && (
         <>
           <form className="card flex flex-wrap items-end gap-3 p-3" action="/calls">
-            <label className="text-sm"><span className="muted text-xs font-medium">Outcome</span><select className="input mt-1" name="outcome" defaultValue={outcome ?? ""}><option value="">All</option>{CALL_OUTCOMES.map((o) => <option key={o} value={o}>{o.replace(/_/g, " ")}</option>)}</select></label>
+            <label className="text-sm"><span className="muted text-xs font-medium">Outcome</span><Select className="input mt-1" name="outcome" defaultValue={outcome ?? ""}><option value="">All</option>{CALL_OUTCOMES.map((o) => <option key={o} value={o}>{o.replace(/_/g, " ")}</option>)}</Select></label>
             <label className="text-sm"><span className="muted text-xs font-medium">From</span><input className="input mt-1" type="date" name="from" defaultValue={from ?? ""} /></label>
             <label className="text-sm"><span className="muted text-xs font-medium">To</span><input className="input mt-1" type="date" name="to" defaultValue={to ?? ""} /></label>
             <button className="btn">Filter</button>{(outcome || from || to) && <Link className="btn-ghost" href="/calls">Clear</Link>}

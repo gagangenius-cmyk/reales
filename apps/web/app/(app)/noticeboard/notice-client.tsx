@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -43,8 +44,8 @@ export function Composer({ branches, companyWide }: { branches: { id: string; na
               <label className={lab}><span className={cap}>Title</span><input className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required maxLength={200} autoFocus /></label>
               <label className={lab}><span className={cap}>Message</span><textarea className="input min-h-40" value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} required /></label>
               <div className="grid grid-cols-2 gap-4">
-                <label className={lab}><span className={cap}>Audience</span><select className="input" value={f.audience} onChange={(e) => setF({ ...f, audience: e.target.value })} disabled={!companyWide}>{companyWide && <option value="all">Everyone</option>}<option value="branch">One branch</option></select></label>
-                {f.audience === "branch" && <label className={lab}><span className={cap}>Branch</span><select className="input" value={f.branchId} onChange={(e) => setF({ ...f, branchId: e.target.value })}>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>}
+                <label className={lab}><span className={cap}>Audience</span><Select className="input" value={f.audience} onChange={(e) => setF({ ...f, audience: e.target.value })} disabled={!companyWide}>{companyWide && <option value="all">Everyone</option>}<option value="branch">One branch</option></Select></label>
+                {f.audience === "branch" && <label className={lab}><span className={cap}>Branch</span><Select className="input" value={f.branchId} onChange={(e) => setF({ ...f, branchId: e.target.value })}>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</Select></label>}
                 <label className={lab}><span className={cap}>Publish at (Dubai, empty = now)</span><input className="input" type="datetime-local" value={f.publishAt} onChange={(e) => setF({ ...f, publishAt: e.target.value })} /></label>
                 <label className={lab}><span className={cap}>Expires (optional)</span><input className="input" type="datetime-local" value={f.expiresAt} onChange={(e) => setF({ ...f, expiresAt: e.target.value })} /></label>
               </div>

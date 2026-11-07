@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -125,21 +126,21 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
                     <Field title="Phone"><input className="input" inputMode="tel" placeholder="+971 50 123 4567" value={f.phone} onChange={set("phone")} autoComplete="off" /></Field>
                     <Field title="Email"><input className="input" type="email" placeholder="name@example.com" value={f.email} onChange={set("email")} autoComplete="off" /></Field>
                     <Field title="Nationality"><input className="input" value={f.nationality} onChange={set("nationality")} /></Field>
-                    <Field title="Contact language"><select className="input" value={f.contactLanguage} onChange={set("contactLanguage")}><option value="en">English</option><option value="ar">Arabic</option></select></Field>
+                    <Field title="Contact language"><Select className="input" value={f.contactLanguage} onChange={set("contactLanguage")}><option value="en">English</option><option value="ar">Arabic</option></Select></Field>
                     <details className="sm:col-span-2 rounded-lg border" style={{ borderColor: "var(--border)" }}>
                       <summary className="cursor-pointer px-3 py-2.5 text-sm font-semibold">More about this person <span className="muted text-xs font-normal">(title, ID details, work, address, contact preferences)</span></summary>
                       <div className="grid gap-4 border-t p-3 sm:grid-cols-2" style={{ borderColor: "var(--border)" }}>
-                        <Field title="Salutation"><select className="input" value={f.salutation} onChange={set("salutation")}><option value="">-</option>{["Mr", "Mrs", "Ms", "Dr", "Eng", "Sheikh", "Sheikha"].map((x) => <option key={x}>{x}</option>)}</select></Field>
-                        <Field title="Gender"><select className="input" value={f.gender} onChange={set("gender")}><option value="">-</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></Field>
+                        <Field title="Salutation"><Select className="input" value={f.salutation} onChange={set("salutation")}><option value="">-</option>{["Mr", "Mrs", "Ms", "Dr", "Eng", "Sheikh", "Sheikha"].map((x) => <option key={x}>{x}</option>)}</Select></Field>
+                        <Field title="Gender"><Select className="input" value={f.gender} onChange={set("gender")}><option value="">-</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></Select></Field>
                         <Field title="Date of birth"><input className="input" type="date" value={f.dateOfBirth} onChange={set("dateOfBirth")} /></Field>
-                        <Field title="UAE residency"><select className="input" value={f.residency} onChange={set("residency")}><option value="">-</option><option value="uae_resident">UAE resident</option><option value="non_resident">Non-resident</option></select></Field>
+                        <Field title="UAE residency"><Select className="input" value={f.residency} onChange={set("residency")}><option value="">-</option><option value="uae_resident">UAE resident</option><option value="non_resident">Non-resident</option></Select></Field>
                         <Field title="Job title"><input className="input" value={f.jobTitle} onChange={set("jobTitle")} /></Field>
                         <Field title="Employer / company"><input className="input" value={f.employer} onChange={set("employer")} /></Field>
                         <Field title="Second phone"><input className="input" inputMode="tel" value={f.phoneSecondary} onChange={set("phoneSecondary")} /></Field>
                         <Field title="WhatsApp number (if different)"><input className="input" inputMode="tel" value={f.whatsapp} onChange={set("whatsapp")} /></Field>
                         <Field title="City"><input className="input" value={f.city} onChange={set("city")} /></Field>
                         <Field title="Country"><input className="input" value={f.country} onChange={set("country")} /></Field>
-                        <Field title="Prefers to be contacted by"><select className="input" value={f.preferredChannel} onChange={set("preferredChannel")}><option value="">No preference</option><option value="phone">Phone call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="sms">SMS</option></select></Field>
+                        <Field title="Prefers to be contacted by"><Select className="input" value={f.preferredChannel} onChange={set("preferredChannel")}><option value="">No preference</option><option value="phone">Phone call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="sms">SMS</option></Select></Field>
                         <Field title="Best time to reach"><input className="input" value={f.preferredContactTime} onChange={set("preferredContactTime")} placeholder="Weekdays after 6pm" /></Field>
                         <Field title="Tags (comma separated)" span><input className="input" value={f.contactTags} onChange={set("contactTags")} placeholder="investor, golden-visa" /></Field>
                         <Field title="Notes about the person" span><textarea className="input min-h-20" value={f.contactNotes} onChange={set("contactNotes")} /></Field>
@@ -172,14 +173,14 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
 
               <Section n={2} title="Lead" hint="Status, origin and ownership.">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field title="Lead status"><select className="input" value={f.stageId} onChange={set("stageId")}><option value="">{stages[0]?.name ?? "New"}</option>{stages.slice(1).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
-                  <Field title="Source"><select className="input" value={f.sourceCode} onChange={set("sourceCode")}>{sources.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}</select></Field>
+                  <Field title="Lead status"><Select className="input" value={f.stageId} onChange={set("stageId")}><option value="">{stages[0]?.name ?? "New"}</option>{stages.slice(1).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Field>
+                  <Field title="Source"><Select className="input" value={f.sourceCode} onChange={set("sourceCode")}>{sources.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}</Select></Field>
                   <Field title="Campaign"><input className="input" list="lead-campaigns" value={f.campaign} onChange={set("campaign")} placeholder="e.g. Instagram Ramadan" /><datalist id="lead-campaigns">{campaigns.map((c) => <option key={c} value={c} />)}</datalist></Field>
                   <Field title="Assign to">
-                    <select className="input" value={f.assignedUserId || defaultOwner} onChange={set("assignedUserId")} disabled={users.length === 1}>
+                    <Select className="input" value={f.assignedUserId || defaultOwner} onChange={set("assignedUserId")} disabled={users.length === 1}>
                       {users.length !== 1 && <option value="">Auto-assign (routing rules)</option>}
                       {users.map((u) => <option key={u.id} value={u.id}>{u.email}{u.id === meId ? " (me)" : ""}</option>)}
-                    </select>
+                    </Select>
                   </Field>
                   <div className="sm:col-span-2">
                     <button type="button" role="switch" aria-checked={f.isHot} onClick={() => setF({ ...f, isHot: !f.isHot })} className="flex w-full items-center justify-between rounded-lg border p-3 text-left" style={{ borderColor: f.isHot ? "var(--accent)" : "var(--border)" }}>
@@ -193,16 +194,16 @@ export function NewLeadDrawer({ sources, projects, canReadContacts, stages, user
               <details className="rounded-xl border" style={{ borderColor: "var(--border)" }}>
                 <summary className="cursor-pointer px-5 py-4 font-semibold">Requirements <span className="muted text-xs font-normal">(optional: purpose, budget, project, areas)</span></summary>
                 <div className="grid gap-4 border-t p-5 sm:grid-cols-2" style={{ borderColor: "var(--border)" }}>
-                  <Field title="Purpose"><select className="input" value={f.purpose} onChange={set("purpose")}><option value="buy">Buy</option><option value="rent">Rent</option><option value="invest">Invest</option><option value="off_plan">Off-plan</option></select></Field>
-                  <Field title="Lead language"><select className="input" value={f.language} onChange={set("language")}><option value="en">English</option><option value="ar">Arabic</option></select></Field>
-                  <Field title="Project" span><select className="input" value={f.projectId} onChange={set("projectId")}><option value="">None</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+                  <Field title="Purpose"><Select className="input" value={f.purpose} onChange={set("purpose")}><option value="buy">Buy</option><option value="rent">Rent</option><option value="invest">Invest</option><option value="off_plan">Off-plan</option></Select></Field>
+                  <Field title="Lead language"><Select className="input" value={f.language} onChange={set("language")}><option value="en">English</option><option value="ar">Arabic</option></Select></Field>
+                  <Field title="Project" span><Select className="input" value={f.projectId} onChange={set("projectId")}><option value="">None</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></Field>
                   <Field title="Budget min"><input className="input" type="number" min="0" value={f.budgetMin} onChange={set("budgetMin")} /></Field>
                   <Field title="Budget max"><input className="input" type="number" min="0" value={f.budgetMax} onChange={set("budgetMax")} /></Field>
-                  <Field title="Currency"><select className="input" value={f.currency} onChange={set("currency")}><option>AED</option><option>USD</option><option>EUR</option><option>GBP</option></select></Field>
+                  <Field title="Currency"><Select className="input" value={f.currency} onChange={set("currency")}><option>AED</option><option>USD</option><option>EUR</option><option>GBP</option></Select></Field>
                   <Field title="Bedrooms"><input className="input" type="number" min="0" max="20" value={f.bedrooms} onChange={set("bedrooms")} /></Field>
                   <Field title="Preferred areas (comma separated)" span><input className="input" value={f.areas} onChange={set("areas")} placeholder="Dubai Marina, Downtown" /></Field>
-                  <Field title="Financing"><select className="input" value={f.financing} onChange={set("financing")}><option value="">Not known</option><option value="cash">Cash</option><option value="mortgage">Mortgage</option><option value="undecided">Undecided</option></select></Field>
-                  <Field title="Looking to move"><select className="input" value={f.purchaseTimeline} onChange={set("purchaseTimeline")}><option value="">Not known</option><option value="immediate">Immediately</option><option value="one_to_three_months">In 1-3 months</option><option value="three_to_six_months">In 3-6 months</option><option value="over_six_months">After 6 months</option><option value="exploring">Just exploring</option></select></Field>
+                  <Field title="Financing"><Select className="input" value={f.financing} onChange={set("financing")}><option value="">Not known</option><option value="cash">Cash</option><option value="mortgage">Mortgage</option><option value="undecided">Undecided</option></Select></Field>
+                  <Field title="Looking to move"><Select className="input" value={f.purchaseTimeline} onChange={set("purchaseTimeline")}><option value="">Not known</option><option value="immediate">Immediately</option><option value="one_to_three_months">In 1-3 months</option><option value="three_to_six_months">In 3-6 months</option><option value="over_six_months">After 6 months</option><option value="exploring">Just exploring</option></Select></Field>
                   <div className="sm:col-span-2"><span className="muted text-xs font-medium">Property types</span><div className="mt-1.5 flex flex-wrap gap-2">{["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land"].map((t) => <button key={t} type="button" className={f.propertyTypes.includes(t) ? "btn text-xs" : "btn-ghost text-xs"} onClick={() => setF({ ...f, propertyTypes: f.propertyTypes.includes(t) ? f.propertyTypes.filter((x) => x !== t) : [...f.propertyTypes, t] })}>{t}</button>)}</div></div>
                   <Field title="Next follow-up (Dubai time)"><input className="input" type="datetime-local" value={f.nextFollowUpAt} onChange={set("nextFollowUpAt")} /></Field>
                   <Field title="Expected close date"><input className="input" type="date" value={f.expectedCloseDate} onChange={set("expectedCloseDate")} /></Field>

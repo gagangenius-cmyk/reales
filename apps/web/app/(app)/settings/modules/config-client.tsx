@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -65,7 +66,7 @@ export function ConfigClient({ modules, settings }: { modules: Mod[]; settings: 
               <span className="max-w-xl"><b>{s.label}</b><span className="muted block">{s.description}</span>{s.module && mods[s.module] === false && <span className="err block text-xs">{label(s.module)} is off, so this has no effect.</span>}</span>
               {s.type === "boolean" && <input type="checkbox" className="mt-1 h-4 w-4" checked={!!vals[s.key]} onChange={(e) => setVals({ ...vals, [s.key]: e.target.checked })} />}
               {s.type === "number" && <input className="input w-28" type="number" min={s.min} max={s.max} value={Number(vals[s.key])} onChange={(e) => setVals({ ...vals, [s.key]: Number(e.target.value) })} />}
-              {s.type === "choice" && <select className="input w-40" value={String(vals[s.key])} onChange={(e) => setVals({ ...vals, [s.key]: e.target.value })}>{s.choices!.map((c) => <option key={c} value={c}>{c === "none" ? "No quiet hours" : c.replace("-", ":00 to ") + ":00"}</option>)}</select>}
+              {s.type === "choice" && <Select className="input w-40" value={String(vals[s.key])} onChange={(e) => setVals({ ...vals, [s.key]: e.target.value })}>{s.choices!.map((c) => <option key={c} value={c}>{c === "none" ? "No quiet hours" : c.replace("-", ":00 to ") + ":00"}</option>)}</Select>}
             </label>
           ))}
           <div><button className="btn" disabled={busy === g} onClick={() => saveSettings(g)}>{busy === g ? "Saving..." : `Save ${g.toLowerCase()}`}</button></div>

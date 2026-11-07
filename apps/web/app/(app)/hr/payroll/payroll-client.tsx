@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { Lbl, useAction } from "@/components/hr-ui";
 
@@ -86,7 +87,7 @@ export function PayrollClient({ runs, detail }: { runs: Run[]; detail: { run: Ru
                           <div><b>Deducted</b>{s.deductions.length === 0 ? <p className="muted">Nothing deducted.</p> : <ul>{s.deductions.map((x, i) => <li key={i} className="flex justify-between gap-2">{x.name}{x.reason ? <span className="muted text-xs"> ({x.reason})</span> : null}<span>{money(x.amount)}{r.status === "draft" && x.manual && <button className="btn-ghost ml-2 text-xs" onClick={() => run(() => post(`/api/v1/hr/payslips/${s.id}/adjust`, { type: "deduction", remove: i }), "Removed.")}>Remove</button>}</span></li>)}</ul>}</div>
                           {r.status === "draft" && (
                             <form className="flex flex-wrap items-end gap-2 sm:col-span-2" onSubmit={(e) => { e.preventDefault(); void run(() => post(`/api/v1/hr/payslips/${s.id}/adjust`, { type: adj.type, name: adj.name, amount: Number(adj.amount), reason: adj.reason }), "Adjustment added.", () => setAdj({ ...adj, name: "", amount: "", reason: "" })); }}>
-                              <Lbl label="Add a line"><select className="input" value={adj.type} onChange={(e) => setAdj({ ...adj, type: e.target.value })}><option value="earning">Bonus or allowance</option><option value="deduction">Deduction</option></select></Lbl>
+                              <Lbl label="Add a line"><Select className="input" value={adj.type} onChange={(e) => setAdj({ ...adj, type: e.target.value })}><option value="earning">Bonus or allowance</option><option value="deduction">Deduction</option></Select></Lbl>
                               <Lbl label="Name"><input className="input" required value={adj.name} onChange={(e) => setAdj({ ...adj, name: e.target.value })} placeholder="Sales bonus" /></Lbl>
                               <Lbl label="Amount"><input className="input w-32" type="number" min="0.01" step="any" required value={adj.amount} onChange={(e) => setAdj({ ...adj, amount: e.target.value })} /></Lbl>
                               <Lbl label="Reason"><input className="input" required value={adj.reason} onChange={(e) => setAdj({ ...adj, reason: e.target.value })} /></Lbl>

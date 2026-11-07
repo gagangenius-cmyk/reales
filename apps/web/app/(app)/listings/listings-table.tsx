@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 import type { AgentOpt, EditTarget } from "./listing-drawer";
@@ -55,14 +56,14 @@ export function ListingsTable({ rows, canBulk, canPdf, agents, defaults, head }:
               <button className="btn-ghost" disabled={busy} onClick={() => bulk({ type: "unpublish" }, "Unpublished")}>Unpublish</button>
               <button className="btn-ghost" disabled={busy} onClick={() => bulk({ type: "refresh" }, "Refreshed")}>Refresh</button>
               <button className="btn-ghost" disabled={busy} onClick={() => bulk({ type: "archive" }, "Archived")}>Archive</button>
-              <select className="input w-auto py-1" disabled={busy} defaultValue="" aria-label="Close selected as" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v) void bulk({ type: "close", outcome: v }, `Closed as ${v}`); }}>
+              <Select className="input w-auto py-1" disabled={busy} defaultValue="" aria-label="Close selected as" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v) void bulk({ type: "close", outcome: v }, `Closed as ${v}`); }}>
                 <option value="">Close as...</option><option value="sold">Sold</option><option value="rented">Rented</option><option value="withdrawn">Withdrawn</option>
-              </select>
+              </Select>
               <button className="btn-ghost" disabled={busy} onClick={() => bulk({ type: "feature", value: true }, "Featured")}>Feature</button>
               <button className="btn-ghost" disabled={busy} onClick={() => bulk({ type: "feature", value: false }, "Unfeatured")}>Unfeature</button>
-              <select className="input w-auto py-1" disabled={busy} defaultValue="" aria-label="Reassign selected to" onChange={(e) => { if (e.target.value) { void bulk({ type: "assign", userId: e.target.value }, "Reassigned"); e.target.value = ""; } }}>
+              <Select className="input w-auto py-1" disabled={busy} defaultValue="" aria-label="Reassign selected to" onChange={(e) => { if (e.target.value) { void bulk({ type: "assign", userId: e.target.value }, "Reassigned"); e.target.value = ""; } }}>
                 <option value="">Assign to...</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.email}</option>)}
-              </select>
+              </Select>
             </>
           )}
           <button className="btn-ghost ml-auto" onClick={() => setSel(new Set())}>Clear</button>
@@ -77,7 +78,7 @@ export function ListingsTable({ rows, canBulk, canPdf, agents, defaults, head }:
             <label className="text-sm"><span className="muted text-xs font-medium">Client name</span><input className="input mt-1" value={f.clientName} maxLength={120} onChange={(e) => setF({ ...f, clientName: e.target.value })} placeholder="Prepared for..." /></label>
             <label className="text-sm"><span className="muted text-xs font-medium">Title</span><input className="input mt-1" value={f.title} maxLength={120} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="Properties for you" /></label>
             <label className="text-sm"><span className="muted text-xs font-medium">Layout</span>
-              <select className="input mt-1" value={f.layout} onChange={(e) => setF({ ...f, layout: e.target.value })}><option value="both">Summary table and property pages</option><option value="table">Availability table only</option><option value="detailed">Property pages only</option></select></label>
+              <Select className="input mt-1" value={f.layout} onChange={(e) => setF({ ...f, layout: e.target.value })}><option value="both">Summary table and property pages</option><option value="table">Availability table only</option><option value="detailed">Property pages only</option></Select></label>
           </div>
           <label className="text-sm"><span className="muted text-xs font-medium">Note to the client (optional)</span><textarea className="input mt-1" rows={2} maxLength={1500} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
           <div className="flex flex-wrap items-center gap-4 text-sm">

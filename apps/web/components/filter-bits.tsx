@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Select } from "./select";
 
 /** Overview | List (| Board) switcher shared by the Leads and Listings pages. */
 export function ViewTabs({ base, active, extra = [] }: { base: string; active: "overview" | "list" | "board" | "map"; extra?: { key: "board" | "map"; label: string; href: string }[] }) {
@@ -17,10 +18,10 @@ export function Field({ label, children, wide }: { label: string; children: Reac
 
 export function Sel({ name, value, options, any = "Any" }: { name: string; value?: string; options: ([string, string] | string)[]; any?: string }) {
   return (
-    <select className="input" name={name} defaultValue={value ?? ""}>
+    <Select className="input" name={name} defaultValue={value ?? ""}>
       <option value="">{any}</option>
       {options.map((o) => { const [v, l] = typeof o === "string" ? [o, o] : o; return <option key={v} value={v}>{l}</option>; })}
-    </select>
+    </Select>
   );
 }
 

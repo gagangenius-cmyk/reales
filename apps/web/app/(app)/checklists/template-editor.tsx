@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -37,15 +38,15 @@ export function TemplateEditor({ template }: { template?: Template }) {
             <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
               <section className="card grid gap-4 p-4 sm:grid-cols-3">
                 <label className="flex flex-col gap-1.5 text-sm sm:col-span-3"><span className="muted text-xs font-medium">Name</span><input className="input" value={t.name} onChange={(e) => setT({ ...t, name: e.target.value })} required autoFocus /></label>
-                <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Deal type</span><select className="input" value={t.dealType} onChange={(e) => setT({ ...t, dealType: e.target.value })}><option value="sale">Sale</option><option value="lease">Lease</option></select></label>
-                <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Property</span><select className="input" value={t.projectKind} onChange={(e) => setT({ ...t, projectKind: e.target.value })}><option value="any">Any</option><option value="ready">Ready</option><option value="off_plan">Off-plan</option></select></label>
+                <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Deal type</span><Select className="input" value={t.dealType} onChange={(e) => setT({ ...t, dealType: e.target.value })}><option value="sale">Sale</option><option value="lease">Lease</option></Select></label>
+                <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Property</span><Select className="input" value={t.projectKind} onChange={(e) => setT({ ...t, projectKind: e.target.value })}><option value="any">Any</option><option value="ready">Ready</option><option value="off_plan">Off-plan</option></Select></label>
                 <label className="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" checked={t.active} onChange={(e) => setT({ ...t, active: e.target.checked })} /> Active</label>
               </section>
               <section className="flex flex-col gap-2">
                 {t.items.map((it, i) => (
                   <div key={i} className="card grid gap-2 p-3 sm:grid-cols-[1fr_9rem_5rem_auto]">
                     <input className="input" placeholder={`Item ${i + 1}, e.g. Buyer passport copy`} value={it.title} onChange={(e) => setItem(i, { title: e.target.value })} aria-label={`Item ${i + 1} title`} />
-                    <select className="input" value={it.gateStage} onChange={(e) => setItem(i, { gateStage: e.target.value })} aria-label="Stage gate">{GATES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+                    <Select className="input" value={it.gateStage} onChange={(e) => setItem(i, { gateStage: e.target.value })} aria-label="Stage gate">{GATES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select>
                     <input className="input" type="number" min="0" placeholder="Days" value={it.dueOffsetDays ?? ""} onChange={(e) => setItem(i, { dueOffsetDays: e.target.value === "" ? null : Number(e.target.value) })} aria-label="Due after days" title="Due this many days after the deal starts" />
                     <div className="flex items-center gap-1 text-xs">
                       <label className="flex items-center gap-1"><input type="checkbox" checked={it.required} onChange={(e) => setItem(i, { required: e.target.checked })} /> Req.</label>

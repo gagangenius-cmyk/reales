@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -23,8 +24,8 @@ export function CaseCreate({ profiles }: { profiles: Array<{ id: string; label: 
   return (
     <form onSubmit={submit} className="card grid gap-3 p-4 sm:grid-cols-4">
       <h2 className="font-semibold sm:col-span-4">Open a case</h2>
-      <label className="text-sm"><span className="muted text-xs font-medium">KYC profile</span><select className="input mt-1" value={f.profileId} onChange={(e) => setF({ ...f, profileId: e.target.value })} required><option value="">Choose</option>{profiles.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
-      <label className="text-sm"><span className="muted text-xs font-medium">Kind</span><select className="input mt-1" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+      <label className="text-sm"><span className="muted text-xs font-medium">KYC profile</span><Select className="input mt-1" value={f.profileId} onChange={(e) => setF({ ...f, profileId: e.target.value })} required><option value="">Choose</option>{profiles.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</Select></label>
+      <label className="text-sm"><span className="muted text-xs font-medium">Kind</span><Select className="input mt-1" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></label>
       <label className="text-sm sm:col-span-2"><span className="muted text-xs font-medium">Summary</span><input className="input mt-1" value={f.summary} onChange={(e) => setF({ ...f, summary: e.target.value })} required minLength={3} maxLength={1000} /></label>
       <div className="flex items-center gap-3 sm:col-span-4"><button className="btn" disabled={busy}>{busy ? "Opening..." : "Open case"}</button>{msg && <span role="status" className="text-sm">{msg}</span>}</div>
     </form>
@@ -54,7 +55,7 @@ export function CaseActions({ id, status }: { id: string; status: string }) {
       </div>
       {mode && (
         <form onSubmit={go} className="flex w-72 flex-col gap-2 text-left">
-          {mode === "close" && <select className="input" value={outcome} onChange={(e) => setOutcome(e.target.value as typeof outcome)} aria-label="Outcome"><option value="cleared">Cleared</option><option value="reported">Reported</option><option value="rejected">Rejected</option></select>}
+          {mode === "close" && <Select className="input" value={outcome} onChange={(e) => setOutcome(e.target.value as typeof outcome)} aria-label="Outcome"><option value="cleared">Cleared</option><option value="reported">Reported</option><option value="rejected">Rejected</option></Select>}
           <textarea className="input" rows={3} required minLength={mode === "close" ? 10 : 1} maxLength={mode === "close" ? 1000 : 2000} placeholder={mode === "close" ? "Resolution (at least 10 characters)" : "Note"} value={text} onChange={(e) => setText(e.target.value)} />
           <button className="btn" disabled={busy}>{busy ? "Saving..." : mode === "close" ? "Close case" : "Add note"}</button>
           {msg && <span role="alert" className="text-xs">{msg}</span>}

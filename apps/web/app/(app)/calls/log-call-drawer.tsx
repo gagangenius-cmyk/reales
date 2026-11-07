@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -61,8 +62,8 @@ export function LogCallDrawer({ leadId, contactId, contactLabel, label = "Log a 
                 )}
               </section>
               <section className="card grid grid-cols-2 gap-4 p-4">
-                <label className={lab}><span className={cap}>Direction</span><select className="input" value={f.direction} onChange={(e) => setF({ ...f, direction: e.target.value })}><option value="outbound">I called them</option><option value="inbound">They called me</option></select></label>
-                <label className={lab}><span className={cap}>Outcome</span><select className="input" value={f.outcome} onChange={(e) => setF({ ...f, outcome: e.target.value })}>{OUTCOMES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+                <label className={lab}><span className={cap}>Direction</span><Select className="input" value={f.direction} onChange={(e) => setF({ ...f, direction: e.target.value })}><option value="outbound">I called them</option><option value="inbound">They called me</option></Select></label>
+                <label className={lab}><span className={cap}>Outcome</span><Select className="input" value={f.outcome} onChange={(e) => setF({ ...f, outcome: e.target.value })}>{OUTCOMES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></label>
                 <label className={lab}><span className={cap}>Minutes</span><input className="input" type="number" min="0" max="360" value={f.min} onChange={(e) => setF({ ...f, min: e.target.value })} /></label>
                 <label className={lab}><span className={cap}>Seconds</span><input className="input" type="number" min="0" max="59" value={f.sec} onChange={(e) => setF({ ...f, sec: e.target.value })} /></label>
                 <label className={`${lab} col-span-2`}><span className={cap}>Notes</span><textarea className="input min-h-24" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} maxLength={4000} /></label>

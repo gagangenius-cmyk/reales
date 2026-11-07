@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -26,7 +27,7 @@ export function InviteForm({ roles }: { roles: Array<{ key: string; name: string
   return (
     <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-4">
       <label className="grow text-sm">Invite by email<input className="input mt-1 w-full" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
-      <label className="text-sm">Role<select className="input mt-1" value={roleKey} onChange={(e) => setRoleKey(e.target.value)}>{roles.map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}</select></label>
+      <label className="text-sm">Role<Select className="input mt-1" value={roleKey} onChange={(e) => setRoleKey(e.target.value)}>{roles.map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}</Select></label>
       <button className="btn" disabled={busy}>{busy ? "Sending..." : "Send invitation"}</button>
       {msg && <p role={msg.ok ? "status" : "alert"} className={`w-full text-sm ${msg.ok ? "" : "err"}`}>{msg.text}</p>}
     </form>

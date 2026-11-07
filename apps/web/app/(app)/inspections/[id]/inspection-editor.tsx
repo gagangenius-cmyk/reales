@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -50,7 +51,7 @@ export function InspectionEditor({ id, status, version, items, canPerform }: { i
           {rows.map((r, i) => (
             <tr key={r.id}>
               <td>{r.label}</td><td>{r.area ?? "-"}</td>
-              <td>{editable ? <select className="input" value={r.condition} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, condition: e.target.value } : x)))}>{CONDITIONS.map((c) => <option key={c}>{c}</option>)}</select> : r.condition}</td>
+              <td>{editable ? <Select className="input" value={r.condition} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, condition: e.target.value } : x)))}>{CONDITIONS.map((c) => <option key={c}>{c}</option>)}</Select> : r.condition}</td>
               <td>{editable ? <input className="input w-full" value={r.notes} maxLength={1000} onChange={(e) => setRows(rows.map((x, k) => (k === i ? { ...x, notes: e.target.value } : x)))} /> : r.notes || "-"}</td>
             </tr>
           ))}

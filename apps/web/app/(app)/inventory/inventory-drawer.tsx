@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -72,14 +73,14 @@ export function InventoryDrawer({ developers, projects, buildings }: { developer
                 {kind === "developer" && <>
                   <Lab t="Developer name" span><input className="input" value={v("name")} onChange={set("name")} autoFocus /></Lab>
                   <Lab t="Registration no."><input className="input" value={v("registrationNo")} onChange={set("registrationNo")} /></Lab>
-                  <Lab t="Jurisdiction"><select className="input" value={v("jurisdictionCode")} onChange={set("jurisdictionCode")}>{JURISDICTIONS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></Lab>
+                  <Lab t="Jurisdiction"><Select className="input" value={v("jurisdictionCode")} onChange={set("jurisdictionCode")}>{JURISDICTIONS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</Select></Lab>
                   <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={escrow} onChange={(e) => setEscrow(e.target.checked)} /> Escrow registered</label>
                 </>}
                 {kind === "project" && <>
                   <Lab t="Project name" span><input className="input" value={v("name")} onChange={set("name")} autoFocus /></Lab>
-                  <Lab t="Type"><select className="input" value={v("projectKind")} onChange={set("projectKind")}><option value="ready">Ready (completed)</option><option value="off_plan">Off-plan</option></select></Lab>
-                  <Lab t="Jurisdiction"><select className="input" value={v("jurisdictionCode")} onChange={set("jurisdictionCode")}>{JURISDICTIONS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></Lab>
-                  <Lab t="Developer"><select className="input" value={v("developerId")} onChange={set("developerId")}><option value="">None</option>{developers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></Lab>
+                  <Lab t="Type"><Select className="input" value={v("projectKind")} onChange={set("projectKind")}><option value="ready">Ready (completed)</option><option value="off_plan">Off-plan</option></Select></Lab>
+                  <Lab t="Jurisdiction"><Select className="input" value={v("jurisdictionCode")} onChange={set("jurisdictionCode")}>{JURISDICTIONS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</Select></Lab>
+                  <Lab t="Developer"><Select className="input" value={v("developerId")} onChange={set("developerId")}><option value="">None</option>{developers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</Select></Lab>
                   <Lab t="Project registration no."><input className="input" value={v("registrationNo")} onChange={set("registrationNo")} /></Lab>
                   {v("projectKind") === "off_plan" && <>
                     <Lab t="Escrow account reference"><input className="input" value={v("escrowAccountRef")} onChange={set("escrowAccountRef")} /></Lab>
@@ -87,23 +88,23 @@ export function InventoryDrawer({ developers, projects, buildings }: { developer
                   </>}
                 </>}
                 {kind === "building" && <>
-                  <Lab t="Project" span><select className="input" value={v("reProjectId")} onChange={set("reProjectId")}><option value="">Choose...</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Lab>
+                  <Lab t="Project" span><Select className="input" value={v("reProjectId")} onChange={set("reProjectId")}><option value="">Choose...</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Select></Lab>
                   <Lab t="Building name" span><input className="input" value={v("name")} onChange={set("name")} autoFocus /></Lab>
                   <Lab t="Community / area"><input className="input" value={v("community")} onChange={set("community")} placeholder="Dubai Marina" /></Lab>
                   <Lab t="City"><input className="input" value={v("city")} onChange={set("city")} placeholder="Dubai" /></Lab>
                   <Lab t="Floors"><input className="input" type="number" min="1" max="300" value={v("floorsCount")} onChange={set("floorsCount")} /></Lab>
                 </>}
                 {kind === "unit" && <>
-                  <Lab t="Building" span><select className="input" value={v("buildingId")} onChange={set("buildingId")}><option value="">Choose...</option>{buildings.map((b) => <option key={b.id} value={b.id}>{b.name} - {b.projectName}</option>)}</select></Lab>
+                  <Lab t="Building" span><Select className="input" value={v("buildingId")} onChange={set("buildingId")}><option value="">Choose...</option>{buildings.map((b) => <option key={b.id} value={b.id}>{b.name} - {b.projectName}</option>)}</Select></Lab>
                   <Lab t="Unit number"><input className="input" value={v("unitNumber")} onChange={set("unitNumber")} autoFocus /></Lab>
-                  <Lab t="Type"><select className="input" value={v("type")} onChange={set("type")}>{TYPES.map((t) => <option key={t}>{t}</option>)}</select></Lab>
+                  <Lab t="Type"><Select className="input" value={v("type")} onChange={set("type")}>{TYPES.map((t) => <option key={t}>{t}</option>)}</Select></Lab>
                   <Lab t="Floor"><input className="input" type="number" value={v("floor")} onChange={set("floor")} /></Lab>
                   <Lab t="View"><input className="input" value={v("view")} onChange={set("view")} placeholder="Marina, Sea, Burj" /></Lab>
                   <Lab t="Bedrooms"><input className="input" type="number" min="0" max="20" value={v("bedrooms")} onChange={set("bedrooms")} /></Lab>
                   <Lab t="Bathrooms"><input className="input" type="number" min="0" max="20" value={v("bathrooms")} onChange={set("bathrooms")} /></Lab>
                   <Lab t="Area (sqft)"><input className="input" type="number" min="1" step="any" value={v("areaSqft")} onChange={set("areaSqft")} /></Lab>
                   <Lab t="List price"><input className="input" type="number" min="1" step="any" value={v("listPrice")} onChange={set("listPrice")} /></Lab>
-                  <Lab t="Currency"><select className="input" value={v("currency")} onChange={set("currency")}><option>AED</option><option>USD</option><option>EUR</option><option>GBP</option></select></Lab>
+                  <Lab t="Currency"><Select className="input" value={v("currency")} onChange={set("currency")}><option>AED</option><option>USD</option><option>EUR</option><option>GBP</option></Select></Lab>
                 </>}
               </section>
             </div>

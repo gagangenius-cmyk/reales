@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -65,15 +66,15 @@ export function ContactDrawer({ id, initial = {}, label }: { id?: string; initia
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
               <section className="card grid gap-4 p-4 sm:grid-cols-2">
                 <h3 className="font-semibold sm:col-span-2">Identity</h3>
-                <Lab t="Salutation"><select className="input" value={f.salutation} onChange={set("salutation")}><option value="">-</option>{["Mr", "Mrs", "Ms", "Dr", "Eng", "Sheikh", "Sheikha"].map((x) => <option key={x}>{x}</option>)}</select></Lab>
-                <Lab t="Gender"><select className="input" value={f.gender} onChange={set("gender")}><option value="">-</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></Lab>
+                <Lab t="Salutation"><Select className="input" value={f.salutation} onChange={set("salutation")}><option value="">-</option>{["Mr", "Mrs", "Ms", "Dr", "Eng", "Sheikh", "Sheikha"].map((x) => <option key={x}>{x}</option>)}</Select></Lab>
+                <Lab t="Gender"><Select className="input" value={f.gender} onChange={set("gender")}><option value="">-</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></Select></Lab>
                 <Lab t="First name"><input className="input" value={f.firstName} onChange={set("firstName")} /></Lab>
                 <Lab t="Last name"><input className="input" value={f.lastName} onChange={set("lastName")} /></Lab>
                 <Lab t="Company (for company contacts)" span><input className="input" value={f.companyName} onChange={set("companyName")} /></Lab>
                 <Lab t="Date of birth"><input className="input" type="date" value={f.dateOfBirth} onChange={set("dateOfBirth")} /></Lab>
                 <Lab t="Nationality"><input className="input" value={f.nationality} onChange={set("nationality")} /></Lab>
-                <Lab t="UAE residency"><select className="input" value={f.residency} onChange={set("residency")}><option value="">-</option><option value="uae_resident">UAE resident</option><option value="non_resident">Non-resident</option></select></Lab>
-                <Lab t="Language"><select className="input" value={f.language} onChange={set("language")}><option value="en">English</option><option value="ar">Arabic</option></select></Lab>
+                <Lab t="UAE residency"><Select className="input" value={f.residency} onChange={set("residency")}><option value="">-</option><option value="uae_resident">UAE resident</option><option value="non_resident">Non-resident</option></Select></Lab>
+                <Lab t="Language"><Select className="input" value={f.language} onChange={set("language")}><option value="en">English</option><option value="ar">Arabic</option></Select></Lab>
               </section>
               <section className="card grid gap-4 p-4 sm:grid-cols-2">
                 <h3 className="font-semibold sm:col-span-2">Reaching them</h3>
@@ -81,7 +82,7 @@ export function ContactDrawer({ id, initial = {}, label }: { id?: string; initia
                 <Lab t="Second phone"><input className="input" inputMode="tel" value={f.phoneSecondary} onChange={set("phoneSecondary")} /></Lab>
                 <Lab t="WhatsApp (if different)"><input className="input" inputMode="tel" value={f.whatsapp} onChange={set("whatsapp")} /></Lab>
                 <Lab t="Email"><input className="input" type="email" value={f.email} onChange={set("email")} /></Lab>
-                <Lab t="Prefers to be contacted by"><select className="input" value={f.preferredChannel} onChange={set("preferredChannel")}><option value="">No preference</option><option value="phone">Phone call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="sms">SMS</option></select></Lab>
+                <Lab t="Prefers to be contacted by"><Select className="input" value={f.preferredChannel} onChange={set("preferredChannel")}><option value="">No preference</option><option value="phone">Phone call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="sms">SMS</option></Select></Lab>
                 <Lab t="Best time to reach"><input className="input" value={f.preferredContactTime} onChange={set("preferredContactTime")} placeholder="Weekdays after 6pm" /></Lab>
               </section>
               <section className="card grid gap-4 p-4 sm:grid-cols-2">

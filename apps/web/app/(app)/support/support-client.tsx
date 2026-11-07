@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -31,8 +32,8 @@ export function NewTicket() {
             <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
               <label className={lab}><span className={cap}>Subject</span><input className="input" value={f.subject} onChange={(e) => setF({ ...f, subject: e.target.value })} required maxLength={200} autoFocus /></label>
               <div className="grid grid-cols-2 gap-4">
-                <label className={lab}><span className={cap}>Type</span><select className="input" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-                <label className={lab}><span className={cap}>Priority</span><select className="input" value={f.priority} onChange={(e) => setF({ ...f, priority: e.target.value })}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High: blocks my work</option><option value="urgent">Urgent: many people blocked</option></select></label>
+                <label className={lab}><span className={cap}>Type</span><Select className="input" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></label>
+                <label className={lab}><span className={cap}>Priority</span><Select className="input" value={f.priority} onChange={(e) => setF({ ...f, priority: e.target.value })}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High: blocks my work</option><option value="urgent">Urgent: many people blocked</option></Select></label>
               </div>
               <label className={lab}><span className={cap}>What happened?</span><textarea className="input min-h-40" value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} required placeholder="What you were doing, what you expected, what you saw instead." /></label>
             </div>
@@ -56,9 +57,9 @@ export function TicketThread({ id, status, desk, mine, staff, assigneeId, priori
     <div className="flex flex-col gap-3">
       {desk && (
         <div className="card flex flex-wrap items-center gap-3 p-3 text-sm">
-          <label className="flex items-center gap-2">Status<select className="input w-auto py-1" value={status} onChange={(e) => run(postJson(`/api/v1/support-tickets/${id}`, { status: e.target.value }, "PATCH"))}>{["open", "in_progress", "waiting", "resolved", "closed"].map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}</select></label>
-          <label className="flex items-center gap-2">Priority<select className="input w-auto py-1" value={priority} onChange={(e) => run(postJson(`/api/v1/support-tickets/${id}`, { priority: e.target.value }, "PATCH"))}>{["low", "normal", "high", "urgent"].map((s) => <option key={s}>{s}</option>)}</select></label>
-          <label className="flex items-center gap-2">Assigned to<select className="input w-auto py-1" value={assigneeId ?? ""} onChange={(e) => run(postJson(`/api/v1/support-tickets/${id}`, { assigneeId: e.target.value || null }, "PATCH"))}><option value="">Nobody</option>{staff.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}</select></label>
+          <label className="flex items-center gap-2">Status<Select className="input w-auto py-1" value={status} onChange={(e) => run(postJson(`/api/v1/support-tickets/${id}`, { status: e.target.value }, "PATCH"))}>{["open", "in_progress", "waiting", "resolved", "closed"].map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}</Select></label>
+          <label className="flex items-center gap-2">Priority<Select className="input w-auto py-1" value={priority} onChange={(e) => run(postJson(`/api/v1/support-tickets/${id}`, { priority: e.target.value }, "PATCH"))}>{["low", "normal", "high", "urgent"].map((s) => <option key={s}>{s}</option>)}</Select></label>
+          <label className="flex items-center gap-2">Assigned to<Select className="input w-auto py-1" value={assigneeId ?? ""} onChange={(e) => run(postJson(`/api/v1/support-tickets/${id}`, { assigneeId: e.target.value || null }, "PATCH"))}><option value="">Nobody</option>{staff.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}</Select></label>
         </div>
       )}
       {status !== "closed" ? (

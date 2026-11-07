@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -18,8 +19,8 @@ export function DsrCreate({ contacts }: { contacts: Array<{ id: string; label: s
   }
   return (
     <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-4">
-      <label className="grow text-sm">Log a data request from<select className="input mt-1 w-full" value={contactId} onChange={(e) => setContactId(e.target.value)}>{contacts.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
-      <label className="text-sm">Type<select className="input mt-1" value={kind} onChange={(e) => setKind(e.target.value)}><option value="access">Access (copy of data)</option><option value="erasure">Erasure</option><option value="rectification">Rectification</option><option value="restriction">Restriction</option></select></label>
+      <label className="grow text-sm">Log a data request from<Select className="input mt-1 w-full" value={contactId} onChange={(e) => setContactId(e.target.value)}>{contacts.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</Select></label>
+      <label className="text-sm">Type<Select className="input mt-1" value={kind} onChange={(e) => setKind(e.target.value)}><option value="access">Access (copy of data)</option><option value="erasure">Erasure</option><option value="rectification">Rectification</option><option value="restriction">Restriction</option></Select></label>
       <button className="btn" disabled={!contactId}>Log request</button>
       {error && <p role="alert" className="err w-full text-sm">{error}</p>}
     </form>

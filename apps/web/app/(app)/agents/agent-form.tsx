@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -49,10 +50,10 @@ export function AgentEditor({ row, plans, canManage }: { row: Row; plans: Plan[]
                 </>
               )}
               <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Commission plan</span>
-                <select className="input" value={f.commissionPlanId} onChange={set("commissionPlanId")}><option value="">Automatic (newest plan for {f.agentType} agents)</option>{usable.map((x) => <option key={x.id} value={x.id}>{x.name} ({x.dealType})</option>)}</select>
+                <Select className="input" value={f.commissionPlanId} onChange={set("commissionPlanId")}><option value="">Automatic (newest plan for {f.agentType} agents)</option>{usable.map((x) => <option key={x.id} value={x.id}>{x.name} ({x.dealType})</option>)}</Select>
               </label>
               <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Payout note (e.g. bank, invoice requirement)</span><input className="input" value={f.payoutNote} onChange={set("payoutNote")} /></label>
-              <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Status</span><select className="input" value={f.status} onChange={set("status")}><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+              <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Status</span><Select className="input" value={f.status} onChange={set("status")}><option value="active">Active</option><option value="inactive">Inactive</option></Select></label>
             </div>
             <footer className="flex items-center justify-between gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
               <p role="alert" className="err min-w-0 flex-1 text-sm">{msg}</p>

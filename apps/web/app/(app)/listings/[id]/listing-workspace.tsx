@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Select } from "@/components/select";
+import { Dropzone } from "@/components/dropzone";
 import { useRouter } from "next/navigation";
 import { LocationTab } from "./location-tab";
 import { DeleteButton } from "@/components/delete-button";
@@ -56,9 +58,9 @@ export function ListingWorkspace({ l, channels, amenities, groups, canManage, ca
   // ---- amenities
   const [feat, setFeat] = useState<string[]>(l.features ?? []);
   // ---- uploads
-  const fileRef = useRef<HTMLInputElement>(null), planRef = useRef<HTMLInputElement>(null);
+  
   const [uploading, setUploading] = useState<string | null>(null);
-  async function upload(files: FileList | null, kind: "image" | "floorplan") {
+  async function upload(files: FileList | File[] | null, kind: "image" | "floorplan") {
     if (!files?.length) return;
     setMsg(null);
     let done = 0; const errors: string[] = [];
@@ -91,9 +93,9 @@ export function ListingWorkspace({ l, channels, amenities, groups, canManage, ca
           {canPublish && ["draft", "unpublished", "expired"].includes(l.status) && <button className="btn" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/publish`), "Published.")}>Publish</button>}
           {canPublish && l.status === "published" && <button className="btn-ghost" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/unpublish`, {}), "Unpublished.")}>Unpublish</button>}
           {canPublish && ["draft", "published", "unpublished", "expired"].includes(l.status) && (
-            <select className="input w-auto py-1.5 text-sm" disabled={busy} defaultValue="" aria-label="Close this listing" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v) void act(postJson(`/api/v1/listings/${l.id}/close`, { outcome: v }), v === "withdrawn" ? "Closed: withdrawn." : `Closed: ${v}.`); }}>
+            <Select className="input w-auto py-1.5 text-sm" disabled={busy} defaultValue="" aria-label="Close this listing" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v) void act(postJson(`/api/v1/listings/${l.id}/close`, { outcome: v }), v === "withdrawn" ? "Closed: withdrawn." : `Closed: ${v}.`); }}>
               <option value="">Close...</option>{l.purpose === "sale" && <option value="sold">Sold</option>}{l.purpose === "rent" && <option value="rented">Rented</option>}<option value="withdrawn">Withdrawn by owner</option>
-            </select>
+            </Select>
           )}
           {canManage && ["closed", "expired", "archived"].includes(l.status) && <button className="btn-ghost" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/reopen`), "Reopened as unpublished.")}>Reopen</button>}
           {canManage && ["draft", "unpublished", "expired", "closed"].includes(l.status) && <button className="btn-ghost" disabled={busy} onClick={() => act(postJson(`/api/v1/listings/${l.id}/archive`), "Archived.")}>Archive</button>}
@@ -126,17 +128,17 @@ export function ListingWorkspace({ l, channels, amenities, groups, canManage, ca
               <label className={lab}><span className={cap}>Owner instructed price</span><input className="input" type="number" min="1" step="any" value={f.ownerPrice} onChange={set("ownerPrice")} disabled={!canManage} /></label>
               <label className={lab}><span className={cap}>Commission %</span><input className="input" type="number" min="0" max="100" step="0.01" value={f.commissionPct} onChange={set("commissionPct")} disabled={!canManage} /></label>
               {l.purpose === "rent" && <>
-                <label className={lab}><span className={cap}>Rent is paid</span><select className="input" value={f.rentFrequency} onChange={set("rentFrequency")} disabled={!canManage}><option value="">-</option><option value="yearly">Yearly</option><option value="quarterly">Quarterly</option><option value="monthly">Monthly</option></select></label>
+                <label className={lab}><span className={cap}>Rent is paid</span><Select className="input" value={f.rentFrequency} onChange={set("rentFrequency")} disabled={!canManage}><option value="">-</option><option value="yearly">Yearly</option><option value="quarterly">Quarterly</option><option value="monthly">Monthly</option></Select></label>
                 <label className={lab}><span className={cap}>Cheques</span><input className="input" type="number" min="1" max="12" value={f.cheques} onChange={set("cheques")} disabled={!canManage} /></label>
                 <label className={lab}><span className={cap}>Security deposit</span><input className="input" type="number" min="0" step="any" value={f.securityDeposit} onChange={set("securityDeposit")} disabled={!canManage} /></label>
               </>}
               <label className={lab}><span className={cap}>Service charge (per year)</span><input className="input" type="number" min="0" step="any" value={f.serviceCharge} onChange={set("serviceCharge")} disabled={!canManage} /></label>
-              <label className={lab}><span className={cap}>Furnishing</span><select className="input" value={f.furnishing} onChange={set("furnishing")} disabled={!canManage}><option value="">-</option><option value="unfurnished">Unfurnished</option><option value="semi_furnished">Semi-furnished</option><option value="furnished">Furnished</option></select></label>
+              <label className={lab}><span className={cap}>Furnishing</span><Select className="input" value={f.furnishing} onChange={set("furnishing")} disabled={!canManage}><option value="">-</option><option value="unfurnished">Unfurnished</option><option value="semi_furnished">Semi-furnished</option><option value="furnished">Furnished</option></Select></label>
               <label className={lab}><span className={cap}>Parking spaces</span><input className="input" type="number" min="0" max="50" value={f.parkingSpaces} onChange={set("parkingSpaces")} disabled={!canManage} /></label>
             </section>
             <section className="card grid gap-4 p-5 sm:grid-cols-3">
               <h2 className="font-semibold sm:col-span-3">Owner agreement and lifecycle</h2>
-              <label className={lab}><span className={cap}>Agreement</span><select className="input" value={f.exclusivity} onChange={set("exclusivity")} disabled={!canManage}><option value="none">None recorded</option><option value="exclusive">Exclusive</option><option value="non_exclusive">Non-exclusive</option></select></label>
+              <label className={lab}><span className={cap}>Agreement</span><Select className="input" value={f.exclusivity} onChange={set("exclusivity")} disabled={!canManage}><option value="none">None recorded</option><option value="exclusive">Exclusive</option><option value="non_exclusive">Non-exclusive</option></Select></label>
               <label className={lab}><span className={cap}>Starts</span><input className="input" type="date" value={f.agreementStartsOn} onChange={set("agreementStartsOn")} disabled={!canManage} /></label>
               <label className={lab}><span className={cap}>Ends {f.exclusivity !== "none" && "(required)"}</span><input className="input" type="date" value={f.agreementExpiresOn} onChange={set("agreementExpiresOn")} disabled={!canManage} /></label>
               <label className={lab}><span className={cap}>Listing expires</span><input className="input" type="date" value={f.expiresOn} onChange={set("expiresOn")} disabled={!canManage} /></label>
@@ -161,7 +163,8 @@ export function ListingWorkspace({ l, channels, amenities, groups, canManage, ca
         <div className="flex flex-col gap-5">
           <section className="card p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">Photos ({images.length}/40)</h2><p className="muted text-xs">JPEG, PNG or WEBP, up to 12 MB each. The first photo is the cover; drag order with the arrows.</p></div>
-              {canManage && <><input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => { void upload(e.target.files, "image"); e.target.value = ""; }} /><button className="btn" disabled={!!uploading} onClick={() => fileRef.current?.click()}>{uploading ? `Uploading ${uploading}` : "+ Add photos"}</button></>}</div>
+              {uploading && <span className="muted text-sm">Uploading {uploading}</span>}</div>
+            {canManage && <div className="mb-3"><Dropzone multiple disabled={!!uploading} accept="image/jpeg,image/png,image/webp" maxBytes={12 * 1_048_576} hint="JPEG, PNG or WEBP, up to 12 MB each" onFiles={(f) => { void upload(f, "image"); }} /></div>}
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {images.map((m: any, i: number) => (
                 <li key={m.id} className="card overflow-hidden">
@@ -182,7 +185,8 @@ export function ListingWorkspace({ l, channels, amenities, groups, canManage, ca
           </section>
           <section className="card p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">Floor plans ({plans.length})</h2><p className="muted text-xs">Upload the floor plan as an image.</p></div>
-              {canManage && <><input ref={planRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => { void upload(e.target.files, "floorplan"); e.target.value = ""; }} /><button className="btn-ghost" disabled={!!uploading} onClick={() => planRef.current?.click()}>+ Add floor plan</button></>}</div>
+              </div>
+            {canManage && <div className="mb-3"><Dropzone multiple disabled={!!uploading} accept="image/jpeg,image/png,image/webp" maxBytes={12 * 1_048_576} hint="Floor plan as an image" onFiles={(f) => { void upload(f, "floorplan"); }} /></div>}
             <ul className="grid gap-3 sm:grid-cols-2">{plans.map((m: any) => <li key={m.id} className="card p-2"><img src={`/api/v1/listings/${l.id}/media/${m.id}`} alt="Floor plan" loading="lazy" className="w-full" />{canManage && <button className="btn-ghost mt-2 text-xs" onClick={() => confirm("Remove this floor plan?") && act(postJson(`/api/v1/listings/${l.id}/media/${m.id}`, undefined, "DELETE"), "Removed.")}>Remove</button>}</li>)}{plans.length === 0 && <li className="muted text-sm">No floor plan yet.</li>}</ul>
           </section>
           <section className="card p-5 text-sm"><h2 className="mb-1 font-semibold">Video and tour</h2><p className="muted">Video: {l.videoUrl ? <a href={l.videoUrl} target="_blank" rel="noopener noreferrer" className="underline">{l.videoUrl}</a> : "not set"} &middot; Tour: {l.virtualTourUrl ? <a href={l.virtualTourUrl} target="_blank" rel="noopener noreferrer" className="underline">{l.virtualTourUrl}</a> : "not set"}. Edit the links on the Overview tab.</p></section>
@@ -245,7 +249,7 @@ export function ListingWorkspace({ l, channels, amenities, groups, canManage, ca
             {canManage && (
               <form className="mt-3 grid gap-2 sm:grid-cols-4" onSubmit={(e) => { e.preventDefault(); void act(postJson(`/api/v1/listings/${l.id}/permits`, permit), "Permit added.", () => setPermit({ ...permit, permitNo: "", expiresAt: "" })); }}>
                 <input className="input sm:col-span-2" placeholder="Permit number (Trakheesi)" value={permit.permitNo} onChange={(e) => setPermit({ ...permit, permitNo: e.target.value })} required aria-label="Permit number" />
-                <select className="input" value={permit.authority} onChange={(e) => setPermit({ ...permit, authority: e.target.value })} aria-label="Authority"><option value="DLD_TRAKHEESI">DLD Trakheesi</option><option value="ADREC">ADREC</option><option value="ADGM_RA">ADGM</option></select>
+                <Select className="input" value={permit.authority} onChange={(e) => setPermit({ ...permit, authority: e.target.value })} aria-label="Authority"><option value="DLD_TRAKHEESI">DLD Trakheesi</option><option value="ADREC">ADREC</option><option value="ADGM_RA">ADGM</option></Select>
                 <input className="input" type="date" value={permit.expiresAt} onChange={(e) => setPermit({ ...permit, expiresAt: e.target.value })} required aria-label="Expires" />
                 <button className="btn sm:col-span-4 sm:w-fit">Add permit</button>
               </form>

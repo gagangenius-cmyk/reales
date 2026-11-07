@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -45,8 +46,8 @@ export function PlanForm() {
   return (
     <form onSubmit={submit} className="card grid gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
       <label className={`${lab} sm:col-span-2`}><span className={cap}>Plan name</span><input className="input" value={f.name} onChange={set("name")} required placeholder="e.g. External agents - sales" /></label>
-      <label className={lab}><span className={cap}>Deal type</span><select className="input" value={f.dealType} onChange={set("dealType")}><option value="sale">Sale</option><option value="lease">Lease</option></select></label>
-      <label className={lab}><span className={cap}>Applies to</span><select className="input" value={f.agentType} onChange={set("agentType")}><option value="any">All agents</option><option value="internal">Internal agents</option><option value="external">External agents</option></select></label>
+      <label className={lab}><span className={cap}>Deal type</span><Select className="input" value={f.dealType} onChange={set("dealType")}><option value="sale">Sale</option><option value="lease">Lease</option></Select></label>
+      <label className={lab}><span className={cap}>Applies to</span><Select className="input" value={f.agentType} onChange={set("agentType")}><option value="any">All agents</option><option value="internal">Internal agents</option><option value="external">External agents</option></Select></label>
       <label className={lab}><span className={cap}>Commission rate % of deal</span><input className="input" type="number" step="0.01" min="0.01" max="100" value={f.ratePct} onChange={set("ratePct")} /></label>
       <label className={lab}><span className={cap}>VAT % on commission</span><input className="input" type="number" step="0.01" min="0" max="30" value={f.vatPct} onChange={set("vatPct")} /></label>
       <label className={lab}><span className={cap}>Agent share %</span><input className="input" type="number" step="0.01" min="0" value={f.agentPct} onChange={set("agentPct")} /></label>

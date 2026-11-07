@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { dayDubai, hm, Lbl, timeDubai, useAction } from "@/components/hr-ui";
 
@@ -64,7 +65,7 @@ export function TimesheetView({ sheet, employees, selected, from, to, canPick, c
     <div className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold">Daily record</h2>
       <form onSubmit={go} className="card flex flex-wrap items-end gap-3 p-3">
-        {canPick && <Lbl label="Employee"><select className="input" value={f.employee} onChange={(e) => setF({ ...f, employee: e.target.value })}>{employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select></Lbl>}
+        {canPick && <Lbl label="Employee"><Select className="input" value={f.employee} onChange={(e) => setF({ ...f, employee: e.target.value })}>{employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</Select></Lbl>}
         <Lbl label="From"><input className="input" type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></Lbl>
         <Lbl label="To"><input className="input" type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></Lbl>
         <button className="btn">Show</button>
@@ -78,7 +79,7 @@ export function TimesheetView({ sheet, employees, selected, from, to, canPick, c
               <h3 className="font-semibold sm:col-span-4">Correct {dayDubai(fix.date)}</h3>
               <Lbl label="Check-in (Dubai)"><input className="input" type="time" value={v.inT} onChange={(e) => setV({ ...v, inT: e.target.value })} /></Lbl>
               <Lbl label="Check-out (Dubai)"><input className="input" type="time" value={v.outT} onChange={(e) => setV({ ...v, outT: e.target.value })} /></Lbl>
-              <Lbl label="Status"><select className="input" value={v.status} onChange={(e) => setV({ ...v, status: e.target.value })}><option value="">Work it out from the times</option><option value="present">Present</option><option value="late">Late</option><option value="half_day">Half day</option><option value="absent">Absent</option><option value="on_leave">On leave</option></select></Lbl>
+              <Lbl label="Status"><Select className="input" value={v.status} onChange={(e) => setV({ ...v, status: e.target.value })}><option value="">Work it out from the times</option><option value="present">Present</option><option value="late">Late</option><option value="half_day">Half day</option><option value="absent">Absent</option><option value="on_leave">On leave</option></Select></Lbl>
               <Lbl label="Reason (required)"><input className="input" value={v.reason} onChange={(e) => setV({ ...v, reason: e.target.value })} required /></Lbl>
               <div className="flex gap-2 sm:col-span-4"><button className="btn" disabled={busy || !v.reason.trim()}>Save correction</button><button type="button" className="btn-ghost" onClick={() => setFix(null)}>Cancel</button></div>
             </form>

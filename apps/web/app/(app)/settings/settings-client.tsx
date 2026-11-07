@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -26,7 +27,7 @@ export function QuotaForm() {
   const [limit, setLimit] = useState("");
   return (
     <form className="card flex flex-wrap items-end gap-3 p-4" onSubmit={(e) => { e.preventDefault(); a.run(postJson("/api/v1/quotas", { meter, limit: limit === "" ? null : Number(limit) }, "PUT"), "Saved."); }}>
-      <label className="text-sm">Meter<select className="input mt-1" value={meter} onChange={(e) => setMeter(e.target.value)}><option value="messages_sent">Messages sent</option><option value="ai_tokens">AI tokens</option></select></label>
+      <label className="text-sm">Meter<Select className="input mt-1" value={meter} onChange={(e) => setMeter(e.target.value)}><option value="messages_sent">Messages sent</option><option value="ai_tokens">AI tokens</option></Select></label>
       <label className="text-sm">Monthly limit (empty = no limit)<input className="input mt-1" inputMode="numeric" value={limit} onChange={(e) => setLimit(e.target.value)} /></label>
       <button className="btn">Set limit</button><Msg m={a.msg} />
     </form>
@@ -93,7 +94,7 @@ export function SubprocessorForm() {
       <label className="text-sm">Name<input className="input mt-1" value={f.name} onChange={set("name")} required /></label>
       <label className="text-sm">Purpose<input className="input mt-1" value={f.purpose} onChange={set("purpose")} required /></label>
       <label className="text-sm">Processing region<input className="input mt-1" value={f.region} onChange={set("region")} required /></label>
-      <label className="text-sm">Status<select className="input mt-1" value={f.status} onChange={set("status")}><option>approved</option><option>pending</option><option>blocked</option></select></label>
+      <label className="text-sm">Status<Select className="input mt-1" value={f.status} onChange={set("status")}><option>approved</option><option>pending</option><option>blocked</option></Select></label>
       <label className="text-sm">DPA signed on<input className="input mt-1" type="date" value={f.dpaSignedOn} onChange={set("dpaSignedOn")} /></label>
       <button className="btn">Save</button><Msg m={a.msg} />
     </form>

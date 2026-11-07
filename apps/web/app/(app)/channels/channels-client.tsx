@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -34,7 +35,7 @@ export function ChannelsClient({ data }: { data: Data }) {
       </div>
       <form onSubmit={add} className="card grid gap-3 p-4 text-sm sm:grid-cols-2">
         <h2 className="font-semibold sm:col-span-2">Add a WhatsApp account</h2>
-        <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">Provider</span><select className="input" value={f.provider} onChange={(e) => setF({ ...f, provider: e.target.value })}>{data.providers.map((p) => <option key={p} value={p}>{p === "whatsapp_cloud" ? "WhatsApp Business Cloud API (Meta)" : p}</option>)}</select></label>
+        <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">Provider</span><Select className="input" value={f.provider} onChange={(e) => setF({ ...f, provider: e.target.value })}>{data.providers.map((p) => <option key={p} value={p}>{p === "whatsapp_cloud" ? "WhatsApp Business Cloud API (Meta)" : p}</option>)}</Select></label>
         <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">Name</span><input className="input" required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Sales WhatsApp" /></label>
         <label className="flex flex-col gap-1.5"><span className="muted text-xs font-medium">{wa ? "WhatsApp number (international format)" : "Number or address"}</span><input className="input" required value={f.identity} onChange={(e) => setF({ ...f, identity: e.target.value })} placeholder="+971501234567" /></label>
         {wa && (

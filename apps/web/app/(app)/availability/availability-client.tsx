@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -111,9 +112,9 @@ export function SlotFinder({ agents }: { agents: { id: string; email: string }[]
     <div className="card p-4">
       <h2 className="font-semibold">Find a free slot</h2><p className="muted mb-3 text-xs">Shows start times that are inside working hours and clear of time off and other viewings.</p>
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Agent</span><select className="input" value={agent} onChange={(e) => setAgent(e.target.value)}>{agents.map((a) => <option key={a.id} value={a.id}>{a.email}</option>)}</select></label>
+        <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Agent</span><Select className="input" value={agent} onChange={(e) => setAgent(e.target.value)}>{agents.map((a) => <option key={a.id} value={a.id}>{a.email}</option>)}</Select></label>
         <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Date</span><input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} /></label>
-        <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Length</span><select className="input" value={duration} onChange={(e) => setDuration(e.target.value)}><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option></select></label>
+        <label className="flex flex-col gap-1.5 text-sm"><span className="muted text-xs font-medium">Length</span><Select className="input" value={duration} onChange={(e) => setDuration(e.target.value)}><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option></Select></label>
         <button className="btn" onClick={find}>Show slots</button>
       </div>
       {note && <p className="muted mt-3 text-xs">{note}</p>}

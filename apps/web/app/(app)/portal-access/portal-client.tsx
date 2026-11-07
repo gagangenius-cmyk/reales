@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -20,8 +21,8 @@ export function InvitePortal({ contacts }: { contacts: Array<{ id: string; label
   }
   return (
     <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-4">
-      <label className="grow text-sm">Person<select className="input mt-1 w-full" value={contactId} onChange={(e) => setContactId(e.target.value)}>{contacts.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
-      <label className="text-sm">Portal<select className="input mt-1" value={kind} onChange={(e) => setKind(e.target.value as "owner" | "tenant")}><option value="tenant">Tenant</option><option value="owner">Owner</option></select></label>
+      <label className="grow text-sm">Person<Select className="input mt-1 w-full" value={contactId} onChange={(e) => setContactId(e.target.value)}>{contacts.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</Select></label>
+      <label className="text-sm">Portal<Select className="input mt-1" value={kind} onChange={(e) => setKind(e.target.value as "owner" | "tenant")}><option value="tenant">Tenant</option><option value="owner">Owner</option></Select></label>
       <button className="btn" disabled={!contactId}>Send invitation</button>
       {msg && <p role={msg.ok ? "status" : "alert"} className={`w-full text-sm ${msg.ok ? "" : "err"}`}>{msg.text}</p>}
     </form>

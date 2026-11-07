@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -25,9 +26,9 @@ export function NewTicketForm({ units }: { units: Array<{ id: string; label: str
 
   return (
     <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-4">
-      <label className="text-sm">Unit<select className="input mt-1" value={f.unitId} onChange={(e) => setF({ ...f, unitId: e.target.value })} required>{units.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}</select></label>
-      <label className="text-sm">Category<select className="input mt-1" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
-      <label className="text-sm">Priority<select className="input mt-1" value={f.priority} onChange={(e) => setF({ ...f, priority: e.target.value })}>{["urgent", "high", "normal", "low"].map((c) => <option key={c}>{c}</option>)}</select></label>
+      <label className="text-sm">Unit<Select className="input mt-1" value={f.unitId} onChange={(e) => setF({ ...f, unitId: e.target.value })} required>{units.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}</Select></label>
+      <label className="text-sm">Category<Select className="input mt-1" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</Select></label>
+      <label className="text-sm">Priority<Select className="input mt-1" value={f.priority} onChange={(e) => setF({ ...f, priority: e.target.value })}>{["urgent", "high", "normal", "low"].map((c) => <option key={c}>{c}</option>)}</Select></label>
       <label className="grow text-sm">Issue<input className="input mt-1 w-full" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required maxLength={255} /></label>
       <button className="btn" disabled={busy || !f.unitId}>{busy ? "Saving..." : "Log ticket"}</button>
       {error && <p role="alert" className="err w-full text-sm">{error}</p>}

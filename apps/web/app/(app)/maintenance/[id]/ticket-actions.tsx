@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -36,7 +37,7 @@ export function TicketActions({ ticket, vendors, canManage, canApprove }: Props)
         {canManage && s === "new" && <button className="btn" onClick={() => run("triage", {})}>Triage</button>}
         {canManage && ["triaged", "quoted"].includes(s) && (
           <span className="flex flex-wrap items-center gap-2">
-            <select className="input" value={vendorId} onChange={(e) => setVendorId(e.target.value)}>{vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select>
+            <Select className="input" value={vendorId} onChange={(e) => setVendorId(e.target.value)}>{vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</Select>
             <input className="input w-28" inputMode="decimal" placeholder="Quote (AED)" value={amount} onChange={(e) => setAmount(e.target.value)} />
             <button className="btn-ghost" disabled={!vendorId || !(Number(amount) > 0)} onClick={() => run("quotations", { vendorId, amount: Number(amount) }).then(() => setAmount(""))}>Add quotation</button>
           </span>

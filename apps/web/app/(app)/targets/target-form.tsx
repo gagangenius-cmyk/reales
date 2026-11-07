@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -28,11 +29,11 @@ export function TargetForm({ period, periodStart, users, teams, branches, canTen
   const cap = "muted text-xs font-medium";
   return (
     <form onSubmit={submit} className="card grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6">
-      <label className={lab}><span className={cap}>For</span><select className="input" value={scopeType} onChange={(e) => { setScopeType(e.target.value); setScopeId(""); }}>
+      <label className={lab}><span className={cap}>For</span><Select className="input" value={scopeType} onChange={(e) => { setScopeType(e.target.value); setScopeId(""); }}>
         {users.length > 0 && <option value="user">A person</option>}{teams.length > 0 && <option value="team">A team</option>}{branches.length > 0 && <option value="branch">A branch</option>}{canTenant && <option value="tenant">Whole company</option>}
-      </select></label>
-      {scopeType !== "tenant" && <label className={`${lab} lg:col-span-2`}><span className={cap}>Who</span><select className="input" value={scopeId} onChange={(e) => setScopeId(e.target.value)} required><option value="">Choose...</option>{list.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>}
-      <label className={lab}><span className={cap}>Measure</span><select className="input" value={metric} onChange={(e) => setMetric(e.target.value)}>{METRICS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+      </Select></label>
+      {scopeType !== "tenant" && <label className={`${lab} lg:col-span-2`}><span className={cap}>Who</span><Select className="input" value={scopeId} onChange={(e) => setScopeId(e.target.value)} required><option value="">Choose...</option>{list.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</Select></label>}
+      <label className={lab}><span className={cap}>Measure</span><Select className="input" value={metric} onChange={(e) => setMetric(e.target.value)}>{METRICS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></label>
       <label className={lab}><span className={cap}>Target for this {period}</span><input className="input" type="number" min="1" step="any" value={value} onChange={(e) => setValue(e.target.value)} required /></label>
       <label className={lab}><span className={cap}>Note</span><input className="input" value={note} onChange={(e) => setNote(e.target.value)} /></label>
       <div className="flex items-center gap-3 sm:col-span-2 lg:col-span-6"><button className="btn">Set target</button>{msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "muted" : "err"}`}>{msg.text}</p>}</div>

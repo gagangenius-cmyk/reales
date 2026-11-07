@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { errMsg, postJson } from "@/lib/client";
 
 const aed = (n: number) => `AED ${Number(n).toLocaleString("en-US")}`;
@@ -23,7 +24,7 @@ export function ValuationForm({ units }: { units: Array<{ id: string; label: str
   return (
     <div className="flex flex-col gap-4">
       <div className="card flex flex-wrap items-end gap-3 p-4">
-        <label className="grow text-sm">Unit<select className="input mt-1 w-full" value={unitId} onChange={(e) => setUnitId(e.target.value)}>{units.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}</select></label>
+        <label className="grow text-sm">Unit<Select className="input mt-1 w-full" value={unitId} onChange={(e) => setUnitId(e.target.value)}>{units.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}</Select></label>
         <button className="btn" onClick={run} disabled={busy || !unitId}>{busy ? "Working..." : "Estimate value"}</button>
       </div>
       {error && <p role="alert" className="err text-sm">{error}</p>}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -30,7 +31,7 @@ export function NewBotForm() {
   return (
     <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-4">
       <label className="grow text-sm">New bot<input className="input mt-1 w-full" value={name} onChange={(e) => setName(e.target.value)} required maxLength={160} /></label>
-      <label className="text-sm">Channel<select className="input mt-1" value={channel} onChange={(e) => setChannel(e.target.value)}><option>whatsapp</option><option>sms</option><option>email</option></select></label>
+      <label className="text-sm">Channel<Select className="input mt-1" value={channel} onChange={(e) => setChannel(e.target.value)}><option>whatsapp</option><option>sms</option><option>email</option></Select></label>
       <button className="btn">Create from starter flow</button>
       {error && <p role="alert" className="err w-full text-sm">{error}</p>}
     </form>
@@ -100,7 +101,7 @@ export function BotEditor({ bot, contacts, canManage }: { bot: any; contacts: Ar
         <div className="card flex flex-col gap-3 p-4">
           <h2 className="font-semibold">Test console (published version)</h2>
           <p className="muted text-xs">Runs the real flow against a contact. A handoff creates a real task for the contact's owner.</p>
-          <div className="flex gap-2"><select className="input grow" value={contactId} onChange={(e) => setContactId(e.target.value)}>{contacts.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</select><button className="btn" onClick={start} disabled={bot.status !== "published" || !contactId}>Start</button></div>
+          <div className="flex gap-2"><Select className="input grow" value={contactId} onChange={(e) => setContactId(e.target.value)}>{contacts.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}</Select><button className="btn" onClick={start} disabled={bot.status !== "published" || !contactId}>Start</button></div>
           <div className="h-64 overflow-auto rounded border p-2 text-sm" aria-live="polite">
             {chat.map((m, i) => <p key={i} className={m.who === "you" ? "text-right" : m.who === "system" ? "muted text-center text-xs" : ""}><span className={m.who === "bot" ? "inline-block rounded bg-gray-100 px-2 py-1 dark:bg-gray-800" : ""}>{m.text}</span></p>)}
             {chat.length === 0 && <p className="muted">Start a session to chat.</p>}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Select } from "@/components/select";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
@@ -49,18 +50,18 @@ export function LeadsTable({ rows, stages, users, canAssign, canUpdate, sortLink
         <div className="card sticky top-16 z-10 flex flex-wrap items-center gap-2 p-3 text-sm" role="toolbar" aria-label="Bulk actions">
           <b>{sel.size} selected</b>
           {canAssign && (
-            <select className="input w-auto py-1" disabled={busy} defaultValue="" aria-label="Assign selected to" onChange={(e) => { if (e.target.value) { void run({ type: "assign", userId: e.target.value === "none" ? null : e.target.value }, "Reassigned"); e.target.value = ""; } }}>
+            <Select className="input w-auto py-1" disabled={busy} defaultValue="" aria-label="Assign selected to" onChange={(e) => { if (e.target.value) { void run({ type: "assign", userId: e.target.value === "none" ? null : e.target.value }, "Reassigned"); e.target.value = ""; } }}>
               <option value="">Assign to...</option><option value="none">Unassign</option>{users.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
-            </select>
+            </Select>
           )}
           {canUpdate && (
             <>
-              <select className="input w-auto py-1" disabled={busy} defaultValue="" aria-label="Move selected to stage" onChange={(e) => {
+              <Select className="input w-auto py-1" disabled={busy} defaultValue="" aria-label="Move selected to stage" onChange={(e) => {
                 const st = stages.find((s) => s.key === e.target.value); if (!st) return;
                 const reason = st.kind === "lost" ? prompt("Why were these leads lost?")?.trim() : undefined;
                 if (st.kind === "lost" && !reason) { e.target.value = ""; return; }
                 void run({ type: "stage", stageKey: st.key, ...(reason ? { reason } : {}) }, `Moved to ${st.name}`); e.target.value = "";
-              }}><option value="">Move to stage...</option>{stages.map((s) => <option key={s.key} value={s.key}>{s.name}</option>)}</select>
+              }}><option value="">Move to stage...</option>{stages.map((s) => <option key={s.key} value={s.key}>{s.name}</option>)}</Select>
               <button className="btn-ghost" disabled={busy} onClick={() => run({ type: "hot", value: true }, "Marked hot")}>&#9650; Mark hot</button>
               <button className="btn-ghost" disabled={busy} onClick={() => run({ type: "hot", value: false }, "Hot removed")}>Remove hot</button>
               <form className="flex gap-1" onSubmit={(e) => { e.preventDefault(); if (tag.trim()) void run({ type: "tag", tag: tag.trim() }, "Tagged"); }}>

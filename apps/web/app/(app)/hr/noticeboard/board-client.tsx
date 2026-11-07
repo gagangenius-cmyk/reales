@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { Lbl, useAction } from "@/components/hr-ui";
 
 interface News { id: string; title: string; body: string; pinned: boolean; publishAt: string; expiresAt: string | null }
@@ -52,7 +53,7 @@ export function BoardClient({ news, party, canManage, nowIso }: { news: News[]; 
             <h2 className="font-semibold">Add an occasion</h2>
             <Lbl label="Title"><input className="input" required value={o.title} onChange={(e) => setO({ ...o, title: e.target.value })} placeholder="Company anniversary" /></Lbl>
             <Lbl label="Date"><input className="input" type="date" required value={o.onDate} onChange={(e) => setO({ ...o, onDate: e.target.value })} /></Lbl>
-            <Lbl label="Type"><select className="input" value={o.kind} onChange={(e) => setO({ ...o, kind: e.target.value })}><option value="celebration">Celebration</option><option value="event">Event</option><option value="holiday_notice">Holiday notice</option><option value="other">Other</option></select></Lbl>
+            <Lbl label="Type"><Select className="input" value={o.kind} onChange={(e) => setO({ ...o, kind: e.target.value })}><option value="celebration">Celebration</option><option value="event">Event</option><option value="holiday_notice">Holiday notice</option><option value="other">Other</option></Select></Lbl>
             <Lbl label="Message (optional)"><input className="input" value={o.message} onChange={(e) => setO({ ...o, message: e.target.value })} /></Lbl>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={o.yearly} onChange={(e) => setO({ ...o, yearly: e.target.checked })} />Repeats every year</label>
             <button className="btn self-start" disabled={busy}>Add</button>

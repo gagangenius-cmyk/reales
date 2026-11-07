@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
 import { errMsg, postJson } from "@/lib/client";
 
@@ -59,16 +60,16 @@ export function EditLeadDrawer({ leadId, initial }: { leadId: string; initial: L
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
               <section className="card grid gap-4 p-4 sm:grid-cols-2">
                 <h3 className="font-semibold sm:col-span-2">Enquiry</h3>
-                <Lab t="Purpose"><select className="input" value={f.purpose} onChange={set("purpose")}><option value="buy">Buy</option><option value="rent">Rent</option><option value="invest">Invest</option><option value="off_plan">Off-plan</option></select></Lab>
-                <Lab t="Language"><select className="input" value={f.language} onChange={set("language")}><option value="en">English</option><option value="ar">Arabic</option></select></Lab>
+                <Lab t="Purpose"><Select className="input" value={f.purpose} onChange={set("purpose")}><option value="buy">Buy</option><option value="rent">Rent</option><option value="invest">Invest</option><option value="off_plan">Off-plan</option></Select></Lab>
+                <Lab t="Language"><Select className="input" value={f.language} onChange={set("language")}><option value="en">English</option><option value="ar">Arabic</option></Select></Lab>
                 <Lab t="Budget min"><input className="input" type="number" min="0" value={f.budgetMin} onChange={set("budgetMin")} /></Lab>
                 <Lab t="Budget max"><input className="input" type="number" min="0" value={f.budgetMax} onChange={set("budgetMax")} /></Lab>
-                <Lab t="Currency"><select className="input" value={f.currency} onChange={set("currency")}><option>AED</option><option>USD</option><option>EUR</option><option>GBP</option></select></Lab>
+                <Lab t="Currency"><Select className="input" value={f.currency} onChange={set("currency")}><option>AED</option><option>USD</option><option>EUR</option><option>GBP</option></Select></Lab>
                 <Lab t="Bedrooms"><input className="input" type="number" min="0" max="20" value={f.bedrooms} onChange={set("bedrooms")} /></Lab>
                 <Lab t="Preferred areas (comma separated)" span><input className="input" value={f.preferredAreas} onChange={set("preferredAreas")} /></Lab>
                 <div className="sm:col-span-2"><span className="muted text-xs font-medium">Property types</span><div className="mt-1.5 flex flex-wrap gap-2">{["apartment", "villa", "townhouse", "penthouse", "office", "retail", "land"].map((t) => <button key={t} type="button" className={f.propertyTypes.includes(t) ? "btn text-xs" : "btn-ghost text-xs"} onClick={() => setF({ ...f, propertyTypes: f.propertyTypes.includes(t) ? f.propertyTypes.filter((x) => x !== t) : [...f.propertyTypes, t] })}>{t}</button>)}</div></div>
-                <Lab t="Financing"><select className="input" value={f.financing} onChange={set("financing")}><option value="">Not known</option><option value="cash">Cash</option><option value="mortgage">Mortgage</option><option value="undecided">Undecided</option></select></Lab>
-                <Lab t="Looking to move"><select className="input" value={f.purchaseTimeline} onChange={set("purchaseTimeline")}><option value="">Not known</option><option value="immediate">Immediately</option><option value="one_to_three_months">In 1-3 months</option><option value="three_to_six_months">In 3-6 months</option><option value="over_six_months">After 6 months</option><option value="exploring">Just exploring</option></select></Lab>
+                <Lab t="Financing"><Select className="input" value={f.financing} onChange={set("financing")}><option value="">Not known</option><option value="cash">Cash</option><option value="mortgage">Mortgage</option><option value="undecided">Undecided</option></Select></Lab>
+                <Lab t="Looking to move"><Select className="input" value={f.purchaseTimeline} onChange={set("purchaseTimeline")}><option value="">Not known</option><option value="immediate">Immediately</option><option value="one_to_three_months">In 1-3 months</option><option value="three_to_six_months">In 3-6 months</option><option value="over_six_months">After 6 months</option><option value="exploring">Just exploring</option></Select></Lab>
               </section>
               <section className="card grid gap-4 p-4 sm:grid-cols-2">
                 <h3 className="font-semibold sm:col-span-2">Follow-up and tracking</h3>

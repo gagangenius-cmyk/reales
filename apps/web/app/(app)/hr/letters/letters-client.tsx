@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { Lbl, useAction } from "@/components/hr-ui";
 
 interface Tpl { id: string; kind: string; name: string; subject: string; body: string; active: boolean }
@@ -28,8 +29,8 @@ export function LettersClient({ templates, letters, employees, kinds, variables,
     <div className="flex flex-col gap-6">
       <form onSubmit={create} className="card grid gap-3 p-4 sm:grid-cols-3">
         <h2 className="font-semibold sm:col-span-3">New letter</h2>
-        <Lbl label="Employee"><select className="input" value={f.employeeId} onChange={(e) => setF({ ...f, employeeId: e.target.value })}>{employees.map((e) => <option key={e.id} value={e.id}>{e.name} ({e.no})</option>)}</select></Lbl>
-        <Lbl label="Letter" wide><select className="input" value={f.templateId} onChange={(e) => setF({ ...f, templateId: e.target.value })}>{templates.filter((x) => x.active).map((x) => <option key={x.id} value={x.id}>{label(x.kind)}: {x.name}</option>)}</select></Lbl>
+        <Lbl label="Employee"><Select className="input" value={f.employeeId} onChange={(e) => setF({ ...f, employeeId: e.target.value })}>{employees.map((e) => <option key={e.id} value={e.id}>{e.name} ({e.no})</option>)}</Select></Lbl>
+        <Lbl label="Letter" wide><Select className="input" value={f.templateId} onChange={(e) => setF({ ...f, templateId: e.target.value })}>{templates.filter((x) => x.active).map((x) => <option key={x.id} value={x.id}>{label(x.kind)}: {x.name}</option>)}</Select></Lbl>
         {needs("reason") && <Lbl label="Reason / details of the matter" wide><textarea className="input" required rows={3} maxLength={1000} value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} /></Lbl>}
         {needs("purpose") && <Lbl label="Purpose (for example: bank loan, visa application)" wide><input className="input" required value={f.purpose} onChange={(e) => setF({ ...f, purpose: e.target.value })} /></Lbl>}
         {needs("effective_date") && <Lbl label="Effective date (as written in the letter)"><input className="input" required placeholder="1 March 2026" value={f.effective_date} onChange={(e) => setF({ ...f, effective_date: e.target.value })} /></Lbl>}
@@ -84,7 +85,7 @@ export function LettersClient({ templates, letters, employees, kinds, variables,
           <button className="btn-ghost self-start" onClick={() => setT({ id: "", kind: "noc", name: "", subject: "", body: "", active: true })}>+ New template</button>
           {t && (
             <form className="card grid gap-3 p-4 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); void run(() => post("/api/v1/hr/letter-templates", { ...(t.id ? { id: t.id } : {}), kind: t.kind, name: t.name, subject: t.subject, body: t.body, active: t.active }), "Template saved.", () => setT(null)); }}>
-              <Lbl label="Letter type"><select className="input" value={t.kind} onChange={(e) => setT({ ...t, kind: e.target.value })}>{kinds.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}</select></Lbl>
+              <Lbl label="Letter type"><Select className="input" value={t.kind} onChange={(e) => setT({ ...t, kind: e.target.value })}>{kinds.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}</Select></Lbl>
               <Lbl label="Template name"><input className="input" required value={t.name} onChange={(e) => setT({ ...t, name: e.target.value })} /></Lbl>
               <Lbl label="Subject" wide><input className="input" required value={t.subject} onChange={(e) => setT({ ...t, subject: e.target.value })} /></Lbl>
               <Lbl label="Body" wide><textarea className="input font-mono text-xs" rows={14} required value={t.body} onChange={(e) => setT({ ...t, body: e.target.value })} /></Lbl>
