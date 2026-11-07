@@ -8,6 +8,7 @@ import { countMyUnread, moduleForPage, moduleStates, MODULES } from "@reales/dom
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { LogoutButton } from "./logout-button";
+import { AntProvider } from "@/components/ant-provider";
 import { SidebarNav } from "./sidebar-nav";
 import { CommandPalette } from "@/components/command-palette";
 import { LanguageSwitch } from "@/components/language-switch";
@@ -104,7 +105,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <CommandPalette pages={flat.map((n) => ({ href: n.href, label: translate(lang, n.label) }))} />
           <div className="flex items-center gap-2"><LanguageSwitch lang={lang} /><LogoutButton /></div>
         </header>
-        <main className="content">
+        <main className="content"><AntProvider rtl={lang === "ar"}>
           {disabled ? (
             <section className="card mx-auto mt-10 max-w-xl p-8 text-center">
               <h1 className="text-xl font-semibold">{disabled.label} is turned off</h1>
@@ -113,7 +114,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </section>
           ) : children}
           <TableTools />
-        </main>
+        </AntProvider></main>
       </div>
     </div>
   );

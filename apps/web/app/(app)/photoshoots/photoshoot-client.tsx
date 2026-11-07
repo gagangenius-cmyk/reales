@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Select } from "@/components/select";
 import { useRouter } from "next/navigation";
+import { Tag } from "antd";
+import { DataTable } from "@/components/data-table";
 import { errMsg, postJson } from "@/lib/client";
 
 const TYPES: [string, string][] = [["photos", "Photos"], ["video", "Video"], ["drone", "Drone"], ["floorplan", "Floor plan"], ["virtual_tour", "Virtual tour"]];
@@ -28,7 +31,7 @@ export function RequestForm({ listings }: { listings: { id: string; title: strin
           <form onSubmit={save} className="relative flex h-full w-full max-w-xl flex-col shadow-2xl" style={{ background: "var(--bg)" }}>
             <header className="border-b px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--card)" }}><h2 className="text-xl font-semibold">Request a photoshoot</h2></header>
             <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
-              <label className={lab}><span className={cap}>Listing</span><select className="input" value={f.listingId} onChange={(e) => setF({ ...f, listingId: e.target.value })} required><option value="">Choose a listing</option>{listings.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}</select></label>
+              <label className={lab}><span className={cap}>Listing</span><Select className="input" value={f.listingId} onChange={(e) => setF({ ...f, listingId: e.target.value })} required><option value="">Choose a listing</option>{listings.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}</Select></label>
               <fieldset className="flex flex-wrap gap-4"><legend className={cap}>What should be shot</legend>
                 {TYPES.map(([k, l]) => <label key={k} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.types.includes(k)} onChange={(e) => setF({ ...f, types: e.target.checked ? [...f.types, k] : f.types.filter((x) => x !== k) })} />{l}</label>)}</fieldset>
               <label className={lab}><span className={cap}>Preferred date (optional)</span><input className="input" type="date" value={f.preferredDate} onChange={(e) => setF({ ...f, preferredDate: e.target.value })} /></label>
@@ -76,7 +79,7 @@ export function ShootActions({ row, manage, people }: { row: Row; manage: boolea
         <form className="card flex w-72 flex-col gap-2 p-3" onSubmit={(e) => { e.preventDefault(); void act({ action: "schedule", scheduledAt: new Date(`${f.at}:00+04:00`).toISOString(), durationMinutes: f.minutes, photographerUserId: f.photographerUserId || null, photographerName: f.photographerName || null }); }}>
           <label className={lab}><span className={cap}>Date and time (Dubai)</span><input className="input" type="datetime-local" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} required /></label>
           <label className={lab}><span className={cap}>Minutes</span><input className="input" type="number" min={15} max={480} value={f.minutes} onChange={(e) => setF({ ...f, minutes: Number(e.target.value) })} /></label>
-          {people.length > 0 && <label className={lab}><span className={cap}>Photographer (staff)</span><select className="input" value={f.photographerUserId} onChange={(e) => setF({ ...f, photographerUserId: e.target.value })}><option value="">External / name below</option>{people.map((p) => <option key={p.id} value={p.id}>{p.email}</option>)}</select></label>}
+          {people.length > 0 && <label className={lab}><span className={cap}>Photographer (staff)</span><Select className="input" value={f.photographerUserId} onChange={(e) => setF({ ...f, photographerUserId: e.target.value })}><option value="">External / name below</option>{people.map((p) => <option key={p.id} value={p.id}>{p.email}</option>)}</Select></label>}
           {!f.photographerUserId && <label className={lab}><span className={cap}>Photographer name</span><input className="input" value={f.photographerName} onChange={(e) => setF({ ...f, photographerName: e.target.value })} maxLength={120} /></label>}
           <div className="flex gap-2"><button className="btn text-xs">Save</button><button type="button" className="btn-ghost text-xs" onClick={() => setMode(null)}>Close</button></div>
         </form>)}
@@ -94,5 +97,23 @@ export function ShootActions({ row, manage, people }: { row: Row; manage: boolea
         </form>)}
       {msg && <p role="alert" className="err max-w-72 text-xs">{msg}</p>}
     </div>
+  );
+}
+
+interface ShootRow { id: string; listingId: string; listingTitle: string; shootTypes: string[]; status: string; mediaCount: number | null; cancelReason: string | null; scheduledAt: string | null; preferredDate: string | null; photographer: string; requestedByEmail: string | null; accessNotes: string | null; mine: boolean; assigned: boolean }
+const shootColor: Record<string, string> = { delivered: "green", cancelled: "red", in_progress: "blue", scheduled: "cyan", requested: "gold" };
+const whenDubai = (v: string) => new Date(v).toLocaleString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+export function ShootTable({ rows, manage, people }: { rows: ShootRow[]; manage: boolean; people: { id: string; email: string }[] }) {
+  return (
+    <DataTable<ShootRow> rows={rows} searchKeys={["listingTitle", "photographer", "requestedByEmail"]} empty="No photoshoots yet." columns={[
+      { title: "Listing", dataIndex: "listingTitle", sorter: (a, b) => a.listingTitle.localeCompare(b.listingTitle), render: (_, r) => <div><a href={`/listings/${r.listingId}`}>{r.listingTitle}</a>{r.accessNotes && <div className="muted text-xs">{r.accessNotes}</div>}</div> },
+      { title: "What", dataIndex: "shootTypes", render: (t: string[]) => t.map((x) => <Tag key={x}>{x.replace("_", " ")}</Tag>) },
+      { title: "Status", dataIndex: "status", filters: Object.keys(shootColor).map((s) => ({ text: s.replace("_", " "), value: s })), onFilter: (v, r) => r.status === v, render: (s: string, r) => <div><Tag color={shootColor[s]}>{s.replace("_", " ")}</Tag>{r.mediaCount ? <span className="muted text-xs">{r.mediaCount} files</span> : null}{r.cancelReason && <div className="muted text-xs">{r.cancelReason}</div>}</div> },
+      { title: "When", dataIndex: "scheduledAt", sorter: (a, b) => String(a.scheduledAt ?? a.preferredDate ?? "").localeCompare(String(b.scheduledAt ?? b.preferredDate ?? "")), render: (_, r) => (r.scheduledAt ? whenDubai(r.scheduledAt) : r.preferredDate ? `wants ${r.preferredDate}` : "-") },
+      { title: "Photographer", dataIndex: "photographer" },
+      { title: "Requested by", dataIndex: "requestedByEmail" },
+      { title: "", key: "actions", render: (_, r) => <ShootActions row={{ id: r.id, status: r.status, mine: r.mine, assigned: r.assigned }} manage={manage} people={people} /> },
+    ]} />
   );
 }
