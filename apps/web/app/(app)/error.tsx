@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 /** Any error inside a CRM page lands here instead of a blank screen. The message is generic on purpose; the reference lets support find the server log entry. */
 export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  useEffect(() => { console.error("page error", error.digest ?? "", error); }, [error]);
+  useEffect(() => { console.error("page error", error.digest ?? "", error);
+    Sentry.captureException(error); }, [error]);
   return (
     <section className="card mx-auto mt-10 max-w-xl p-8 text-center" role="alert">
       <h1 className="text-xl font-semibold">Something went wrong</h1>

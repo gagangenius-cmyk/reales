@@ -1,7 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
+
 /** Last resort when even the root layout fails. Plain HTML, no dependencies that could fail again. */
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => { Sentry.captureException(error); }, [error]);
   return (
     <html lang="en"><body style={{ fontFamily: "system-ui, sans-serif", display: "grid", placeItems: "center", minHeight: "100vh", margin: 0, background: "#f3f5fb", color: "#0f172a" }}>
       <div style={{ maxWidth: 420, textAlign: "center", padding: 24 }}>

@@ -17,6 +17,7 @@
     "@reales/observability": "*",
     "@reales/rbac": "*",
     "@reales/validation": "*",
+    "@sentry/nextjs": "^11.11.0",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.0",

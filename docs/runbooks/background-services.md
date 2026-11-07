@@ -18,3 +18,6 @@ Work is not lost: events wait in the outbox, queued e-mail and webhook deliverie
 
 ## Needs migration 073 (`service_heartbeats`)
 Until `npm run db:migrate` has run, the services work but report nothing and the health endpoint answers 503.
+
+## Error tracking (Sentry)
+Set `SENTRY_DSN` (server) and `NEXT_PUBLIC_SENTRY_DSN` (browser) in Vercel to turn it on; without them nothing is sent. Request bodies, cookies, headers and IP addresses are never sent. The reference code shown on the "Something went wrong" page matches the event in Sentry. Add an alert rule for new issues and for error-rate spikes. Source-map upload is not configured (it needs `SENTRY_AUTH_TOKEN` and the Sentry build plugin); stack traces are minified until it is.
