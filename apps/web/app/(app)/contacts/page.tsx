@@ -5,6 +5,7 @@ import { can, hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
 import { ContactDrawer } from "./contact-drawer";
+import { ContactsTable } from "./contacts-table";
 
 export const metadata = { title: "Contacts | Reales CRM" };
 const PAGE = 25;
@@ -28,22 +29,7 @@ export default async function Contacts({ searchParams }: { searchParams: Promise
         <input className="input" name="q" defaultValue={q} placeholder="Search name, company, email or phone" aria-label="Search contacts" />
         <button className="btn">Search</button>{q && <Link className="btn-ghost" href="/contacts">Clear</Link>}
       </form>
-      <div className="card overflow-x-auto">
-        <table className="t">
-          <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Nationality</th><th>Prefers</th><th>Tags</th><th /></tr></thead>
-          <tbody>
-            {contacts.map((c) => (
-              <tr key={c.id}>
-                <td className="font-medium"><Link href={`/contacts/${c.id}`}>{[c.salutation, c.firstName, c.lastName].filter(Boolean).join(" ") || c.companyName || "-"}</Link>{c.type === "company" && <span className="badge badge-gray ml-2">company</span>}</td>
-                <td>{c.phoneE164 ?? "-"}</td><td>{c.email ?? "-"}</td><td>{c.nationality ?? "-"}</td><td>{c.preferredChannel ?? "-"}</td>
-                <td>{(c.tags ?? []).slice(0, 3).map((t: string) => <span key={t} className="badge mr-1">{t}</span>)}</td>
-                <td className="text-right"><Link className="btn-ghost text-xs" href={`/contacts/${c.id}`}>Open</Link></td>
-              </tr>
-            ))}
-            {contacts.length === 0 && <tr><td colSpan={7} className="muted">No contacts visible to you.</td></tr>}
-          </tbody>
-        </table>
-      </div>
+      <div className="card p-4"><ContactsTable rows={contacts.map((c) => ({ id: c.id, name: [c.salutation, c.firstName, c.lastName].filter(Boolean).join(" ") || c.companyName || "-", type: c.type, phone: c.phoneE164 ?? null, email: c.email ?? null, nationality: c.nationality ?? null, channel: c.preferredChannel ?? null, tags: c.tags ?? [] }))} /></div>
       {(page > 1 || rows.length > PAGE) && (
         <nav className="mt-4 flex items-center justify-between text-sm" aria-label="Pagination">
           <span className="muted">Page {page}</span>

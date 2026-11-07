@@ -4,11 +4,11 @@ import { listDeals } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
+import { DealsTable } from "./deals-table";
 
 export const metadata = { title: "Deals | Reales CRM" };
 
 const money = (v: unknown, c = "AED") => `${c} ${Number(v).toLocaleString("en-US")}`;
-const tone = (s: string) => (s === "closed" ? "badge-ok" : s === "cancelled" || s === "lost" ? "badge-gray" : "");
 
 export default async function Deals({ searchParams }: { searchParams: Promise<{ status?: string; page?: string }> }) {
   const ctx = await requireContext();
@@ -39,21 +39,7 @@ export default async function Deals({ searchParams }: { searchParams: Promise<{ 
           {statuses.map((s) => <Link key={s} className={sp.status === s ? "btn" : "btn-ghost"} href={`/deals?status=${s}`}>{s}</Link>)}
         </nav>
       )}
-      <div className="card overflow-x-auto">
-        <table className="t">
-          <thead><tr><th>Created</th><th>Type</th><th>Stage</th><th>Status</th><th>Amount</th><th /></tr></thead>
-          <tbody>
-            {deals.map((d) => (
-              <tr key={d.id}>
-                <td>{new Date(d.createdAt).toISOString().slice(0, 10)}</td><td><span className="badge badge-gray">{d.dealType}</span></td><td>{String(d.stage).replace(/_/g, " ")}</td><td><span className={`badge ${tone(d.status)}`}>{d.status}</span></td>
-                <td className="font-medium">{money(d.amount, d.currency)}</td>
-                <td className="text-right"><Link className="btn-ghost text-xs" href={`/deals/${d.id}`}>Open</Link></td>
-              </tr>
-            ))}
-            {deals.length === 0 && <tr><td colSpan={6} className="muted">No deals visible to you.</td></tr>}
-          </tbody>
-        </table>
-      </div>
+      <div className="card p-4"><DealsTable rows={deals.map((d) => ({ id: d.id, createdAt: new Date(d.createdAt).toISOString(), dealType: d.dealType, stage: String(d.stage), status: d.status, amount: Number(d.amount ?? 0), currency: d.currency ?? "AED" }))} /></div>
       {filtered.length > PAGE && (
         <nav className="flex items-center justify-between text-sm" aria-label="Pagination">
           <span className="muted">Page {page} of {Math.ceil(filtered.length / PAGE)}</span>

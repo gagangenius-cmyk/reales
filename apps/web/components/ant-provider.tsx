@@ -16,7 +16,7 @@ export function AntProvider({ children, rtl = false }: { children: ReactNode; rt
   }, []);
   return (
     <AntdRegistry>
-      <ConfigProvider direction={rtl ? "rtl" : "ltr"} theme={{ algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm, token: { colorPrimary: dark ? "#818cf8" : "#4f46e5", borderRadius: 8, fontFamily: "inherit", colorBgBase: dark ? "#121a2e" : "#ffffff" } }}>
+      <ConfigProvider direction={rtl ? "rtl" : "ltr"} theme={{ algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm, token: { colorPrimary: dark ? "#818cf8" : "#4f46e5", colorInfo: dark ? "#38bdf8" : "#0284c7", colorSuccess: dark ? "#34d399" : "#059669", colorWarning: dark ? "#fbbf24" : "#d97706", colorError: dark ? "#f87171" : "#dc2626", borderRadius: 10, fontFamily: "inherit", colorBgBase: dark ? "#121a2e" : "#ffffff", colorBgLayout: dark ? "#0a0f1c" : "#f3f5fb", colorBorderSecondary: dark ? "#1f2a44" : "#e5e9f2" }, components: { Table: { headerBorderRadius: 10, rowHoverBg: "transparent" }, Tag: { defaultBg: "transparent" } } }}>
         {children}
       </ConfigProvider>
     </AntdRegistry>

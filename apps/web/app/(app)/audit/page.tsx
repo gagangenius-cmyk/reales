@@ -3,6 +3,7 @@ import { listAuditEvents } from "@reales/domain";
 import { hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../no-access";
+import { AuditTable } from "./audit-table";
 
 export const metadata = { title: "Audit log | Reales CRM" };
 
@@ -14,20 +15,7 @@ export default async function Audit() {
     <section>
       <h1 className="text-2xl font-semibold">Audit log</h1>
       <p className="muted text-sm">Append-only and hash-chained. Entries cannot be edited or deleted.</p>
-      <div className="card mt-4 overflow-x-auto p-2">
-        <table className="t">
-          <thead><tr><th>#</th><th>When (UTC)</th><th>Action</th><th>Entity</th><th>Actor</th></tr></thead>
-          <tbody>
-            {events.map((e) => (
-              <tr key={e.id}>
-                <td>{String(e.seq)}</td>
-                <td>{new Date(e.createdAt).toISOString().slice(0, 19).replace("T", " ")}</td>
-                <td>{e.action}</td><td>{e.entityType}</td><td>{e.actorId ?? "system"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <div className="card mt-4 p-4"><AuditTable rows={events.map((e) => ({ id: e.id, seq: String(e.seq), when: new Date(e.createdAt).toISOString().slice(0, 19).replace("T", " "), action: e.action, entityType: e.entityType, actor: e.actorId ?? "system" }))} /></div>
     </section>
   );
 }
