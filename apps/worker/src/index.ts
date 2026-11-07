@@ -2,7 +2,7 @@ import "dotenv/config";
 import { Queue, Worker } from "bullmq";
 import Redis from "ioredis";
 import { getSequelize } from "@reales/database";
-import { handleDomainEvent, processWebhookEvent } from "@reales/domain";
+import { handleDomainEvent, processWebhookEvent, recordHeartbeat } from "@reales/domain";
 import { dispatchOutboxBatch } from "@reales/events";
 import { logger, runWithCorrelation } from "@reales/observability";
 import { BullMqPublisher, DOMAIN_EVENTS_QUEUE } from "./publisher";
@@ -31,6 +31,7 @@ async function main() {
   let stopping = false;
   const loop = (async () => {
     while (!stopping) {
+      await recordHeartbeat(sq, "worker");
       try {
         const { dispatched } = await dispatchOutboxBatch(sq, publisher, { limit: 100 });
         if (dispatched === 0) await new Promise((r) => setTimeout(r, 500));

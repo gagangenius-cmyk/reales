@@ -1,0 +1,32 @@
+# Always-on background services for a deployment where the web app runs on Vercel (or any serverless host).
+# Vercel cannot run these loops. Without them: outbound webhooks, Google sync, claim due notices, listing expiry,
+# SLA timers, queued e-mail, offer/reservation expiry and workflow waits do NOT happen.
+#
+#   cp ../.env .env.production        # DB_*, FIELD_ENCRYPTION_KEY, AUTH_PEPPER, SMTP_URL, GOOGLE_*, PUBLIC_BASE_URL ... (same values as the web app)
+#   docker compose -f docker-compose.background.yml up -d --build
+#   curl https://<your-app>/api/v1/health/background     # 200 once both services report in
+#
+# Build context is the repository root; the image is the same one used for the web role.
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: always
+    volumes: ["redis-data:/data"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 10s, timeout: 3s, retries: 5 }
+  scheduler:
+    build: { context: .., dockerfile: infrastructure/docker/Dockerfile }
+    command: ["npm", "run", "scheduler"]
+    env_file: .env.production
+    restart: always
+    healthcheck: { disable: true }  # liveness is the database heartbeat, see /api/v1/health/background
+  worker:
+    build: { context: .., dockerfile: infrastructure/docker/Dockerfile }
+    command: ["npm", "run", "worker"]
+    env_file: .env.production
+    environment: { REDIS_URL: "redis://redis:6379" }
+    depends_on: { redis: { condition: service_healthy } }
+    restart: always
+    healthcheck: { disable: true }
+volumes:
+  redis-data:

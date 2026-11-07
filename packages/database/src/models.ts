@@ -68,7 +68,7 @@ const SOFT_DELETE_SET = new Set<string>(SOFT_DELETE_TABLES);
 /** Tables intentionally NOT tenant-owned (global catalogues / tenant root). */
 export const GLOBAL_TABLES = [
   "tenants", "plans", "features", "plan_features", "permissions", "schema_migrations",
-  "jurisdictions", "regulatory_rules", "regulatory_rule_versions",
+  "jurisdictions", "regulatory_rules", "regulatory_rule_versions", "service_heartbeats",
 ] as const;
 
 export interface Models {

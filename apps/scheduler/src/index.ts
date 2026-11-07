@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { getSequelize } from "@reales/database";
-import { deliverWebhooks, pruneWebhookDeliveries, runSweeps } from "@reales/domain";
+import { deliverWebhooks, pruneWebhookDeliveries, recordHeartbeat, runSweeps } from "@reales/domain";
 import { logger } from "@reales/observability";
 
 process.env.SERVICE_NAME ??= "scheduler";
@@ -14,6 +14,7 @@ async function main() {
   process.on("SIGTERM", stop);
   logger.info({ intervalMs: INTERVAL_MS }, "scheduler started");
   while (!stopping) {
+    await recordHeartbeat(sq, "scheduler", { intervalMs: INTERVAL_MS });
     try {
       const results = await runSweeps(sq);
       const acted = results.filter((r) => r.offersExpired || r.reservationsExpired || r.listingsUnpublished || r.workflowsResumed || r.campaignBatches || r.error);
