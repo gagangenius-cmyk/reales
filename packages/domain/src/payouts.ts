@@ -26,6 +26,7 @@ async function payableFor(u: Uow, tenantId: string, userId: string): Promise<Pay
        JOIN commission_splits s ON s.calculation_id = c.id AND s.tenant_id = c.tenant_id AND s.user_id = :u
        LEFT JOIN commission_plans p ON p.id = c.plan_id AND p.tenant_id = c.tenant_id
       WHERE c.tenant_id = :t AND c.status = 'approved' AND c.paid_at IS NULL AND s.amount > 0
+        AND NOT EXISTS (SELECT 1 FROM commission_claim_items ci WHERE ci.tenant_id = c.tenant_id AND ci.calculation_id = c.id AND ci.live = 1)
         AND NOT EXISTS (SELECT 1 FROM payout_request_items i WHERE i.tenant_id = c.tenant_id AND i.calculation_id = c.id AND i.active = 1 AND i.id IS NOT NULL AND EXISTS (SELECT 1 FROM payout_requests r WHERE r.id = i.request_id AND r.tenant_id = i.tenant_id AND r.status <> 'rejected' AND r.status <> 'cancelled'))
       ORDER BY c.calculated_at ASC`,
     { replacements: { t: tenantId, u: userId }, transaction: u.tx, type: QueryTypes.SELECT },

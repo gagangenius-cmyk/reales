@@ -3,6 +3,7 @@ import { getSequelize } from "@reales/database";
 import { redirect } from "next/navigation";
 import { AMENITIES, AMENITY_GROUPS, EMIRATES, PROPERTY_TYPES, listLocations, listAssignableUsers, listInventoryTree, listUnits, searchListingsAdvanced, listingParams, listingPins, smartListingQuery, type ListingFilters } from "@reales/domain";
 import { can, hasPermission } from "@reales/rbac";
+import { SavedViews } from "@/components/saved-views";
 import { ActiveChips, Check, Field, Num, Sel, SortTh, ViewTabs, date, num, pick, qs } from "@/components/filter-bits";
 import { LiveSearch } from "@/components/live-search";
 import { LazyMap } from "@/components/map-lazy";
@@ -79,7 +80,7 @@ export default async function Listings({ searchParams }: { searchParams: Promise
     <section>
       <div className="page-head">
         <div><h1>Listings</h1><p className="muted text-sm">{res.total} listing{res.total === 1 ? "" : "s"}. Tick listings to create a client PDF or act on several at once. Publishing is blocked until the permit, brokerage licence and required fields pass the jurisdiction rules.</p></div>
-        <div className="flex items-center gap-3"><ViewTabs base="/listings" active={mapView ? "map" : "list"} extra={[{ key: "map", label: "Map", href: href({ view: "map", page: undefined }) }]} />{manage && <ListingDrawer mode="create" units={unitOpts} agents={agentOpts} amenities={AMENITIES} groups={AMENITY_GROUPS} locations={locationOpts} emirates={[...EMIRATES]} types={PROPERTY_TYPES.map((t) => ({ ...t }))} />}</div>
+        <div className="flex items-center gap-3"><SavedViews entity="listings" base="/listings" /><ViewTabs base="/listings" active={mapView ? "map" : "list"} extra={[{ key: "map", label: "Map", href: href({ view: "map", page: undefined }) }]} />{manage && <ListingDrawer mode="create" units={unitOpts} agents={agentOpts} amenities={AMENITIES} groups={AMENITY_GROUPS} locations={locationOpts} emirates={[...EMIRATES]} types={PROPERTY_TYPES.map((t) => ({ ...t }))} />}</div>
       </div>
       <form className="card mb-3 flex flex-wrap items-center gap-3 p-3" action="/listings" aria-label="Smart search">
         <label className="grow text-sm"><span className="muted text-xs font-medium">Smart search: describe what you are looking for</span><input className="input mt-1" name="smart" placeholder="2 bed apartment in Dubai Marina under 2m, furnished studio for rent below 80k..." defaultValue={sp.said ?? ""} /></label>

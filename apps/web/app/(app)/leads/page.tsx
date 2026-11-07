@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSequelize } from "@reales/database";
 import { DEFAULT_SOURCES, listAssignableUsers, listContacts, listPipelines, listProjects, searchLeadsAdvanced, leadStatusSummary, type LeadFilters } from "@reales/domain";
 import { can, hasPermission } from "@reales/rbac";
+import { SavedViews } from "@/components/saved-views";
 import { ActiveChips, Check, Field, Num, Sel, SortTh, ViewTabs, date, num, pick, qs } from "@/components/filter-bits";
 import { LiveSearch } from "@/components/live-search";
 import { requireContext } from "@/lib/page-context";
@@ -78,7 +79,7 @@ export default async function Leads({ searchParams }: { searchParams: Promise<SP
     <section className="flex flex-col gap-5">
       <div className="page-head">
         <div><h1>Leads</h1><p className="muted text-sm">{board ? "Drag cards between stages." : "Select rows for bulk actions."}</p></div>
-        {can(ctx, "lead.create") && <NewLeadDrawer sources={DEFAULT_SOURCES.map((s) => ({ code: s.code, name: s.name }))} projects={projects.map((p) => ({ id: p.id, name: p.name }))} canReadContacts={readContacts} stages={openStages} users={assignable.map((u) => ({ id: u.id, email: u.email }))} campaigns={campaigns} meId={ctx.userId} />}
+        <div className="flex items-center gap-3"><SavedViews entity="leads" base="/leads" />{can(ctx, "lead.create") && <NewLeadDrawer sources={DEFAULT_SOURCES.map((s) => ({ code: s.code, name: s.name }))} projects={projects.map((p) => ({ id: p.id, name: p.name }))} canReadContacts={readContacts} stages={openStages} users={assignable.map((u) => ({ id: u.id, email: u.email }))} campaigns={campaigns} meId={ctx.userId} />}</div>
       </div>
       <div className="grid gap-3 sm:grid-cols-4">
         <div className="card stat"><span className="muted text-xs">Open leads{board ? "" : " (this page)"}</span><b>{open.length}</b></div>

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { getSequelize } from "@reales/database";
-import { runSweeps } from "@reales/domain";
+import { deliverWebhooks, pruneWebhookDeliveries, runSweeps } from "@reales/domain";
 import { logger } from "@reales/observability";
 
 process.env.SERVICE_NAME ??= "scheduler";
@@ -20,6 +20,13 @@ async function main() {
       if (acted.length) logger.info({ acted }, "sweep completed");
     } catch (e) {
       logger.error({ err: e }, "sweep run failed");
+    }
+    try {
+      const hooks = await deliverWebhooks(sq);
+      if (hooks.delivered || hooks.failed || hooks.retried) logger.info({ hooks }, "webhook deliveries processed");
+      if (Math.random() < 0.01) await pruneWebhookDeliveries(sq);
+    } catch (e) {
+      logger.error({ err: e }, "webhook delivery pass failed");
     }
     for (let waited = 0; waited < INTERVAL_MS && !stopping; waited += 500) await new Promise((r) => setTimeout(r, 500));
   }

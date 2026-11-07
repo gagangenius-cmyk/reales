@@ -6,6 +6,7 @@ import { randomToken, safeEqualHex, sha256 } from "./crypto";
 import { AuthError } from "./errors";
 import { dummyVerify, verifyPassword } from "./password";
 import { isMfaEnrolled, verifyMfaCode } from "./mfa";
+import { isApiKeyToken, resolveApiKeyContext } from "./api-keys";
 
 export const SESSION_IDLE_MS = 8 * 60 * 60 * 1000;
 export const STEP_UP_MS = 10 * 60 * 1000;
@@ -157,6 +158,10 @@ export interface ResolveOptions extends ClientInfo {
  */
 export async function resolveRequestContext(sq: Sequelize, token: string | undefined | null, opts: ResolveOptions): Promise<RequestContext> {
   if (!token) throw new AuthError("session_invalid");
+  if (isApiKeyToken(token)) {
+    if (opts.allowPendingMfa) throw new AuthError("session_invalid"); // keys never finish MFA
+    return resolveApiKeyContext(sq, token, opts);
+  }
   const s = await loadSession(sq, token);
   const access = await loadAccess(sq, s.tenant_id, s.user_id);
   const enrolled = await isMfaEnrolled(sq, s.tenant_id, s.user_id);

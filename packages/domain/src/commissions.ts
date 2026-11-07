@@ -141,6 +141,8 @@ export async function markCommissionPaid(sq: Sequelize, ctx: RequestContext, id:
     if (!c) throw new NotFoundError("Commission");
     if (c.get("status") !== "approved") throw new ConflictError("Only an approved commission can be paid");
     if (c.get("paidAt")) throw new ConflictError("This commission is already paid");
+    const claimed = await u.sq.query("SELECT 1 FROM commission_claim_items WHERE tenant_id=:t AND calculation_id=:c AND live=1 LIMIT 1", { replacements: { t: ctx.tenantId, c: id }, transaction: u.tx, type: QueryTypes.SELECT });
+    if (claimed.length) throw new ConflictError("This commission is part of a claim batch; release the batch instead");
     await u.repo("CommissionCalculation").updateById(id, { paidAt: new Date(), paidBy: ctx.userId, paidReference: reference.trim() }, { transaction: u.tx });
     await u.audit({ action: "commission.paid", entityType: "commission", entityId: id, after: { reference: reference.trim(), amount: c.get("commissionAmount") } });
     await u.emit({ type: "commission.paid", aggregateType: "deal", aggregateId: c.get("dealId"), payload: { calculationId: id } });

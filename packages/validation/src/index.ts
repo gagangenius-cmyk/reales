@@ -64,3 +64,4 @@ export * from "./extras";
 export * from "./onboarding";
 export * from "./workspace";
 export * from "./hr";
+export * from "./integrations";

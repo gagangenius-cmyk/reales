@@ -52,7 +52,31 @@ export async function emitEvent<T>(
       },
     },
   );
+  await fanOutWebhooks(sequelize, tx, ctx.tenantId, { id, type: e.type, version: e.version ?? 1, aggregateType: e.aggregateType, aggregateId: e.aggregateId, occurredAt: now.toISOString(), data: e.payload ?? {} });
   return id;
+}
+
+/** Does any pattern (`*`, `lead.*`, `lead.created`) match this event type? */
+export function matchesEvent(patterns: string[], type: string): boolean {
+  return patterns.some((p) => p === "*" || p === type || (p.endsWith(".*") && type.startsWith(p.slice(0, -1))));
+}
+
+/**
+ * Queue one delivery per matching active webhook endpoint, in the SAME transaction as the event: if the business change rolls back, no webhook
+ * is ever sent for it. Sending happens later in a worker; (endpoint, event) is unique so a replay cannot double-queue.
+ */
+async function fanOutWebhooks(sequelize: Sequelize, tx: Transaction, tenantId: string, ev: { id: string; type: string; version: number; aggregateType: string; aggregateId: string; occurredAt: string; data: unknown }) {
+  const eps = await sequelize.query<{ id: string; event_types: string | string[] }>("SELECT id, event_types FROM webhook_endpoints WHERE tenant_id = :t AND active = 1", { replacements: { t: tenantId }, transaction: tx, type: QueryTypes.SELECT });
+  if (!eps.length) return;
+  const body = JSON.stringify({ ...ev, tenantId });
+  for (const ep of eps) {
+    const patterns: string[] = typeof ep.event_types === "string" ? JSON.parse(ep.event_types) : ep.event_types;
+    if (!matchesEvent(patterns, ev.type)) continue;
+    await sequelize.query(
+      "INSERT IGNORE INTO webhook_deliveries (id, tenant_id, endpoint_id, event_id, event_type, payload, status, attempts, next_attempt_at, created_at, updated_at) VALUES (UUID(), :t, :ep, :ev, :type, :payload, 'pending', 0, :now, :now, :now)",
+      { replacements: { t: tenantId, ep: ep.id, ev: ev.id, type: ev.type, payload: body, now: mysqlDate(new Date()) }, transaction: tx },
+    );
+  }
 }
 
 export interface EventPublisher {

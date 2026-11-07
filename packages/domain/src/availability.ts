@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { Op, Sequelize } from "sequelize";
-import type { RequestContext } from "@reales/database";
+import { Op, QueryTypes, Sequelize } from "sequelize";
+import { mysqlDate, type RequestContext } from "@reales/database";
 import { authorize } from "@reales/rbac";
 import { plain } from "./scope";
 import { ConflictError, NotFoundError, Uow, withUow } from "./uow";
@@ -75,6 +75,15 @@ export async function removeTimeOff(sq: Sequelize, ctx: RequestContext, id: stri
 }
 
 /** Throws when the agent has set working hours and the requested viewing falls outside them or inside time off. No windows = no restriction. */
+/** Busy blocks read from the agent's connected Google calendar (anonymous: no titles are stored). Empty when they have not connected one. */
+export async function googleBusyBlocks(u: Uow, agentId: string, from: Date, to: Date): Promise<[number, number][]> {
+  const rows = await u.sq.query<{ starts_at: Date; ends_at: Date }>(
+    `SELECT e.starts_at, e.ends_at FROM calendar_external_events e JOIN connected_accounts a ON a.id = e.account_id AND a.tenant_id = e.tenant_id
+      WHERE e.tenant_id = :t AND a.user_id = :u AND a.status = 'active' AND a.sync_calendar = 1 AND e.busy_only = 1 AND e.starts_at < :to AND e.ends_at > :from`,
+    { replacements: { t: u.tenantId, u: agentId, from: mysqlDate(from), to: mysqlDate(to) }, transaction: u.tx, type: QueryTypes.SELECT });
+  return rows.map((r) => [new Date(r.starts_at).getTime(), new Date(r.ends_at).getTime()]);
+}
+
 export async function assertAgentAvailable(u: Uow, agentId: string, start: Date, end: Date) {
   const windows: any[] = await u.repo("AgentAvailability").findAll({ where: { userId: agentId }, transaction: u.tx });
   if (windows.length) {
@@ -86,6 +95,7 @@ export async function assertAgentAvailable(u: Uow, agentId: string, start: Date,
   }
   const off = await u.repo("AgentTimeOff").findOne({ where: { userId: agentId, startsAt: { [Op.lt]: end }, endsAt: { [Op.gt]: start } }, transaction: u.tx });
   if (off) throw new ConflictError(`The agent is on time off then${off.get("reason") ? ` (${off.get("reason")})` : ""}`);
+  if ((await googleBusyBlocks(u, agentId, start, end)).length) throw new ConflictError("The agent is busy in their Google calendar then");
 }
 
 /** Free start times for one agent on one Dubai calendar day: inside working hours, outside time off and existing viewings, in the future. */
@@ -107,6 +117,7 @@ export async function freeSlots(sq: Sequelize, ctx: RequestContext, agentUserId:
       ...(off as any[]).map((o) => [new Date(o.get("startsAt")).getTime(), new Date(o.get("endsAt")).getTime()] as [number, number]),
       ...(viewings as any[]).map((v) => { const s = new Date(v.get("scheduledAt")).getTime(); return [s, s + v.get("durationMin") * 60_000] as [number, number]; }),
     ];
+    busy.push(...(await googleBusyBlocks(u, agentUserId, dayStart, dayEnd)));
     const slots: string[] = [];
     for (const [from, to] of spans) {
       for (let m = from; m + durationMin <= to; m += stepMin) {

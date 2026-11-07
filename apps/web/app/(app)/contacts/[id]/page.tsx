@@ -1,7 +1,7 @@
 import { DeleteButton } from "@/components/delete-button";
 import Link from "next/link";
 import { getSequelize } from "@reales/database";
-import { duplicateCandidates, getContact, leadsForContact } from "@reales/domain";
+import { duplicateCandidates, getContact, leadsForContact, listContactEmails } from "@reales/domain";
 import { can, hasPermission } from "@reales/rbac";
 import { requireContext } from "@/lib/page-context";
 import { NoAccess } from "../../no-access";
@@ -20,6 +20,7 @@ export default async function ContactPage({ params }: { params: Promise<{ id: st
   let c: any;
   try { c = await getContact(sq, ctx, id); } catch { return <section><h1 className="text-2xl font-semibold">Contact not found</h1><Link className="btn-ghost mt-3 inline-block" href="/contacts">Back to contacts</Link></section>; }
   const leads: any[] = hasPermission(ctx, "lead.read") ? await leadsForContact(sq, ctx, id).catch(() => []) : [];
+  const emails: any[] = hasPermission(ctx, "google.connect") ? await listContactEmails(sq, ctx, id).catch(() => []) : [];
   const dupes = ctx.grants.some((g) => g.permission === "contact.update" && g.scope === "tenant") ? await duplicateCandidates(sq, ctx, id).catch(() => []) : [];
   const name = [c.salutation, c.firstName, c.lastName].filter(Boolean).join(" ") || c.companyName || c.email || "Unnamed";
   const canEdit = can(ctx, "contact.update", { ownerUserId: c.ownerUserId, branchId: c.branchId });
@@ -56,6 +57,14 @@ export default async function ContactPage({ params }: { params: Promise<{ id: st
           </table>
         </div>
       </div>
+      {emails.length > 0 && (
+        <div className="card overflow-x-auto p-4">
+          <h2 className="mb-1 font-semibold">E-mail (from your Gmail)</h2>
+          <p className="muted mb-3 text-xs">Sender, recipients, subject and date only. Only you can see this; message bodies are never read.</p>
+          <table className="t"><thead><tr><th>Date</th><th /><th>Subject</th><th>With</th></tr></thead>
+            <tbody>{emails.map((m) => <tr key={m.id}><td>{new Date(m.messageAt).toLocaleDateString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "short", year: "numeric" })}</td><td>{m.direction === "in" ? "Received" : "Sent"}</td><td>{m.subject ?? "(no subject)"}</td><td>{m.direction === "in" ? m.fromAddress : (m.toAddresses ?? []).slice(0, 2).join(", ")}</td></tr>)}</tbody></table>
+        </div>
+      )}
     </section>
   );
 }
