@@ -20,15 +20,15 @@ const versionBody = {
 export const createTemplateSchema = z.object({ name: z.string().min(1).max(160), channel, purpose: z.string().max(60).optional(), projectId: uuid.optional(), ...versionBody }).strict();
 export const templateVersionSchema = z.object(versionBody).strict();
 export const approveTemplateSchema = z.object({ outcome: z.enum(["approved", "rejected"]) }).strict();
-export const templatePreviewSchema = z.object({ values: z.record(z.record(z.union([z.string(), z.number()]))).default({}) }).strict();
+export const templatePreviewSchema = z.object({ values: z.record(z.string(), z.record(z.string(), z.union([z.string(), z.number()]))).default({}) }).strict();
 export const templateListQuery = z.object({ channel: channel.optional(), status: z.enum(["draft", "approved", "archived"]).optional() });
 
-export const channelAccountSchema = z.object({ channel, provider: z.string().min(1).max(40), name: z.string().min(1).max(120), identity: z.string().min(3).max(254), config: z.record(z.unknown()).optional() }).strict();
+export const channelAccountSchema = z.object({ channel, provider: z.string().min(1).max(40), name: z.string().min(1).max(120), identity: z.string().min(3).max(254), config: z.record(z.string(), z.unknown()).optional() }).strict();
 
 export const sendMessageSchema = z.object({
   contactId: uuid, channel, purposeCode: z.string().min(1).max(60), channelAccountId: uuid.optional(),
   body: z.string().min(1).max(4000).optional(), subject: z.string().max(255).optional(), templateVersionId: uuid.optional(),
-  values: z.record(z.record(z.union([z.string(), z.number(), z.null()]))).optional(),
+  values: z.record(z.string(), z.record(z.string(), z.union([z.string(), z.number(), z.null()]))).optional(),
 }).strict().refine((v) => !!v.body !== !!v.templateVersionId, { message: "provide exactly one of body or templateVersionId" });
 export const conversationListQuery = z.object({ ...page, status: z.enum(["open", "closed"]).optional(), unreadOnly: z.enum(["true", "false"]).transform((v) => v === "true").optional() });
 
@@ -46,7 +46,7 @@ export const campaignSchema = z.object({
 }).strict();
 export const scheduleCampaignSchema = z.object({ at: z.string().datetime().optional() }).strict();
 
-const node = z.object({ id: z.string().min(1).max(80), type: z.string().min(1).max(80), config: z.record(z.unknown()).optional(), position: z.object({ x: z.number(), y: z.number() }).optional() }).passthrough();
+const node = z.object({ id: z.string().min(1).max(80), type: z.string().min(1).max(80), config: z.record(z.string(), z.unknown()).optional(), position: z.object({ x: z.number(), y: z.number() }).optional() }).passthrough();
 const edge = z.object({ id: z.string().max(120).optional(), source: z.string().max(80), target: z.string().max(80), sourceHandle: z.string().max(40).nullable().optional() }).passthrough();
 export const graphSchema = z.object({ nodes: z.array(node).max(200), edges: z.array(edge).max(400) }).passthrough();
 export const createWorkflowSchema = z.object({ name: z.string().min(1).max(160), projectId: uuid.optional(), graph: graphSchema.optional() }).strict();

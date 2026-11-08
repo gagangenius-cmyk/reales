@@ -21,9 +21,9 @@ export const viewingListQuery = z.object({
 
 // ---- offers and reservations
 export const createOfferSchema = z.object({
-  unitId: uuid, contactId: uuid, leadId: uuid.optional(), amount: money, depositAmount: money.optional(), validUntil: iso.optional(), terms: z.record(z.unknown()).optional(),
+  unitId: uuid, contactId: uuid, leadId: uuid.optional(), amount: money, depositAmount: money.optional(), validUntil: iso.optional(), terms: z.record(z.string(), z.unknown()).optional(),
 }).strict();
-export const counterOfferSchema = z.object({ amount: money, by: z.enum(["buyer", "seller"]), terms: z.record(z.unknown()).optional() }).strict();
+export const counterOfferSchema = z.object({ amount: money, by: z.enum(["buyer", "seller"]), terms: z.record(z.string(), z.unknown()).optional() }).strict();
 export const offerListQuery = z.object({ ...page, status: z.enum(["draft", "submitted", "countered", "accepted", "rejected", "withdrawn", "expired"]).optional(), unitId: uuid.optional() });
 export const createReservationSchema = z.object({ unitId: uuid, contactId: uuid, offerId: uuid.optional(), depositAmount: money.optional(), holdHours: z.number().int().min(1).max(24 * 14).optional() }).strict();
 export const reservationListQuery = z.object({ ...page, status: z.enum(["active", "converted", "cancelled", "expired"]).optional() });
@@ -177,14 +177,14 @@ export const bulkListingSchema = z.object({
 }).strict();
 export const credentialsSchema = z.object({
   baseUrl: z.string().url().max(300), apiKey: z.string().min(1).max(300), apiSecret: z.string().min(1).max(300),
-  tokenPath: z.string().max(120).optional(), listingsPath: z.string().max(120).optional(), locationsPath: z.string().max(120).optional(), locationMap: z.record(z.union([z.string(), z.number()])).optional(),
+  tokenPath: z.string().max(120).optional(), listingsPath: z.string().max(120).optional(), locationsPath: z.string().max(120).optional(), locationMap: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 }).strict();
 export const portalModeSchema = z.object({ mode: z.enum(["export", "api"]) }).strict();
 export const siteSettingsSchema = z.object({
   enabled: z.boolean().optional(), title: z.string().max(120).nullable().optional(), tagline: z.string().max(200).nullable().optional(), about: z.string().max(8000).nullable().optional(),
   phone: z.string().max(40).nullable().optional(), whatsapp: z.string().max(40).nullable().optional(), email: z.string().max(254).nullable().optional(), address: z.string().max(255).nullable().optional(),
   logoUrl: z.string().max(400).nullable().optional(), primaryColor: z.string().max(9).nullable().optional(), defaultLanguage: z.enum(["en", "ar"]).optional(), showPrices: z.boolean().optional(),
-  areaUnit: z.enum(["sqft", "sqm"]).optional(), seoDescription: z.string().max(300).nullable().optional(), social: z.record(z.string().max(400)).optional(),
+  areaUnit: z.enum(["sqft", "sqm"]).optional(), seoDescription: z.string().max(300).nullable().optional(), social: z.record(z.string(), z.string().max(400)).optional(),
 }).strict();
 export const publicEnquirySchema = z.object({
   token: z.string().min(20).max(60), name: z.string().trim().min(1).max(120), phone: z.string().max(40).optional(), email: z.string().max(254).optional(), message: z.string().max(2000).optional(), website: z.string().max(200).optional(),

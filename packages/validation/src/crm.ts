@@ -166,5 +166,5 @@ export const licenceSchema = z.object({
   licenceNo: z.string().min(1).max(80), authority: z.string().min(1).max(60), issuedAt: isoDate.optional(), expiresAt: isoDate,
 }).strict();
 export const verifyLicenceSchema = z.object({ outcome: z.enum(["valid", "revoked"]) }).strict();
-export const portalAccountSchema = z.object({ provider: z.string().min(1).max(40), name: z.string().min(1).max(120), mode: z.enum(["export", "api"]).optional(), config: z.record(z.unknown()).optional() }).strict();
+export const portalAccountSchema = z.object({ provider: z.string().min(1).max(40), name: z.string().min(1).max(120), mode: z.enum(["export", "api"]).optional(), config: z.record(z.string(), z.unknown()).optional() }).strict();
 export const unpublishSchema = z.object({ reason: z.string().max(255).optional() }).strict();

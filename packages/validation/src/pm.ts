@@ -20,7 +20,7 @@ export const leaseDocumentSchema = z.object({ documentId: uuid, registrationRef:
 export const rentPaymentSchema = z.object({ amount: z.number().positive().max(1_000_000_000), method, providerRef: z.string().max(120).optional(), scheduleId: uuid.optional(), receivedAt: z.string().datetime().optional() }).strict();
 export const depositCollectSchema = z.object({ method, providerRef: z.string().max(120).optional() }).strict();
 export const depositDeductSchema = z.object({ amount: z.number().positive().max(1_000_000_000), reason: z.string().min(3).max(500) }).strict();
-export const addendumSchema = z.object({ title: z.string().min(1).max(200), effectiveOn: date, changes: z.record(z.unknown()).optional(), documentId: uuid.optional() }).strict();
+export const addendumSchema = z.object({ title: z.string().min(1).max(200), effectiveOn: date, changes: z.record(z.string(), z.unknown()).optional(), documentId: uuid.optional() }).strict();
 export const terminateSchema = z.object({ effectiveOn: date, reason: z.string().min(3).max(500), noticeGivenOn: date.optional() }).strict();
 export const renewSchema = z.object({ newAnnualRent: z.number().positive().max(1_000_000_000), newEndsOn: date.optional(), installments: z.number().int().min(1).max(12).optional(), overrideReason: z.string().max(500).optional() }).strict();
 

@@ -46,7 +46,7 @@ export interface BotIssue { code: string; nodeId?: string; message: string }
 /** Static analysis before publish: structure, per-node config, reachability, handle wiring, and no loop that can spin without waiting for the user. */
 export function validateBotGraph(graph: unknown): BotIssue[] {
   const issues: BotIssue[] = [];
-  const g = z.object({ nodes: z.array(z.object({ id: z.string().min(1).max(80), type: z.string(), config: z.record(z.unknown()).optional() }).passthrough()).max(MAX_NODES), edges: z.array(z.object({ source: z.string(), target: z.string(), sourceHandle: z.string().nullable().optional() }).passthrough()).max(200) }).safeParse(graph);
+  const g = z.object({ nodes: z.array(z.object({ id: z.string().min(1).max(80), type: z.string(), config: z.record(z.string(), z.unknown()).optional() }).passthrough()).max(MAX_NODES), edges: z.array(z.object({ source: z.string(), target: z.string(), sourceHandle: z.string().nullable().optional() }).passthrough()).max(200) }).safeParse(graph);
   if (!g.success) return [{ code: "shape", message: "Graph shape is invalid (or has more than 60 nodes)" }];
   const { nodes, edges } = g.data;
   const byId = new Map<string, (typeof nodes)[number]>();

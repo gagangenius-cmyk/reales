@@ -23,7 +23,7 @@ export const photoshootActionSchema = z.discriminatedUnion("action", [
 ]);
 export const photoshootListQuery = z.object({ status: z.enum(["requested", "scheduled", "in_progress", "delivered", "cancelled"]).optional(), listingId: uuid.optional(), mine: z.enum(["true", "false"]).optional() });
 export const savedViewSchema = z.object({
-  id: uuid.optional(), entity: z.enum(["leads", "listings", "contacts", "deals"]), name: text(80).min(1), filters: z.record(z.string().max(200)), columns: z.array(text(60)).max(40).nullable().optional(),
+  id: uuid.optional(), entity: z.enum(["leads", "listings", "contacts", "deals"]), name: text(80).min(1), filters: z.record(z.string(), z.string().max(200)), columns: z.array(text(60)).max(40).nullable().optional(),
   shared: z.boolean().optional(), isDefault: z.boolean().optional(),
 }).strict();
 export const savedViewQuery = z.object({ entity: z.enum(["leads", "listings", "contacts", "deals"]) });
