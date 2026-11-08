@@ -122,9 +122,12 @@ export async function createClaimBatch(sq: Sequelize, ctx: RequestContext, i: { 
   need(ctx, "claim.create");
   if (!i.calculationIds?.length) throw new ConflictError("Choose at least one commission");
   return withUow(sq, ctx, async (u) => {
+    // The batch takes its currency from the first commission (the column is required); addItems then enforces one currency.
+    const first: any = await u.repo("CommissionCalculation").findById(i.calculationIds[0]!, { transaction: u.tx });
+    if (!first) throw new NotFoundError("Commission");
     const id = randomUUID();
     const number = await nextCounter(u, ctx.tenantId, "claim_batch");
-    await u.repo("ClaimBatch").create({ id, number, title: i.title?.trim().slice(0, 160) || `Claim batch ${number}`, status: "draft", currency: null, amount: "0.00", vatAmount: "0.00", itemCount: 0, notes: i.notes?.trim().slice(0, 500) || null, createdBy: ctx.userId }, { transaction: u.tx });
+    await u.repo("ClaimBatch").create({ id, number, title: i.title?.trim().slice(0, 160) || `Claim batch ${number}`, status: "draft", currency: first.get("currency"), amount: "0.00", vatAmount: "0.00", itemCount: 0, notes: i.notes?.trim().slice(0, 500) || null, createdBy: ctx.userId }, { transaction: u.tx });
     const batch: any = await u.repo("ClaimBatch").findById(id, { transaction: u.tx });
     await addItems(u, ctx, batch, i.calculationIds);
     await u.audit({ action: "claim.created", entityType: "claim_batch", entityId: id, after: { number, items: i.calculationIds.length } });
